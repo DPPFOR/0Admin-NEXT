@@ -6,8 +6,19 @@ __pycache__/
 # C extensions
 *.so
 
+# Lauf-/Temp-Artefakte
+artifacts/.tmp/
+artifacts/run/**/*.log
+artifacts/run/**/*.tmp
+artifacts/**/trace_*.csv
+
+# Build-Output (frontend)
+frontend/dist/
+
 # Distribution / packaging
 .Python
+*.pyc
+.venv/
 build/
 develop-eggs/
 dist/
@@ -205,3 +216,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# local venv
+.venv/
+# artifacts runtime
+artifacts/.tmp/
+# caches
+__pycache__/
+*.pyc
+# frontend build
+frontend/dist/
