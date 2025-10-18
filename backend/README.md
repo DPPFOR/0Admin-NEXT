@@ -78,10 +78,10 @@ markdown
 Code kopieren
 
 ### 🧪 Tests
-- Deterministische Unit-Tests, keine Abhängigkeit zu Apps/Core.
+- Deterministische Unit-Tests, keine Abhängigkeit zu prducts/Core.
 
 ### 📋 Definition of Done
-- Importierbar aus Apps und Core, keine Seiteneffekte, Tests grün.
+- Importierbar aus apps und Core, keine Seiteneffekte, Tests grün.
 3) backend/config/specification.md
 markdown
 Code kopieren
@@ -92,7 +92,7 @@ Code kopieren
 Zentrale Settings- und Laufzeitkonfiguration. Einziger Ort, der `.env`/Umgebungsvariablen direkt liest/validiert.
 
 ### 🧩 Verantwortungsbereich
-1. AppSettings (Pydantic Settings)
+1. ProductsSettings (Pydantic Settings)
 2. Kontext-Loader (Pfade, Ports, Feature-Toggles)
 3. Logger-Konfiguration (JSON-Logs, Rotation)
 4. Profile: `local`, `test`, `prod`

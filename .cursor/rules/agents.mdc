@@ -1,0 +1,82 @@
+---
+description: Agents-Manifest (Arbeitsstil & Prompt-Kontext) für 0Admin-NEXT
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Agents Manifest — 0Admin-NEXT (Cursor Rules)
+
+## 1. Prompt-Kontext & Arbeitsstil (PDD)
+1. Prompts sind „Specification as Code“ (PDD); schreibe deterministisch, präzise, kontextreich.
+2. Lies und befolge `coding-agent-policy.md`; unklare Aktionen zuerst als **Analyse/Preview**, kein Write ohne explizites **GO**.
+3. Verwende die Prompt-Schablone:
+   - # Context: <Modul/Scope>
+   - # Goal: <Ziel>
+   - # Constraints: <Tests/Policies/No-Network/No-DB>
+4. Wenn ein Pattern unklar ist: **Klarstellung anfragen**, nicht raten.
+
+## 2. Test-Strategie (pytest, AAA, Table-Driven)
+1. Nutze **pytest >= 8.3** und **Arrange–Act–Assert (AAA)**.
+2. Jede Testdatei beginnt mit:
+   """Tests for <module> — auto-generated via PDD."""
+3. Testtypen:
+   a. unit: reine Domain-Logik  
+   b. integration: Flock-Event-Flows, Outbox-Worker  
+   c. e2e: simulierte Mahnläufe über API + Outbox
+4. Bevorzugt **table-driven** via `@pytest.mark.parametrize`.
+5. Coverage-Ziele: Domain ≥ 85 %, Gesamt ≥ 80 %.
+
+## 3. Mocking & Isolation
+1. **Kein** echter Netzwerkzugriff oder DB-Writes in Tests.
+2. Verwende:
+   - `pytest-mocker` für Funktionsmocks
+   - In-Memory-DB (z. B. SQLite `:memory:`) für Integration
+   - Fake-Flock-Events (Payload + tenant_id)
+3. Beispielauftrag an Agenten:
+   Erzeuge Unit-Tests für `rules/mahnwesen/stages.py` mit AAA, table-driven, DB und Outbox mocken.
+
+## 4. Flock-Agent-Tests
+1. Simuliere:
+   - eingehendes Event → Handler → erwarteter Outbox-Eintrag (Mock)
+2. Prüfe Idempotenz:
+   - gleiche Event-ID zweimal ⇒ **kein** doppelter Outbox-Eintrag
+3. Beispielauftrag:
+   Integrationstest „MahnAgent: Event in → Reminder-Event im Outbox-Mock“.
+
+## 5. Prompting-Guidelines (Schablonen)
+1. Struktur:
+   - # Context: <Modulbeschreibung>
+   - # Goal: <konkretes Ergebnis>
+   - # Constraints: AAA, table-driven, Mock-DB, **kein Netzwerk**
+2. Beispiele:
+   a. „Erstelle Unit-Tests für `calculate_next_stage()` (AAA, table-driven, Mock-DB).“  
+   b. „Simuliere Flock-Event Y ohne echten Worker.“  
+   c. „Erhöhe Coverage für Pfad Z laut pytest-Report.“
+
+## 6. Dateilayout & Benennung
+1. Tests parallel zur Quellstruktur, z. B.  
+   - `backend/domain/mahnwesen/rules_test.py`  
+   - `workers/outbox_worker_test.py`
+2. Gemeinsame Fixtures: `tests/conftest.py`.
+3. Keine Artefakte außerhalb Repo-Scope (`/srv/0admin`).
+
+## 7. CI-Integration (lokaler Arbeitsstil)
+1. Nach jedem Write:
+   `pytest --maxfail=1 --disable-warnings -v --cov`
+2. Bei Fehlschlag: **Diagnose liefern**, **kein** Auto-Fix ohne Freigabe.
+3. Coverage-Report nach `/reports/coverage/`.
+
+## 8. Safety, Policy, Eskalation
+1. **Strikt** `coding-agent-policy.md` befolgen; bei Konflikt: abbrechen, melden, Freigabe abwarten.
+2. **Keine** geheimen Variablen/Keys/Tokens in Prompts/Logs.
+3. **Keine** Struktur-/Repo-Umbauten ohne ausdrückliches GO; bestehende Dateien bevorzugt **anpassen**.
+
+## 9. Quick-Reference (erlaubte Aufträge)
+1. „Erstelle Test-Skeleton nach AAA für Modul X.“
+2. „Simuliere Flock-Event Y, verifiziere Outbox-Eintrag (Mock).“
+3. „Schließe Coverage-Lücke Z; nutze parametrize-Table.“
+4. „Refaktoriere Testdaten zu table-driven Parametrisierung.“
+
+## 10. Platzierung & Sichtbarkeit
+1. Diese Regeldatei liegt projektweit unter `.cursor/rules/agents.mdc` und ist **Always** aktiv.
+2. Optional: Eine `AGENTS.md` im Projektstamm darf auf `.cursor/rules` verweisen (Kurzüberblick, keine Duplikate).

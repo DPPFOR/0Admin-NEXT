@@ -23,7 +23,7 @@ agents/mahnwesen/
 - Visibility: Standard „public“, optional TenantVisibility(tenant_id) für SaaS
 
 🔗 Schnittstellen (gegen Backend/Core)
-- Input: Outbox-Events aus backend/products/mahnwesen und …/erechnung
+- Input: Outbox-Events aus backend/apps/mahnwesen und …/erechnung
 - Output: Zustellbestätigungen zurück in Outbox (Statusfluss)
 - Kein Direktimport von backend.* – nur über Artefakt-Schemen arbeiten
 

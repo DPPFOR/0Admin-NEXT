@@ -1,0 +1,124 @@
+---
+description: Issue-Template für GitHub Copilot Coding Agent („Mission Brief“)
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# Issue-Template für GitHub Copilot Coding Agent — Ausführungs-Briefing („Mission Brief“)
+
+## AGENT-SAFETY-HEADER
+Dieses Issue ist ein **STANDALONE-PROMPT** – vollständig eigenständig, reproduzierbar und commit-fix.  
+Keine Bezüge auf vorherige Nachrichten, externe Dateien oder implizite Annahmen.  
+Alle entscheidungsrelevanten Informationen müssen **innerhalb dieses Issues** enthalten oder verlinkt sein.
+
+---
+
+## TECHNISCHE BASIS
+1. Repo: 0Admin-NEXT  
+2. Python 3.12  
+3. Flock 0.5.3 (flock-core)  
+4. Package-Manager: nur pip – kein uv, poetry, pipenv  
+5. CI: pytest==8.3.*, Lint, Secret-Scan  
+6. Branch-Protection: main → PR required + required checks  
+
+---
+
+## GROUND TRUTH
+1. Repo-Commit: <commit-Permalink>  
+2. Kontraktdatei: `backend/contracts/<modul>.contract.yaml` (Version x.y)  
+3. Spezifikation: `docs/specification.md#<abschnitt>`  
+4. Architektur: `docs/architecture/overview.md#<abschnitt>`  
+
+Diese Quellen bilden die **kanonische Architektur- und Domänenbasis**.
+
+---
+
+## TASK-BRIEF
+- **Rolle:** {Repo-Architekt | Backend-Implementer | Flock-Orchestrator | Test-Engineer | Docs-Scribe}  
+- **Ziel:** {kurz und messbar, z. B. „Service X in backend/products/mahnwesen/services implementieren“}  
+- **FILESCOPE-ALLOW:** {z. B. backend/products/mahnwesen/**}  
+- **FILESCOPE-DENY:** {z. B. agents/, frontend/, backend/core/**}  
+- Änderungen außerhalb dieses Scopes → **BLOCKED** melden und Alternativen vorschlagen.
+
+---
+
+## PLAN (≤ 5 Punkte)
+1. Änderungen und Ziele kurz beschreiben.  
+2. Entscheidungsbegründungen (stichpunktartig).  
+3. Schema oder API-Skizze (falls relevant).  
+4. Betroffene Kontrakt-Abschnitte verlinken.  
+5. Risiken / Abhängigkeiten nennen.
+
+---
+
+## ACCEPTANCE CRITERIA
+1. Given / When / Then oder nummerierte Kriterien (3–5).  
+2. Jedes Kriterium muss technisch prüfbar sein (Test, Artefakt, CI-Nachweis).  
+3. „Erfüllt“ = Code, Test und CI belegen Erfüllung.
+
+---
+
+## TESTS
+1. Pfad(e) unter `tests/...` neu oder anzupassen.  
+2. Fixture-Strategie (z. B. freezegun, factory).  
+3. Abdeckung ≥ 80 % für geänderte Zeilen.  
+4. Testtypen (Unit, Integration, Contract) explizit nennen.
+
+---
+
+## DoD (Definition of Done)
+1. CI grün (pytest, lint, secret-scan).  
+2. Keine Breaking Changes ohne Migration (Alembic).  
+3. Kontrakt + Docs aktualisiert bei Schema/API-Änderung.  
+4. Changelog bei extern sichtbaren Änderungen.  
+5. Keine Artefakte außerhalb `artifacts/**`.
+
+---
+
+## RISIKEN & ROLLBACK
+1. Risiken fachlich und technisch auflisten.  
+2. Rollback-Strategie (z. B. Feature-Flag, Downgrade, Revert).  
+3. Auslösekriterium für Rollback definieren.
+
+---
+
+## DEPENDENCIES
+1. Neue Pakete nur mit Begründung und fixer Version (==).  
+2. `pip audit` muss fehlerfrei laufen.  
+3. Keine Toolchain-Änderungen (kein uv, poetry, pipenv).
+
+---
+
+## SECURITY & LOGGING
+1. Keine Secrets im Code oder in Artefakten.  
+2. RBAC-Regeln einhalten (gemäß Kontrakt).  
+3. Fehler loggen, aber keine PII ausgeben.  
+4. Event/API-Änderungen → Backward-Compatible oder neue Version.
+
+---
+
+## OUTPUT
+1. Änderungen auflisten als `{pfad}:{operation}:{beschreibung}`.  
+2. Verification Summary → welche Tests/Checks erfüllen Kriterien.  
+3. BLOCKED markieren, falls Freigabe fehlt.
+
+---
+
+## CLEANUP-PFLICHT
+1. `artifacts/.tmp/` nach Run rekursiv löschen.  
+2. Dauerhafte Nachweise (`final.json`, Coverage, Reports) nur unter `artifacts/**`.  
+3. Keine temporären Dateien außerhalb dieser Ordner.
+
+---
+
+## BRANCHES / COMMITS
+- Branch-Name: `feat/<kurz>` | `fix/<kurz>` | `chore/<kurz>`  
+- Commit-Style: konventionell (`feat:`, `fix:`, `test:` …) + Issue-Referenz  
+
+---
+
+## DATEIPFADE (EMPFOHLEN)
+- Kontrakte: `backend/contracts/*.contract.yaml`  
+- Artefakte: `artifacts/**`  
+- CLI/Deploy: `tools/cli/**` | `ops/deploy/**`  
+- Tests: `tests/**`

@@ -16,7 +16,7 @@ Es stellt konsistente Profile, Nummernkreise, PDF-/XML-Kopplung und Validierungs
 🧭 Systemkontext & Abhängigkeiten
 
 - Input-Quellen:
-    - backend/products/mahnwesen (Mahnstatus, Referenz auf Ursprungrechnungen)
+    - backend/apps/mahnwesen (Mahnstatus, Referenz auf Ursprungrechnungen)
     - Kunden-/Artikelstamm, Zahlungsbedingungen (common/core)
 Output:
     - XML/PDF-Artefakte und Outbox-Events (z. B. erechnung.issued, erechnung.sent)
@@ -128,3 +128,18 @@ InvoiceLine:
 - Statusübergänge korrekt & auditierbar, Events in Outbox vollständig
 - Unit/Integration/E2E-Tests grün, Fehlerpfade abgedeckt
 - Idempotenz-Nachweis (zweiter Lauf mit gleicher trace_id erzeugt keine Doppler)
+
+## 📜 Architektur-Contract
+
+Dieses Modul unterliegt einem verbindlichen Architektur-Contract.
+
+- **Kontraktdatei:** [`../../contracts/erechnung.contract.yaml`](../../contracts/erechnung.contract.yaml)
+- **Gültig ab Commit:** `<COMMIT-SHA-FIXIERT>`
+- **Version:** `1.0`
+- **Pflichtreferenzen:**  
+  - [backend/apps/erechnung/specification.md](specification.md)
+  - [docs/architecture/overview.md#erechnung](../../../docs/architecture/overview.md#erechnung)
+
+**Hinweis:**  
+Änderungen an Logik, Schema, Events oder API dürfen nur erfolgen,  
+wenn sie mit dem Contract übereinstimmen oder eine neue Contract-Version erstellt wird.

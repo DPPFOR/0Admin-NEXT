@@ -1,0 +1,110 @@
+contract_version: 1.0
+module: erechnung
+domain: billing/invoicing
+ground_truth:
+  repo: 0Admin-NEXT
+  commit: <COMMIT-SHA-FIXIERT>
+  spec_files:
+    - backend/apps/erechnung/specification.md
+    - docs/architecture/overview.md
+  ownership:
+    team: core-backend
+    codeowners: ["@you/erechnung", "@you/backend"]
+architecture:
+  patterns:
+    - document_pipeline
+    - xml_generation
+    - event_outbox
+  invariants:
+    - "Jede E-Rechnung basiert auf einer gültigen Rechnung (Invoice) mit Status 'APPROVED'."
+    - "E-Rechnungen werden nie direkt manuell verändert, sondern durch Events neu erzeugt."
+    - "Nur ein Dokument pro Rechnung und Formatversion gleichzeitig aktiv."
+entities:
+  Invoice:
+    key: invoice_id
+    fields:
+      invoice_id: {type: UUID, required: true}
+      customer_id: {type: UUID, required: true}
+      total_amount_cents: {type: int, required: true}
+      currency: {type: str, enum: ["EUR"], required: true}
+      issue_date: {type: date, required: true}
+      status: {type: str, enum: ["DRAFT", "APPROVED", "SENT", "CANCELLED"], required: true}
+  EInvoice:
+    key: einvoice_id
+    fields:
+      einvoice_id: {type: UUID, required: true}
+      invoice_id: {type: UUID, required: true, ref: Invoice.invoice_id}
+      format: {type: str, enum: ["ZUGFeRD", "XRechnung"], required: true}
+      version: {type: str, required: true}
+      xml_path: {type: str, required: true}
+      created_at: {type: datetime, required: true}
+      status: {type: str, enum: ["GENERATED","SENT","ERROR"], required: true}
+workflows:
+  einvoice_generation:
+    trigger: "Invoice.status == 'APPROVED'"
+    steps:
+      - generate_xml: "Erstelle XML gemäß Format und Version"
+      - validate_schema: "Validiere gegen ZUGFeRD/XRechnung Schema"
+      - store_document: "Speichere XML unter /data/erechnung/<jahr>/<monat>/"
+      - emit_event: "Sende EInvoiceGenerated Event an Outbox"
+events:
+  - name: EInvoiceGenerated
+    version: 1
+    topic: "billing.einvoice.generated"
+    payload:
+      einvoice_id: UUID
+      invoice_id: UUID
+      format: str
+      version: str
+      xml_path: str
+      created_at: datetime
+    invariants:
+      - "Event darf nur bei gültigem XML ausgelöst werden."
+      - "Keine Duplikate pro invoice_id + version."
+apis:
+  - endpoint: POST /api/v1/erechnung/{invoice_id}/generate
+    summary: "Erzeugt eine E-Rechnung aus einer freigegebenen Rechnung."
+    request:
+      path: {invoice_id: UUID}
+      body: null
+    responses:
+      "200": {schema: EInvoice, note: "XML erfolgreich erzeugt"}
+      "400": {schema: Error, note: "Rechnung nicht APPROVED oder ungültig"}
+      "500": {schema: Error, note: "XML-Erzeugung fehlgeschlagen"}
+  - endpoint: GET /api/v1/erechnung/{invoice_id}/download
+    summary: "Lädt das erzeugte XML-Dokument herunter."
+    request:
+      path: {invoice_id: UUID}
+    responses:
+      "200": {schema: FileResponse, note: "XML-Datei"}
+      "404": {schema: Error, note: "E-Rechnung nicht gefunden"}
+constraints:
+  migrations: "Alembic only; keine destructive Changes ohne Rückwärtsmigration."
+  testing:
+    framework: "pytest==8.3.*"
+    required:
+      - "Unit-Tests für XML-Erzeugung und Schema-Validierung"
+      - "Integrationstest für Event-Emission"
+      - "File-IO-Mock für Dokumentenspeicherung"
+  performance:
+    p95_xml_generation_ms: 300
+  security:
+    - "Keine sensiblen Kundendaten im XML-Log."
+    - "Dateipfade prüfen; keine Directory Traversal-Risiken."
+    - "Nur ROLE_ACCOUNTING darf E-Rechnung erzeugen oder abrufen."
+compatibility:
+  api_version: "v1"
+  breaking_change_policy: "SemVer mit Parallelbetrieb bei v2."
+non_goals:
+  - "Kein PDF-Export"
+  - "Keine Signaturprüfung oder -erstellung"
+  - "Keine direkte Versandlogik (nur Event-Ausgabe)"
+references:
+  samples:
+    openapi_stub: "contracts/openapi/erechnung.v1.yaml"
+    test_paths:
+      - "tests/integration/erechnung/test_xml_generation.py"
+      - "tests/integration/erechnung/test_event_emission.py"
+  docs:
+    - "backend/apps/erechnung/specification.md"
+    - "docs/architecture/overview.md#erechnung"

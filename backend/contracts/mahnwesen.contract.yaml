@@ -1,0 +1,114 @@
+contract_version: 1.0
+module: mahnwesen
+domain: billing/dunning
+ground_truth:
+  repo: 0Admin-NEXT
+  commit: <COMMIT-SHA-FIXIERT>  # Permalink auf README/spec
+  spec_files:
+    - docs/specification.md
+    - docs/architecture/overview.md
+  ownership:
+    team: core-backend
+    codeowners: ["@you/mahnwesen", "@you/backend"]
+architecture:
+  patterns:
+    - event_outbox
+    - request_response_api
+    - state_machine
+  invariants:
+    - "Eine Rechnung kann gleichzeitig nur in genau einer Mahnstufe sein."
+    - "Mahnstufen steigen monoton; Zurückstufen nur via Admin-Override mit Audit-Log."
+    - "Keine Zahlungsauslösung; nur Status- und Event-Erzeugung (read-only BankFin)."
+entities:
+  Invoice:
+    key: invoice_id
+    fields:
+      invoice_id: {type: UUID, required: true}
+      customer_id: {type: UUID, required: true}
+      amount_cents: {type: int, required: true, min: 0}
+      currency: {type: str, enum: ["EUR"], required: true}
+      due_date: {type: date, required: true}
+      status: {type: str, enum: ["OPEN","PAID","CANCELLED"], required: true}
+  DunningCase:
+    key: case_id
+    fields:
+      case_id: {type: UUID, required: true}
+      invoice_id: {type: UUID, required: true, ref: Invoice.invoice_id}
+      stage: {type: int, required: true, enum: [0,1,2,3]}
+      last_action_at: {type: datetime, required: true}
+      next_action_at: {type: datetime, required: true}
+      locked: {type: bool, default: false}
+workflows:
+  dunning_state_machine:
+    start: 0
+    states:
+      "0": {name: "Kein Mahnfall"}
+      "1": {name: "Mahnstufe 1"}
+      "2": {name: "Mahnstufe 2"}
+      "3": {name: "Mahnstufe 3"}
+    transitions:
+      - {from: 0, to: 1, guard: "Invoice.status == OPEN AND heute > due_date + grace_1"}
+      - {from: 1, to: 2, guard: "no_payment AND heute > last_action_at + grace_2"}
+      - {from: 2, to: 3, guard: "no_payment AND heute > last_action_at + grace_3"}
+      - {from: 1, to: 0, guard: "payment_received"}
+      - {from: 2, to: 0, guard: "payment_received"}
+      - {from: 3, to: 0, guard: "payment_received"}
+events:
+  - name: DUNNING_STAGE_CHANGED
+    version: 1
+    topic: "billing.dunning.stage_changed"
+    payload:
+      case_id: UUID
+      invoice_id: UUID
+      from_stage: int
+      to_stage: int
+      reason: str
+      occurred_at: datetime
+    invariants:
+      - "to_stage in [1,2,3] when from_stage < to_stage"
+      - "No direct skip unless config.allow_stage_skip == true"
+apis:
+  - endpoint: POST /api/v1/dunning/{invoice_id}/run
+    summary: "Löst Mahnlogik für eine Rechnung aus; erzeugt ggf. Events."
+    request:
+      path: {invoice_id: UUID}
+      body: null
+    responses:
+      "200": {schema: DunningCase, note: "Unveränderte oder neue Stufe"}
+      "409": {schema: Error, note: "locked == true"}
+      "404": {schema: Error, note: "Invoice not found"}
+  - endpoint: GET /api/v1/dunning/{invoice_id}/status
+    summary: "Aktueller Mahnstatus."
+    request:
+      path: {invoice_id: UUID}
+    responses:
+      "200": {schema: DunningCase}
+      "404": {schema: Error}
+constraints:
+  migrations: "Alembic only; keine destructive Changes ohne Vorwärts-/Rückwärtsmigration."
+  testing:
+    framework: "pytest==8.3.*"
+    required:
+      - "Unit-Tests für State-Transitions inkl. Guards"
+      - "Contract-Test für Eventschema und API"
+      - "Fixture für deterministische Zeit (freezegun o. ä.)"
+  performance:
+    p95_dunning_run_ms: 150
+  security:
+    - "Keine Secrets im Code; Use env vars"
+    - "RBAC: nur ROLE_BILLING darf dunning/run auslösen"
+compatibility:
+  api_version: "v1"
+  breaking_change_policy: "SemVer; v2 nur mit Parallelbetrieb; deprecations ≥ 1 Release"
+non_goals:
+  - "Keine Zahlungsfreigabe oder -auslösung"
+  - "Kein Schreiben in BankFin; nur Lesen/Events"
+references:
+  samples:
+    openapi_stub: "contracts/openapi/dunning.v1.yaml"
+    test_paths:
+      - "tests/integration/mahnwesen/test_state_machine.py"
+      - "tests/contracts/test_dunning_api.py"
+  docs:
+    - "docs/specification.md#mahnwesen"
+    - "docs/architecture/events.md#dunning"

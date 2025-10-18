@@ -1,0 +1,145 @@
+---
+description: Coding Agent Policy – Verbindliche Hausordnung für 0Admin-NEXT
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# 0Admin-NEXT — Coding Agent Policy („Gesetzbuch“)
+
+## Purpose
+Diese Regeldatei definiert verbindliche Architektur-, Sicherheits- und Arbeitsprinzipien für Coding-Agents (z. B. Cursor, GitHub Copilot, ChatGPT-Dev-Agents) im Repository **0Admin-NEXT**.  
+Sie dient als **projektweite, persistente Regelquelle** und wird bei jeder Agent-Session automatisch angewendet.
+
+---
+
+## Rule 1 — DDD + DI + Unit of Work
+**Regel:**  
+Trenne strikt zwischen *Domain*, *Application* und *Infrastructure*.  
+Keine Schicht greift direkt auf eine niedrigere zu – nur über klar definierte Interfaces.  
+Nutze Constructor Injection statt globaler Singletons.  
+Jede Transaktion kombiniert Domain-Änderung + Outbox-Insert atomar (Unit of Work).
+
+**Rationale:**  
+Verhindert unklare Abhängigkeiten, verbessert Testbarkeit und Refactor-Stabilität.
+
+**Allowed:**  
+- Interfaces im Domain-Layer mit Implementierungen im Infrastructure-Layer  
+- Abhängigkeiten über Konstruktor- oder Factory-Injection  
+- Unit-of-Work-Pattern für atomare Transaktionen  
+
+**Forbidden:**  
+- Globale Config- oder DB-Objekte  
+- Direkter SQL-Zugriff aus Domain- oder Endpoint-Code  
+- Business-Logik in HTTP-Handlern  
+
+---
+
+## Rule 2 — Outbox as Dedicated Worker
+**Regel:**  
+Die Outbox läuft **nie** im Web-Thread, sondern in einem separaten Worker-Prozess,  
+der Events sequenziell via `FOR UPDATE SKIP LOCKED` verarbeitet.  
+Jedes Event besitzt `schema_version` und `idempotency_key`.  
+Fehlerhafte Events wandern in eine DLQ und Versionierungen folgen SemVer-Regeln.
+
+**Rationale:**  
+Sichert Zustandskonsistenz und verhindert Datenverlust bei Crashes oder Re-Deploys.
+
+**Allowed:**  
+- Worker mit Retry-Budget, Backoff und Lag-Metrik  
+- DLQ-Replays mit Admin-Freigabe  
+- Event-Schemas mit Up/Down-Casting  
+
+**Forbidden:**  
+- Publisher im API-Server  
+- Fire-and-Forget-Events ohne Persistenz  
+- Schema-Änderungen ohne Versionserhöhung  
+
+---
+
+## Rule 3 — Hard Multi-Tenancy + Observability
+**Regel:**  
+Jeder Request und jedes Event **muss** eine `tenant_id` enthalten – kein Fallback.  
+Tenant-Isolation via Postgres RLS.  
+Logs müssen `trace_id`, `tenant_id`, `event_type` enthalten.  
+Expose `/metrics`, `/healthz`, `/readyz` mit Prometheus/OTEL.
+
+**Rationale:**  
+Schützt Tenant-Daten und ermöglicht präzise Performance-Analysen.
+
+**Allowed:**  
+- Request-Scoped Tenant-Context  
+- JSON-Logging (trace_id, tenant_id)  
+- Prometheus/OpenTelemetry  
+
+**Forbidden:**  
+- Implizite Tenant-Defaults  
+- Plain-Text-Logs ohne Kontext  
+- CSV/File-basierte Metriken  
+
+---
+
+## Rule 4 — Workflow & Write Discipline
+**Regel:**  
+Kein Agent darf Dateien verändern, bevor eine **Vorschau genehmigt** wurde.  
+Jede geplante Änderung → Ankündigung (Pfad + Kurzinhalt).  
+Schreiben nur nach explizitem „GO“ des Users.
+
+**Rationale:**  
+Schützt Codebasis und verhindert unkontrollierte Massen-Writes.
+
+**Allowed:**  
+- Vorschau-/Analyse-Modus  
+- Writes nur auf genehmigte Pfade nach „GO“  
+
+**Forbidden:**  
+- Automatische Datei- oder Massen-Refactors  
+- Installationen oder Migrations ohne Freigabe  
+- Vollanalysen des gesamten Repos  
+
+---
+
+## Rule 5 — Quality Gates & Safety Checks
+**Regel:**  
+Jede Write-Aktion muss CI-konform sein.  
+Vor Commit müssen bestehen:  
+1. `pytest --maxfail=1 --disable-warnings -v` läuft fehlerfrei  
+2. Alembic Upgrade/Downgrade-Test erfolgreich  
+3. Lint + mypy ohne Fehler  
+4. Coverage Domain ≥ 80 %
+
+**Rationale:**  
+Stellt langfristige Codequalität sicher und verhindert Regressionen.  
+
+---
+
+## Rule 6 — Security & Data Governance
+**Regel:**  
+Keine Secrets, Keys oder Tokens im Code oder Commit.  
+PII muss anonymisiert/maskiert werden.  
+Event-Payloads ≤ 64 KB.  
+Konfiguration ausschließlich über ENV oder Secrets-Store.
+
+**Rationale:**  
+Verhindert Daten- und Reputationsschäden; unterstützt Audits.
+
+---
+
+## Example Prompts (Erlaubte Nutzung)
+- „Analysiere nur /backend/domain/mahnwesen auf Event-Flows, keine Writes.“  
+- „Zeige Vorschau für /workers/outbox_publisher.py, schreibe nicht ohne GO.“  
+- „Wenn Vorschlag gegen Rule 1–3 verstößt, biete Alternative mit Trade-offs.“  
+
+---
+
+## Enforcement / Konfliktbehandlung
+1. Jede Regel ist **bindend**.  
+2. Bei Konflikt zwischen User-Anweisung und Regel:  
+   a. Konflikt kennzeichnen und begründen.  
+   b. Nicht ausführen, bis der User eine **Ausnahmegenehmigung** erteilt.  
+3. Agenten müssen **Policy-Konflikte priorisieren** – Compliance vor Convenience.
+
+---
+
+## Scope
+Diese Regel gilt **projektweit** (globs = `["**/*"]`) und wird automatisch auf alle Sessions angewendet.  
+Andere Regeldateien (z. B. `agents.mdc`, `issue-template.mdc`) erweitern, aber überschreiben sie nicht.

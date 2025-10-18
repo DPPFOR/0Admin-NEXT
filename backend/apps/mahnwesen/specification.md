@@ -87,3 +87,18 @@ weitere Eskalationsstufen (Stage 4+: Inkasso)
 - Revisionsfähig (Migration reversibel)
 - Alle Tests grün (unit/integration/e2e)
 - Idempotente Mahnläufe (gleiche trace_id → keine Dopplung)
+
+## 📜 Architektur-Contract
+
+Dieses Modul unterliegt einem verbindlichen Architektur-Contract.
+
+- **Kontraktdatei:** [`../../contracts/mahnwesen.contract.yaml`](../../contracts/mahnwesen.contract.yaml)
+- **Gültig ab Commit:** `<COMMIT-SHA-FIXIERT>`
+- **Version:** `1.0`
+- **Pflichtreferenzen:**  
+  - [docs/specification.md#mahnwesen](../../../docs/specification.md#mahnwesen)  
+  - [docs/architecture/overview.md#dunning-pipeline](../../../docs/architecture/overview.md#dunning-pipeline)
+
+**Hinweis:**  
+Änderungen an Logik, API, Events oder Datenmodell **dürfen nur erfolgen**,  
+wenn sie den Contract einhalten oder eine neue Contract-Version erstellen.  
