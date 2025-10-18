@@ -108,7 +108,7 @@ references:
   samples:
     openapi_stub: "contracts/openapi/dunning.v1.yaml"
     test_paths:
-      - "tests/products/mahnwesen/test_state_machine.py"
+      - "tests/integration/mahnwesen/test_state_machine.py"
       - "tests/contracts/test_dunning_api.py"
   docs:
     - "docs/specification.md#mahnwesen"
