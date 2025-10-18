@@ -16,6 +16,11 @@ Das System automatisiert wiederkehrende Büro- und Verwaltungsprozesse in Handwe
 * **Lokal-First-Entwicklung:** Arbeiten in VS Code, Deploy per `scp` auf Server.
 * **Meta-Ebene vor Umsetzung:** Erst Struktur und Architektur klären, dann „Go“ zur Realisierung.
 
+## Roadmap 
+
+Übersicht Inhalte, Packete und Terminschiene [](/docs/roadmap.md)
+
+
 ⚙️ Coding-Agenten (Cursor & GitHub Copilot Coding-Agent)
 
 Diese drei Unterlagen definieren das Verhalten, die Regeln und den Arbeitsstil aller KI-basierten Coding-Agents in 0Admin-NEXT.
@@ -57,6 +62,10 @@ data/        → Beispieldaten & Seeds
 * **RAG-Wissen** – Trainings- und Wissenskomponente für interne Nutzung
 
 ## 📂 Navigations-Index
+
+### Event / Outbox Policy
+- [Event / Outbox Policy](docs/event_outbox_policy.md)
+
 
 ### Backend
 
