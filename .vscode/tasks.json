@@ -177,6 +177,35 @@
         "--json"
       ],
       "problemMatcher": "$python"
+    },
+    {
+      "label": "Run Read API (uvicorn dev)",
+      "type": "process",
+      "command": "uvicorn",
+      "args": ["backend.app:app", "--reload"],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "API Smokes: read-model",
+      "type": "process",
+      "command": "pytest",
+      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "RUN_DB_TESTS": "1"}},
+      "args": ["-q", "tests/inbox/test_read_api_shape.py"],
+      "problemMatcher": "$pytest",
+      "group": "test"
+    },
+    {
+      "label": "Flock Samples (local)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/flock_samples.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--base-url",
+        "http://localhost:8000"
+      ],
+      "problemMatcher": "$python"
     }
   ]
 }

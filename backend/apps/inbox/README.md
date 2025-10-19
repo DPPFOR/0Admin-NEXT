@@ -21,3 +21,4 @@ Das Inbox-Modul verwaltet eingehende Dokumente und deren Verarbeitung.
 - Read-only Views & Queries für Agenten/Tools (Flock „whiteduck“).
 - DTOs + SQLAlchemy-Queries sowie CLI unter `tools/flows/query_read_model.py`.
 - Dokumentation & Sicherheits-Hinweise: `docs/inbox/read_model.md`.
+- API-Endpunkte siehe `docs/inbox/read_api.md`.

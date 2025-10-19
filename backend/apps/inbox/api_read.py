@@ -17,6 +17,7 @@ from backend.core.observability.metrics import (
     increment_parsed_read,
     record_read_duration,
 )
+from backend.core.tenant.context import require_tenant
 
 
 router = APIRouter(prefix="/api/v1")
@@ -296,4 +297,3 @@ def get_parsed_item(parsed_id: str, tenant_id: str = Depends(require_tenant), tr
         amount=pj.get("amount"),
         due_date=pj.get("due_date"),
     )
-from backend.core.tenant.context import require_tenant
