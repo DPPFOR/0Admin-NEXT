@@ -3,11 +3,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Iterable
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from backend.apps.inbox.read_model.query import (
     ReadModelError,

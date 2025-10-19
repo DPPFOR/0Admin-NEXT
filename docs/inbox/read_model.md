@@ -74,6 +74,10 @@ SELECT * FROM v_inbox_by_tenant WHERE tenant_id = :tenant;
 - Read-only User (oder CLI) reichen aus; kein Schreibrecht erforderlich.
 - Row-Level Filter erfolgt anhand der `tenant_id`-Filter in Views/Queries – Flock muss diesen Parameter liefern.
 
+## Troubleshooting
+- **Tests schlagen mit Import-Fehlern fehl**: sicherstellen, dass `backend/apps/inbox/__init__.py` keine Router oder FastAPI-Dependencies importiert (Side-Effect-freies Paket-Init).
+- **CLI findet Projektmodule nicht**: ohne Installation entweder `PYTHONPATH=$PWD` setzen oder das Script direkt nutzen – es erweitert den Suchpfad automatisch auf den Repository-Root.
+
 ## Weiterführende Ressourcen
 - DTOs & Query-Helpers: `backend/apps/inbox/read_model/`
 - CLI: `tools/flows/query_read_model.py`
