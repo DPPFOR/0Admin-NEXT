@@ -23,6 +23,8 @@ from .storage import put_bytes, StorageError
 from .repository import InboxItem, get_tables, insert_inbox_item, get_inbox_item_by_hash
 from .ingest import fetch_remote, ensure_url_allowed, IngestError
 from backend.core.tenant.context import require_tenant
+from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
+from backend.mcp.server.observability import get_logger as get_mcp_logger
 
 
 router = APIRouter(prefix="/api/v1/inbox/items")
@@ -225,6 +227,54 @@ async def upload_item(
 
     increment_inbox_validated()
     observe_duration(start, "ingest_duration_ms")
+
+    # MCP shadow analysis (read-only). Build a local sample path by MIME for shadowing only.
+    try:
+        mcp_logger = get_mcp_logger("mcp")
+        sample_map = {
+            "application/pdf": "artifacts/inbox/samples/pdf/sample.pdf",
+            "image/png": "artifacts/inbox/samples/images/sample.png",
+            "image/jpeg": "artifacts/inbox/samples/images/sample.png",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "artifacts/inbox/samples/office/sample.docx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": "artifacts/inbox/samples/office/sample.pptx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "artifacts/inbox/samples/excel/sample.xlsx",
+        }
+        shadow_path = sample_map.get(detected_mime, "artifacts/inbox/samples/pdf/sample.pdf")
+        artifact_path = run_shadow_analysis(
+            tenant_id=tenant_uuid,
+            trace_id=trace_id,
+            source_uri_or_path=shadow_path,
+            content_sha256=content_hash,
+            inbox_item_id=persisted.id,
+        )
+        # Optional: emit info-event via outbox (flag)
+        if getattr(settings, "MCP_SHADOW_EMIT_ANALYSIS_EVENT", False):
+            payload2 = {
+                "inbox_item_id": persisted.id,
+                "tenant_id": tenant_uuid,
+                "trace_id": trace_id,
+                "mcp_artifact_path": artifact_path,
+            }
+            try:
+                with engine.begin() as conn:
+                    conn.execute(
+                        event_outbox.insert().values(
+                            id=str(uuid.uuid4()),
+                            tenant_id=tenant_uuid,
+                            event_type="InboxItemAnalysisReady",
+                            schema_version="1.0",
+                            idempotency_key=f"analysis:{persisted.id}",
+                            trace_id=trace_id,
+                            payload_json=json.dumps(payload2),
+                        )
+                    )
+                mcp_logger.info("mcp_analysis_event_emitted", extra={"trace_id": trace_id, "tenant_id": tenant_uuid, "inbox_item_id": persisted.id})
+            except Exception:
+                # Non-fatal; shadow analysis remains local-only
+                pass
+    except Exception:
+        # Swallow any shadow errors to keep primary path unaffected
+        pass
 
     return UploadResponse(
         id=persisted.id,

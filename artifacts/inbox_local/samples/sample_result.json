@@ -1,0 +1,19 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "trace_id": "trace-sample",
+  "ts": "2025-01-01T00:00:00Z",
+  "mime": "application/pdf",
+  "pipeline": ["pdf.text_extract", "pdf.tables_extract", "data_quality.tables.validate", "security.pii.redact"],
+  "extracted": {
+    "tables": [
+      {
+        "headers": ["col1", "col2"],
+        "rows": [["a", "1"], ["b", "2"]]
+      }
+    ]
+  },
+  "quality": {"valid": true, "issues": []},
+  "pii": {"steps": []},
+  "flags": {"enable_ocr": false, "enable_browser": false},
+  "fingerprints": {"content_hash": "0"}
+}

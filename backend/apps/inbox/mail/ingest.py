@@ -25,6 +25,8 @@ from backend.apps.inbox.repository import (
 from backend.apps.inbox.mail.connectors import MailConnector
 from backend.apps.inbox.mail.connectors import ImapConnectorImpl, GraphConnectorImpl
 from backend.core.observability.logging import logger
+from backend.mcp.server.observability import get_logger as get_mcp_logger
+from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
 
 
 # Metrics helpers
@@ -179,6 +181,52 @@ def _process_attachment(
             )
     except IntegrityError:
         # duplicate event; ignore
+        pass
+
+    # Trigger MCP shadow analysis (local-only) using sample path by MIME
+    try:
+        mcp_logger = get_mcp_logger("mcp")
+        sample_map = {
+            "application/pdf": "artifacts/inbox/samples/pdf/sample.pdf",
+            "image/png": "artifacts/inbox/samples/images/sample.png",
+            "image/jpeg": "artifacts/inbox/samples/images/sample.png",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "artifacts/inbox/samples/office/sample.docx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": "artifacts/inbox/samples/office/sample.pptx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "artifacts/inbox/samples/excel/sample.xlsx",
+        }
+        shadow_path = sample_map.get(mime, "artifacts/inbox/samples/pdf/sample.pdf")
+        trace_id = str(uuid.uuid4())
+        artifact_path = run_shadow_analysis(
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+            source_uri_or_path=shadow_path,
+            content_sha256=content_hash,
+            inbox_item_id=persisted.id,
+        )
+        if getattr(settings, "MCP_SHADOW_EMIT_ANALYSIS_EVENT", False):
+            payload2 = {
+                "inbox_item_id": persisted.id,
+                "tenant_id": tenant_id,
+                "trace_id": trace_id,
+                "mcp_artifact_path": artifact_path,
+            }
+            try:
+                with engine.begin() as conn:
+                    conn.execute(
+                        event_outbox.insert().values(
+                            id=str(uuid.uuid4()),
+                            tenant_id=tenant_id,
+                            event_type="InboxItemAnalysisReady",
+                            schema_version="1.0",
+                            idempotency_key=f"analysis:{persisted.id}",
+                            trace_id=trace_id,
+                            payload_json=json.dumps(payload2),
+                        )
+                    )
+                mcp_logger.info("mcp_analysis_event_emitted", extra={"trace_id": trace_id, "tenant_id": tenant_id, "inbox_item_id": persisted.id})
+            except Exception:
+                pass
+    except Exception:
         pass
 
     return persisted, False

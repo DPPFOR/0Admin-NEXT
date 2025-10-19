@@ -1,0 +1,24 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class ParsedItemDTO:
+    tenant_id: str
+    content_hash: str
+    doc_type: str
+    payload: Dict[str, Any]
+    amount: Optional[str] = None
+    invoice_no: Optional[str] = None
+    due_date: Optional[str] = None
+    quality_flags: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ParsedItemChunkDTO:
+    parsed_item_id: str  # may be temp/placeholder before insert
+    seq: int
+    kind: str
+    payload: Dict[str, Any]

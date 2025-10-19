@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 config = context.config
 
 # Set sqlalchemy.url from environment variable if not already set
-if 'DATABASE_URL' in os.environ and not config.get_section_option('alembic', 'sqlalchemy.url', fallback=None):
+if 'DATABASE_URL' in os.environ and not config.get_section_option('alembic', 'sqlalchemy.url'):
     config.set_section_option('alembic', 'sqlalchemy.url', os.environ['DATABASE_URL'])
 
 # Interpret the config file for Python logging.

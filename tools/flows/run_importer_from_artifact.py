@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+import importlib.util as _iu
+from pathlib import Path as _Path
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+_spec = _iu.spec_from_file_location(
+    "importer_worker", str(_Path("backend/apps/inbox/importer/worker.py"))
+)
+_mod = _iu.module_from_spec(_spec)  # type: ignore[arg-type]
+assert _spec and _spec.loader
+_spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+run_importer = _mod.run_importer
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="Import parsed_items from MCP artifact (local-only)")
+    p.add_argument("--tenant", required=True)
+    p.add_argument("--artifact", required=True)
+    p.add_argument("--trace-id", default=None)
+    p.add_argument("--dry-run", action="store_true", default=False)
+    p.add_argument("--upsert", dest="upsert", action="store_true")
+    p.add_argument("--no-upsert", dest="upsert", action="store_false")
+    p.add_argument("--replace-chunks", action="store_true", default=False)
+    p.set_defaults(upsert=True)
+    args = p.parse_args(argv)
+    try:
+        res = run_importer(
+            tenant_id=args.tenant,
+            artifact_path=args.artifact,
+            trace_id=args.trace_id,
+            dry_run=args.dry_run,
+            upsert=args.upsert,
+            replace_chunks=args.replace_chunks,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        return 3
+    print(res)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

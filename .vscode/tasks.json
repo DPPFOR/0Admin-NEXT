@@ -46,6 +46,17 @@
       "problemMatcher": "$python"
     },
     {
+      "label": "Inbox → MCP Shadow Analysis (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_inbox_shadow_for_last_validated.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
       "label": "Inbox Local Flow (sample)",
       "type": "process",
       "command": "python",
@@ -79,6 +90,41 @@
       "type": "process",
       "command": "python",
       "args": ["-m", "playwright", "install"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Importer: from artifact (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_importer_from_artifact.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--artifact",
+        "artifacts/inbox_local/samples/sample_result.json",
+        "--dry-run"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Tests: importer",
+      "type": "process",
+      "command": "pytest",
+      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+      "args": ["-q", "tests/inbox/test_importer_*"]
+    },
+    {
+      "label": "Importer: consume outbox (1)",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/flows/run_importer_consume_outbox.py"],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "DB: apply migration (local)",
+      "type": "process",
+      "command": "bash",
+      "args": ["-lc", "psql \"$INBOX_DB_URL\" -f ops/alembic/versions/20251019_inbox_parsed.sql"],
       "problemMatcher": []
     }
   ]

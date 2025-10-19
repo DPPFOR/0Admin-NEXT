@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     # Security / rotation
     TOKEN_ROTATION_WINDOW_DAYS: int = 90
 
+    # MCP shadow analysis: optional info-event emission (local-only)
+    MCP_SHADOW_EMIT_ANALYSIS_EVENT: bool = False
+
 
 # Global settings instance
 settings = Settings()
