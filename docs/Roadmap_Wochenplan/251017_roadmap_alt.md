@@ -1,3 +1,5 @@
+# docs/roadmap.md  -  Schreibverbot! Nur vom Admin zu ändern, keine Änderungen erlaubt
+
 ## 🧭 Meilenstein 1 – **Inbox & Dateneingang**
 
 **Ziel:** Alle Kundendaten (E-Mails, Dateien, Uploads) laufen strukturiert in das System.  
@@ -157,3 +159,5 @@
 	    c. Wöchentlicher Roadmap-Review, nur additive Änderungen  
 	    d. Verlinkung zwischen roadmap.md ↔ ROADMAPs ↔ Issues/PRs  
 	    e. „Nicht-Ziele v1“ festhalten (z. B. Inkassoübergabe, SMS, KI-Scoring)
+## Event / Outbox Policy: [Event / Outbox Policy](event_outbox_policy.md) – verbindliche Richtlinie für Eventing, Versionierung und DLQ-Handling.
+## Nächster Review-Punkt: Sonntag, 20:00 Uhr (Inbox & Parsing-Design)

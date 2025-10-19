@@ -1,0 +1,110 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Typecheck (mypy)
+        run: mypy --config-file mypy.ini
+      - name: Tests + Coverage (domain/parsing)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p artifacts
+          pytest -q --junitxml artifacts/ci-tests.xml --cov=backend/apps/inbox --cov=agents/inbox_worker --cov-report=xml:coverage.xml --cov-fail-under=80
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-artifacts
+          path: |
+            artifacts/ci-tests.xml
+            coverage.xml
+            artifacts/egress-violations.json
+
+  security_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: "detect --report-format json --report-path artifacts/gitleaks.json"
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: artifacts/gitleaks.json
+
+  pip_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+      - name: Run pip-audit (warn-only)
+        run: |
+          mkdir -p artifacts
+          pip-audit -r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json || true
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: artifacts/pip-audit.json
+
+  nightly-alembic:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Alembic Roundtrip
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p artifacts
+          echo "-- downgrade base --" | tee artifacts/alembic-roundtrip.log
+          alembic downgrade base | tee -a artifacts/alembic-roundtrip.log
+          echo "-- upgrade head --" | tee -a artifacts/alembic-roundtrip.log
+          alembic upgrade head | tee -a artifacts/alembic-roundtrip.log
+      - name: Upload Roundtrip Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: alembic-roundtrip
+          path: artifacts/alembic-roundtrip.log
+
+schedule:
+  - cron: '0 2 * * *'

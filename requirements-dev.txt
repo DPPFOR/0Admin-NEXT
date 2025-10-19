@@ -1,9 +1,12 @@
 # Entwicklungs- und Test-Abhängigkeiten (lokal & CI).
 # Diese Pakete werden in der Produktion nicht benötigt.
 
-pytest>=8,<9
+pytest==8.3.*
 pytest-asyncio>=0.23,<1
+pytest-cov>=5,<6
 
 # Lint/Format optional (wenn gewünscht)
 ruff>=0.6,<1
 black>=24.8,<25
+mypy>=1.11,<2
+jsonschema>=4.21,<5

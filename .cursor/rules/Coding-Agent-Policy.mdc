@@ -10,6 +10,15 @@ alwaysApply: true
 Diese Regeldatei definiert verbindliche Architektur-, Sicherheits- und Arbeitsprinzipien für Coding-Agents (z. B. Cursor, GitHub Copilot, ChatGPT-Dev-Agents) im Repository **0Admin-NEXT**.  
 Sie dient als **projektweite, persistente Regelquelle** und wird bei jeder Agent-Session automatisch angewendet.
 
+## Begriffe
+- apps/: Fachmodule (z. B. inbox, mahnwesen, erechnung). Hinweis: „apps“ hieß zuvor „products“ (Refactor 2025-10-18).
+- core/: Querschnitt & Infrastruktur (DB, Outbox, Logging, Messaging).
+- common/: Utilities & Basistypen.
+
+## Import-Grenzen (hart)
+- Rule: apps → (core|common) erlaubt; app↔app verboten.
+- Rule: core/common kennen keine Fachlogik.
+- Rule: Pfad-/Namenskonvention: backend.apps.<name>.<...>
 ---
 
 ## Rule 1 — DDD + DI + Unit of Work
@@ -36,10 +45,13 @@ Verhindert unklare Abhängigkeiten, verbessert Testbarkeit und Refactor-Stabilit
 
 ## Rule 2 — Outbox as Dedicated Worker
 **Regel:**  
-Die Outbox läuft **nie** im Web-Thread, sondern in einem separaten Worker-Prozess,  
+- Die Outbox läuft **nie** im Web-Thread, sondern in einem separaten Worker-Prozess,  
 der Events sequenziell via `FOR UPDATE SKIP LOCKED` verarbeitet.  
-Jedes Event besitzt `schema_version` und `idempotency_key`.  
-Fehlerhafte Events wandern in eine DLQ und Versionierungen folgen SemVer-Regeln.
+- Jedes Event besitzt `schema_version` und `idempotency_key`.  
+- Fehlerhafte Events wandern in eine DLQ und Versionierungen folgen SemVer-Regeln.
+- Python 3.12, pip-only, Alembic-only.
+- Lokal-first Entwicklung, Deploy per scp.
+- Logging: JSON mit trace_id, tenant_hint (Platzhalter), request_id.
 
 **Rationale:**  
 Sichert Zustandskonsistenz und verhindert Datenverlust bei Crashes oder Re-Deploys.
@@ -143,3 +155,13 @@ Verhindert Daten- und Reputationsschäden; unterstützt Audits.
 ## Scope
 Diese Regel gilt **projektweit** (globs = `["**/*"]`) und wird automatisch auf alle Sessions angewendet.  
 Andere Regeldateien (z. B. `agents.mdc`, `issue-template.mdc`) erweitern, aber überschreiben sie nicht.
+
+# Referenzliste
+Policy [Policy](/.cursor/rules/Coding-Agent-Policy.mdc)
+ — feste Compliance- und Architektur-Schicht
+Agents [Agents](/.cursor/rules/agents.mdc)
+ — operative Arbeitslogik und Prompt-Methodik
+Issue-Template [Issue-Template](/.cursor/rules/Issue-Template_für_GitHub_Copilot_Coding-Agent.mdc)
+ — standardisierter Task-Input für Copilot / Codex / Cursor
+Event / Outbox Policy
+- verbindliche Regel für Eventing & DLQ [](/.cursor/rules/Event-Outbox-Policy-Ereignisrichtlinie.mdc)

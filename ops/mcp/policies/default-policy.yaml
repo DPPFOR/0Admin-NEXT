@@ -1,0 +1,5 @@
+# Default policy (local, fail-safe)
+dry_run_default: true
+allowed_tools:
+  - ops.health_check
+

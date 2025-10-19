@@ -1,0 +1,39 @@
+name: Console Build & Tests
+
+on:
+  push:
+    paths:
+      - 'frontend/console/**'
+      - '.github/workflows/console.yml'
+  pull_request:
+    paths:
+      - 'frontend/console/**'
+
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        working-directory: frontend/console
+        run: npm ci
+      - name: Lint
+        working-directory: frontend/console
+        run: npm run lint
+      - name: Test
+        working-directory: frontend/console
+        run: npm test
+      - name: Build
+        working-directory: frontend/console
+        env:
+          VITE_API_BASE: 'http://localhost:8000'
+        run: npm run build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-dist
+          path: frontend/console/dist

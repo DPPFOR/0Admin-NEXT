@@ -1,0 +1,275 @@
+name: Staging Deploy Gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type YES to run staging gates'
+        required: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Preflight checks (alembic/current, pgcrypto, search_path)
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import os, json, time, pathlib, sys
+          from alembic.config import Config as AlembicConfig
+          from alembic.script import ScriptDirectory
+          from alembic.runtime.migration import MigrationContext
+          from sqlalchemy import create_engine, text
+
+          db = os.environ.get('DATABASE_URL')
+          result = { 'ts': int(time.time()) }
+          ok = True
+          try:
+              cfg = AlembicConfig('alembic.ini')
+              if db:
+                  cfg.set_main_option('sqlalchemy.url', db)
+              script = ScriptDirectory.from_config(cfg)
+              heads = list(script.get_heads())
+              result['heads'] = heads
+          except Exception as e:
+              result['heads_error'] = str(e)
+              ok = False
+
+          try:
+              engine = create_engine(db, future=True)
+              with engine.connect() as conn:
+                  context = MigrationContext.configure(conn)
+                  current = context.get_current_revision()
+                  result['current'] = current
+                  # pgcrypto installed
+                  row = conn.execute(text("SELECT installed_version FROM pg_available_extensions WHERE name='pgcrypto' AND installed_version IS NOT NULL")).fetchone()
+                  result['pgcrypto'] = bool(row)
+                  # search_path check
+                  sp = conn.execute(text('SHOW search_path')).scalar() or ''
+                  result['search_path'] = sp
+                  result['search_path_ok'] = ('zero_admin' in sp and 'public' in sp)
+          except Exception as e:
+              result['db_error'] = str(e)
+              ok = False
+
+          # Evaluate gate
+          if not result.get('current') or result.get('current') not in result.get('heads', []):
+              result['alembic_ok'] = False
+              ok = False
+          else:
+              result['alembic_ok'] = True
+
+          if not result.get('pgcrypto'):
+              ok = False
+
+          if not result.get('search_path_ok'):
+              ok = False
+
+          pathlib.Path('artifacts').mkdir(parents=True, exist_ok=True)
+          pathlib.Path('artifacts/staging-preflight.json').write_text(json.dumps(result, indent=2))
+          if not ok:
+              print('Preflight failed; see artifacts/staging-preflight.json')
+              sys.exit(1)
+          PY
+      - name: Upload preflight artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-preflight
+          path: artifacts/staging-preflight.json
+  smoke-matrix:
+    needs: preflight
+    if: inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: staging-smokes-${{ github.run_id }}
+      cancel-in-progress: false
+    strategy:
+      matrix:
+        suite: [upload, programmatic, worker, mail, read_ops, publisher]
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      STORAGE_BACKEND: file
+      STORAGE_BASE_URI: file:///home/runner/work/_temp/uploads
+      MAX_UPLOAD_MB: 25
+      PUBLISH_TRANSPORT: stdout
+      TENANT_ALLOWLIST: ${{ secrets.STAGING_TENANT_ALLOWLIST }}
+      AUTH_SERVICE_TOKENS: ${{ secrets.STAGING_SERVICE_TOKENS }}
+      ADMIN_TOKENS: ${{ secrets.STAGING_ADMIN_TOKENS }}
+      CURSOR_HMAC_KEY: ${{ secrets.STAGING_CURSOR_HMAC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Prepare storage
+        run: mkdir -p /home/runner/work/_temp/uploads
+      - name: Run smoke
+        run: |
+          if [ "${{ matrix.suite }}" = "upload" ]; then pytest -q tests/smoke/test_upload_api_smoke.py -W error --junitxml artifacts/staging-upload.xml; fi
+          if [ "${{ matrix.suite }}" = "programmatic" ]; then pytest -q tests/smoke/test_programmatic_ingest_smoke.py -W error --junitxml artifacts/staging-programmatic.xml; fi
+          if [ "${{ matrix.suite }}" = "worker" ]; then pytest -q tests/smoke/test_worker_inbox_smoke.py -W error --junitxml artifacts/staging-worker.xml; fi
+          if [ "${{ matrix.suite }}" = "mail" ]; then pytest -q tests/smoke/test_mail_ingest_smoke.py -W error --junitxml artifacts/staging-mail.xml; fi
+          if [ "${{ matrix.suite }}" = "read_ops" ]; then pytest -q tests/smoke/test_read_ops_api_smoke.py -W error --junitxml artifacts/staging-readops.xml; fi
+          if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/staging-publisher.xml; fi
+          # Fail fast if egress sentinel recorded any violations
+          if [ -f artifacts/egress-violations.json ]; then
+            if [ "$(cat artifacts/egress-violations.json | wc -c)" -gt 2 ] && [ "$(cat artifacts/egress-violations.json)" != "[]" ]; then
+              echo "Egress sentinel violations detected" && cat artifacts/egress-violations.json && exit 1;
+            fi
+          fi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-smokes-${{ matrix.suite }}
+          path: |
+            artifacts/*.xml
+            artifacts/egress-violations.json
+
+  alembic-offline:
+    if: inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    needs: smoke-matrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Roundtrip Offline SQL
+        run: |
+          mkdir -p artifacts
+          alembic downgrade base --sql > artifacts/alembic-downgrade.sql
+          alembic upgrade head --sql > artifacts/alembic-upgrade.sql
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-alembic-sql
+          path: artifacts/*.sql
+
+  security:
+    if: inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    needs: alembic-offline
+    steps:
+      - uses: actions/checkout@v4
+      - name: gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: "detect --report-format json --report-path artifacts/gitleaks.json"
+      - name: pip-audit
+        uses: pypa/gh-action-pip-audit@v1.0.8
+        with:
+          inputs: "-r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-security
+          path: artifacts/*.json
+
+  greenlight:
+    if: inputs.confirm == 'YES'
+    needs: [preflight, smoke-matrix, alembic-offline, security]
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_API_BASE: ${{ secrets.STAGING_API_BASE }}
+      STAGING_ADMIN_TOKEN: ${{ secrets.STAGING_ADMIN_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts_dl
+      - name: Build greenlight report
+        run: |
+          python - <<'PY'
+          import os, json, time, pathlib
+          from sqlalchemy import create_engine, text
+          import sys
+          # Aggregate artifacts
+          preflight = None
+          dlq_ok = None
+          outbox = {}
+          base = pathlib.Path('artifacts_dl')
+          for p in base.rglob('staging-preflight.json'):
+              preflight = json.loads(p.read_text())
+          # DB checks
+          db = os.environ.get('DATABASE_URL')
+          try:
+              eng = create_engine(db, future=True)
+              with eng.begin() as conn:
+                  dlq = conn.execute(text('SELECT COUNT(*) FROM dead_letters')).scalar() or 0
+                  out = dict(conn.execute(text('SELECT COALESCE(status,\'null\') as s, COUNT(*)::int FROM event_outbox GROUP BY s')).fetchall())
+                  dlq_ok = (dlq == 0)
+                  outbox = out
+          except Exception as e:
+              dlq_ok = False
+          # Egress sentinel
+          egress_ok = True
+          for p in base.rglob('egress-violations.json'):
+              try:
+                  data = json.loads(p.read_text() or '[]')
+                  if data:
+                      egress_ok = False
+              except Exception:
+                  egress_ok = False
+          # Optional metrics snapshot via Ops API
+          metrics = None
+          api = os.environ.get('STAGING_API_BASE')
+          token = os.environ.get('STAGING_ADMIN_TOKEN')
+          if api and token:
+              try:
+                  import urllib.request
+                  req = urllib.request.Request(f"{api}/api/v1/ops/metrics", headers={"Authorization": f"Bearer {token}", "X-Trace-ID": str(time.time())})
+                  with urllib.request.urlopen(req, timeout=5) as resp:
+                      metrics = json.loads(resp.read().decode('utf-8'))
+              except Exception:
+                  metrics = None
+          report = {
+              'ts': int(time.time()),
+              'preflight': preflight or {},
+              'egress_ok': bool(egress_ok),
+              'dlq_ok': bool(dlq_ok),
+              'outbox': outbox,
+              'metrics': metrics,
+          }
+          pathlib.Path('artifacts').mkdir(exist_ok=True)
+          pathlib.Path('artifacts/staging-inbox-greenlight.json').write_text(json.dumps(report, indent=2))
+          # Fail if any gate violated
+          ok = True
+          if not preflight or not preflight.get('alembic_ok') or not preflight.get('pgcrypto') or not preflight.get('search_path_ok'):
+              ok = False
+          if not egress_ok:
+              ok = False
+          if not dlq_ok:
+              ok = False
+          if not ok:
+              print('Greenlight failed; see artifacts/staging-inbox-greenlight.json')
+              sys.exit(1)
+          PY
+      - name: Upload greenlight artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-inbox-greenlight
+          path: artifacts/staging-inbox-greenlight.json

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/workbench/contrib/tasks/common/tasks.schema.json",
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MCP Contracts validieren",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/mcp/validate_contracts.py"],
+      "problemMatcher": "$python",
+      "group": "build"
+    },
+    {
+      "label": "MCP Smokes ausführen",
+      "type": "process",
+      "command": "pytest",
+      "options": {
+        "env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+      },
+      "args": ["-q", "backend/mcp/tests/smoke"],
+      "problemMatcher": "$pytest",
+      "group": "test"
+    }
+  ]
+}

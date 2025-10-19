@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "0admin-next"
+version = "0.1.0"
+description = "Backend- und Agentenbasis für 0Admin-NEXT"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "0Admin Team" }]
+license = { text = "Proprietary" }
+keywords = ["automation", "agents", "backend"]
+# Hinweis: Abhängigkeiten werden über requirements.txt / requirements-dev.txt verwaltet.
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+addopts = "-rs --disable-warnings"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "N", "UP", "B", "SIM", "I", "S", "ANN", "DTZ"]
+ignore = ["E501", "F403", "F405"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "ANN", "DTZ"]
+
+[tool.alembic]
+script_location = "backend/migrations/alembic"
+file_template = "%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d_%%(rev)s_%%(slug)s"
+timezone = "UTC"
+
+# Optional: zentrale Coverage-Konfiguration
+# [tool.coverage.run]
+# branch = true
+# source = ["backend"]
+# omit = ["tests/*"]
+#
+# [tool.coverage.report]
+# show_missing = true
+# skip_covered = true
+# fail_under = 80

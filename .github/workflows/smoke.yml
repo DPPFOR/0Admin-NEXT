@@ -1,0 +1,60 @@
+name: U3-P1b/P2 Smoke Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: smoke-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SMOKE_TOKEN: ${{ secrets.SMOKE_TOKEN }}
+      STORAGE_BACKEND: file
+      STORAGE_BASE_URI: file:///home/runner/work/_temp/uploads
+      MAX_UPLOAD_MB: 25
+    strategy:
+      matrix:
+        suite: [upload, programmatic, worker, mail, mail_connectors, read_ops, publisher]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Prepare storage dir
+        run: mkdir -p /home/runner/work/_temp/uploads
+      - name: Run smoke tests (matrix)
+        run: |
+          mkdir -p artifacts
+          if [ "${{ matrix.suite }}" = "upload" ]; then pytest -q tests/smoke/test_upload_api_smoke.py -W error --junitxml artifacts/u3-p1b-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "programmatic" ]; then pytest -q tests/smoke/test_programmatic_ingest_smoke.py -W error --junitxml artifacts/u3-p2-programmatic-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "worker" ]; then pytest -q tests/smoke/test_worker_inbox_smoke.py -W error --junitxml artifacts/u4-p1-worker-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "mail" ]; then pytest -q tests/smoke/test_mail_ingest_smoke.py -W error --junitxml artifacts/u5-m-mail-ingest-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "mail_connectors" ]; then pytest -q tests/smoke/test_mail_connectors_integration.py -W error --junitxml artifacts/u10-mail-connectors-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "read_ops" ]; then pytest -q tests/smoke/test_read_ops_api_smoke.py -W error --junitxml artifacts/u5-r-read-ops-smoke.xml; fi
+          if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/u6-outbox-publisher-smoke.xml; fi
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: u3-p1b-smoke-artifacts
+          path: |
+            artifacts/u3-p1b-smoke.xml
+            artifacts/u3-p1b-smoke.json
+            artifacts/u3-p2-programmatic-smoke.xml
+            artifacts/u3-p2-programmatic-smoke.json
+            artifacts/u4-p1-worker-smoke.xml
+            artifacts/u4-p1-worker-smoke.json
+            artifacts/u5-m-mail-ingest-smoke.xml
+            artifacts/u5-m-mail-ingest-smoke.json
+            artifacts/u5-r-read-ops-smoke.xml
+            artifacts/u6-outbox-publisher-smoke.xml
