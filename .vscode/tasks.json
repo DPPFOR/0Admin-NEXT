@@ -11,6 +11,14 @@
       "group": "build"
     },
     {
+      "label": "MCP Validate (all)",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/mcp/validate_contracts.py"],
+      "problemMatcher": "$python",
+      "group": "build"
+    },
+    {
       "label": "MCP Smokes ausführen",
       "type": "process",
       "command": "pytest",
@@ -20,6 +28,58 @@
       "args": ["-q", "backend/mcp/tests/smoke"],
       "problemMatcher": "$pytest",
       "group": "test"
+    },
+    {
+      "label": "MCP Smokes (all)",
+      "type": "process",
+      "command": "pytest",
+      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+      "args": ["-q", "backend/mcp/tests/smoke"],
+      "problemMatcher": "$pytest",
+      "group": "test"
+    },
+    {
+      "label": "MCP Tools (tree)",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/mcp/list_tools.py", "--tree"],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Inbox Local Flow (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_inbox_local_flow.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--path",
+        "artifacts/inbox/samples/pdf/sample_a.pdf"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Validate DTO Mapping",
+      "type": "process",
+      "command": "pytest",
+      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+      "args": ["-q", "tests/inbox/test_report_to_dto_shape.py"],
+      "problemMatcher": "$pytest",
+      "group": "test"
+    },
+    {
+      "label": "MCP Playwright: Install Chromium",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "playwright", "install", "chromium"],
+      "problemMatcher": []
+    },
+    {
+      "label": "MCP Playwright: Install All",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "playwright", "install"],
+      "problemMatcher": []
     }
   ]
 }

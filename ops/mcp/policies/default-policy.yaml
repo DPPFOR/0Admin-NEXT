@@ -2,4 +2,17 @@
 dry_run_default: true
 allowed_tools:
   - ops.health_check
-
+  - archive.unpack
+  - data_quality.tables.validate
+  - detect.mime
+  - email.gmail.fetch
+  - email.outlook.fetch
+  - images.ocr
+  - office.excel.normalize
+  - office.powerpoint.normalize
+  - office.word.normalize
+  - pdf.ocr_extract
+  - pdf.tables_extract
+  - pdf.text_extract
+  - security.pii.redact
+  - etl.inbox_local_flow

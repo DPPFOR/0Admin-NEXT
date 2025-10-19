@@ -11,3 +11,18 @@ MCP Contracts (Draft 2020-12)
 - etl.inbox_extract `remote_url` must start with `https://`.
 - RFC3339 timestamps for `ts` (contains `Z` or offset).
 - Each version folder must contain `CHANGELOG.md` starting with `1.0.0 – initial`.
+
+Tool-IDs (1.0.0) und Kurzbeschreibung:
+- detect.mime – MIME/Typ-Erkennung (lokale Pfade unter `artifacts/inbox/`).
+- archive.unpack – Entpack-Plan (Ziel bleibt in `artifacts/inbox/`).
+- email.gmail.fetch – .eml Samples + Anhänge Plan.
+- email.outlook.fetch – .msg Samples + Anhänge Plan.
+- office.word.normalize – .docx → MD/Plain Artefakte.
+- office.powerpoint.normalize – .pptx → MD/JSON Report.
+- office.excel.normalize – .xlsx/.xlsb → CSV/Schema-Report (Spalten snake_case).
+- pdf.text_extract – Text/Metadaten aus born-digital PDFs.
+- pdf.ocr_extract – OCR-Plan (dry-run, lokaler Pfad).
+- pdf.tables_extract – Tabellen als strukturierte Tabellen (leer erlaubt).
+- images.ocr – OCR für PNG/JPG, einfache Box-Hinweise optional.
+- data_quality.tables.validate – Tabellenvalidierung (Frictionless/Pandera-Konzept).
+- security.pii.redact – PII-Erkennung/Maskierung.

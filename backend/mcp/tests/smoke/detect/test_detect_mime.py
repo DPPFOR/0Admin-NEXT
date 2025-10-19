@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from jsonschema import Draft202012Validator, ValidationError
+
+from backend.mcp.server.adapters.detect.mime import DetectMimeAdapter
+
+
+def _schema(path: str):
+    import json
+
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def test_detect_mime_positive():
+    schema = _schema("backend/mcp/contracts/detect.mime/1.0.0/output.json")
+    out = DetectMimeAdapter.plan(paths=["artifacts/inbox/samples/email/sample.eml"], dry_run=True)
+    Draft202012Validator(schema).validate(out)
+
+
+def test_detect_mime_negative():
+    with pytest.raises(ValueError):
+        DetectMimeAdapter.plan(paths=["../etc/passwd"], dry_run=True)
+

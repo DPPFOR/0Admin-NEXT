@@ -56,6 +56,7 @@ Programmatic Endpoint (Remote-URL): siehe backend/apps/inbox/api_programmatic.md
 - Read-API: siehe backend/apps/inbox/api_read.md (Keyset-Paging mit HMAC-Cursor; `X-Tenant` Pflicht; Payload-Whitelist ohne PII/URIs).
 - Ops-API (ADMIN only): siehe backend/apps/inbox/api_ops.md (`ADMIN_TOKENS` als CSV setzen). Endpunkte für DLQ/Replay, Outbox-Status und Metriken.
 - ENV-Hinweise: `READ_MAX_LIMIT` (Server-Cap), `CURSOR_HMAC_KEY` (Pflicht für Prod, starker Secret-Wert), `ADMIN_TOKENS` (CSV von Rollen-Tokens).
+- Browser nach pip install einmalig installieren: python -m playwright install chromium --with-deps
 
 ### ENV-Steuerung
 - `LOG_LEVEL=INFO|WARNING|ERROR|DEBUG`
@@ -211,11 +212,34 @@ Die Trennung sorgt dafür, dass Produktionssysteme nur minimale, sichere Pakete 
   - Policies/Runbooks: `ops/mcp`
   - CLIs: `tools/mcp`
 - Doku: siehe [Architecture](docs/mcp/architecture.md), [Contracts](docs/mcp/contracts.md), [Policies](docs/mcp/policies.md), [Security](docs/mcp/security.md), [Migration](docs/mcp/migration.md)
+- Flows: [MCP Flows](docs/mcp/flows.md), [Inbox Orchestration](docs/inbox/orchestration.md)
 - Runbooks: [Rollout](ops/mcp/runbooks/rollout.md), [Rotation](ops/mcp/runbooks/rotation.md), [Alerts](ops/mcp/runbooks/alerts.md), [Tenants](ops/runbooks/tenants.md)
 
 ### Policy-Fingerprint (lokal prüfen)
 - Der Validator gibt einen SHA-256 Fingerprint der Policy aus.
 - Lokal prüfen: `python tools/mcp/validate_contracts.py` → Zeile beginnt mit `[POLICY_SHA_FINGERPRINT]`.
+
+### Domänen-Gliederung und Beispiel-Flows
+- detect: detect.mime – MIME/Typ-Erkennung für Routing.
+- archive: archive.unpack – ZIP/7z entpacken unter artifacts/inbox/.
+- email: email.gmail.fetch, email.outlook.fetch – Samples + Anhänge als Intake-Plan.
+- office: office.word.normalize, office.powerpoint.normalize, office.excel.normalize – Normalisierung/Reports.
+- pdf: pdf.text_extract, pdf.ocr_extract, pdf.tables_extract – Text/OCR/Tabellen.
+- images: images.ocr – OCR für PNG/JPG.
+- data_quality: data_quality.tables.validate – Tabellenvalidierung.
+- security: security.pii.redact – PII-Redaction.
+
+Beispiel-Flow: email.fetch → office/pdf.normalize → data_quality.validate → security.redact.
+
+CLI-Beispiele:
+- Flach: `python tools/mcp/list_tools.py`
+- Baum: `python tools/mcp/list_tools.py --tree`
+- JSON: `python tools/mcp/list_tools.py --json` bzw. `--tree --json`
+
+Postinstall (Playwright, optional):
+- Task: „MCP Playwright: Install Chromium“ → `python -m playwright install chromium`
+- Task: „MCP Playwright: Install All“ → `python -m playwright install`
+- Validator warnt (nicht-blockierend), wenn Playwright installiert ist, aber keine Browser-Binaries gefunden wurden.
 
 - CI Security: gitleaks + pip-audit Reports (siehe ops/runbooks/security.md).
  - Dual-Key-Rotation: siehe ops/runbooks/secrets.md (`CURSOR_HMAC_KEY` + `CURSOR_HMAC_KEY_PREVIOUS`, 90 Tage Umschaltfenster, Rollback-Hinweise).

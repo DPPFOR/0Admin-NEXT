@@ -46,8 +46,11 @@ def test_all_contracts_schemas_and_changelogs_present():
             first = changelog_p.read_text(encoding="utf-8").splitlines()[0].strip()
             assert first == f"{version} – initial"
             found += 1
-    # 5 tools
-    assert found == 5, f"expected 5 tools, found {found}"
+    # Ensure at least the registry-declared tools are present
+    from backend.mcp.server import registry
+    reg_ids = {t["id"] for t in registry.list_tools()}
+    disk_ids = {p.name for p in base.iterdir() if p.is_dir()}
+    assert reg_ids.issubset(disk_ids)
 
 
 def test_specific_field_rules():

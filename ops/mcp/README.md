@@ -7,3 +7,4 @@ Layout:
 - policies/quotas.example.yaml: example quota keys (parse-only)
 - runbooks/: rollout/rotation/alerts notes for operators
 
+Policy-Fingerprint: Der Validator gibt SHA-256 aus (siehe README, Abschnitt MCP). Samples liegen unter `artifacts/inbox/samples/*`.

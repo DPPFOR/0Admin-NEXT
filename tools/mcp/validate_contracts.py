@@ -153,6 +153,25 @@ def main() -> int:
                     if "$ref" not in v or v["$ref"] != "#/$defs/rfc3339":
                         problems.append(rule("GOV_DEFS_USAGE", pth, "/properties/ts", "{\"$ref\": \"#/$defs/rfc3339\"}", json.dumps(v)))
 
+        # PATH_GUARDS for inputs: path/paths must restrict to artifacts/inbox and forbid '..'
+        in_props = input_s.get("properties", {}) if isinstance(input_s, dict) else {}
+        if isinstance(in_props, dict):
+            if "path" in in_props:
+                patt = in_props["path"].get("pattern") if isinstance(in_props["path"], dict) else None
+                expected_prefix = "artifacts/inbox/"
+                if not patt or "artifacts/inbox/" not in patt:
+                    problems.append(rule("PATH_GUARDS", input_p, "/properties/path/pattern", f"contains '{expected_prefix}'", str(patt)))
+                if patt and (".." not in patt and "\\.\\." not in patt):
+                    problems.append(rule("PATH_GUARDS", input_p, "/properties/path/pattern", "forbid '..'", str(patt)))
+            if "paths" in in_props and isinstance(in_props["paths"], dict):
+                items = in_props["paths"].get("items", {})
+                patt = items.get("pattern") if isinstance(items, dict) else None
+                expected_prefix = "artifacts/inbox/"
+                if not patt or "artifacts/inbox/" not in patt:
+                    problems.append(rule("PATH_GUARDS", input_p, "/properties/paths/items/pattern", f"contains '{expected_prefix}'", str(patt)))
+                if patt and (".." not in patt and "\\.\\." not in patt):
+                    problems.append(rule("PATH_GUARDS", input_p, "/properties/paths/items/pattern", "forbid '..'", str(patt)))
+
         # qa.run_smoke selection whitelist
         if tool == "qa.run_smoke":
             enum_vals = (
@@ -209,6 +228,36 @@ def main() -> int:
     import hashlib
     fingerprint = hashlib.sha256(content).hexdigest()
     print(f"[POLICY_SHA_FINGERPRINT] {default_policy}: {fingerprint}")
+
+    # Optional: Playwright postinstall warning (non-blocking)
+    try:
+        import importlib
+        import shutil
+        browsers_installed = False
+        # simple heuristics: env path or default cache
+        env_path = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+        candidates = []
+        if env_path:
+            candidates.append(Path(env_path))
+        home = Path.home()
+        candidates.append(home / ".cache" / "ms-playwright")
+        for c in candidates:
+            try:
+                if c.exists() and any(child.is_dir() for child in c.iterdir()):
+                    browsers_installed = True
+                    break
+            except Exception:
+                continue
+        # If playwright not importable, skip; if importable but no browsers, warn
+        importlib.import_module("playwright.sync_api")
+        if not browsers_installed:
+            print(
+                f"[POSTINSTALL_PLAYWRIGHT] README.md:/mcp postinstall expected=browsers installed actual=missing",
+                file=sys.stderr,
+            )
+    except Exception:
+        # playwright unavailable or other import issue: no-op, do not fail
+        pass
 
     if problems:
         for p in problems:
