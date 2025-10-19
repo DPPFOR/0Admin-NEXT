@@ -126,6 +126,57 @@
       "command": "bash",
       "args": ["-lc", "psql \"$INBOX_DB_URL\" -f ops/alembic/versions/20251019_inbox_parsed.sql"],
       "problemMatcher": []
+    },
+    {
+      "label": "DB: upgrade (read model)",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+      "problemMatcher": []
+    },
+    {
+      "label": "ReadModel: query invoices (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/query_read_model.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--what",
+        "invoices",
+        "--limit",
+        "5",
+        "--json"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "ReadModel: query review (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/query_read_model.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--what",
+        "review",
+        "--json"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "ReadModel: summary (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/query_read_model.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--what",
+        "summary",
+        "--json"
+      ],
+      "problemMatcher": "$python"
     }
   ]
 }

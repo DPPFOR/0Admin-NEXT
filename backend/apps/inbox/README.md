@@ -15,3 +15,9 @@ Das Inbox-Modul verwaltet eingehende Dokumente und deren Verarbeitung.
 - Idempotent per `(tenant_id, content_hash)`; Flags `--dry-run`, `--no-upsert`, `--replace-chunks`.
 - CLI/Tasks: `run_importer_from_artifact.py`, `run_importer_consume_outbox.py`, VS Code Tasks („Importer: from artifact“, „Importer: consume outbox“, „DB: apply migration“).
 - Details, Migration & Tests: siehe `docs/inbox/importer.md`.
+
+## Read Model (Agent)
+
+- Read-only Views & Queries für Agenten/Tools (Flock „whiteduck“).
+- DTOs + SQLAlchemy-Queries sowie CLI unter `tools/flows/query_read_model.py`.
+- Dokumentation & Sicherheits-Hinweise: `docs/inbox/read_model.md`.
