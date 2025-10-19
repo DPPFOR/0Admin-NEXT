@@ -57,6 +57,10 @@ PARSED_ITEMS_TABLE = sa.Table(
     sa.Column("amount", sa.Numeric(18, 2)),
     sa.Column("invoice_no", sa.String()),
     sa.Column("due_date", sa.Date()),
+    sa.Column("doctype", sa.String(), nullable=False, server_default=sa.text("'unknown'")),
+    sa.Column("quality_status", sa.String(), nullable=False, server_default=sa.text("'needs_review'")),
+    sa.Column("confidence", sa.Numeric(5, 2), nullable=False, server_default=sa.text("0")),
+    sa.Column("rules", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
     sa.Column(
         "created_at",
         sa.DateTime(timezone=True),
@@ -114,6 +118,10 @@ def _upsert_parsed_item(
             tenant_id=sa.bindparam("tenant_id"),
             content_hash=sa.bindparam("content_hash", type_=sa.String),
             doc_type=sa.bindparam("doc_type", type_=sa.String),
+            doctype=sa.bindparam("doctype", type_=sa.String),
+            quality_status=sa.bindparam("quality_status", type_=sa.String),
+            confidence=sa.bindparam("confidence", type_=sa.Numeric(5, 2)),
+            rules=sa.bindparam("rules", type_=JSONB),
             quality_flags=sa.bindparam("quality_flags", type_=JSONB),
             payload=sa.bindparam("payload", type_=JSONB),
             amount=sa.bindparam("amount", type_=sa.Numeric(18, 2)),
@@ -124,6 +132,10 @@ def _upsert_parsed_item(
             index_elements=[PARSED_ITEMS_TABLE.c.tenant_id, PARSED_ITEMS_TABLE.c.content_hash],
             set_={
                 "doc_type": sa.bindparam("u_doc_type", type_=sa.String),
+                "doctype": sa.bindparam("u_doctype", type_=sa.String),
+                "quality_status": sa.bindparam("u_quality_status", type_=sa.String),
+                "confidence": sa.bindparam("u_confidence", type_=sa.Numeric(5, 2)),
+                "rules": sa.bindparam("u_rules", type_=JSONB),
                 "quality_flags": sa.bindparam("u_quality_flags", type_=JSONB),
                 "payload": sa.bindparam("u_payload", type_=JSONB),
                 "amount": sa.bindparam("u_amount", type_=sa.Numeric(18, 2)),
@@ -139,12 +151,20 @@ def _upsert_parsed_item(
         "tenant_id": item.tenant_id,
         "content_hash": item.content_hash,
         "doc_type": item.doc_type,
+        "doctype": item.doctype,
+        "quality_status": item.quality_status,
+        "confidence": item.confidence,
+        "rules": item.rules,
         "quality_flags": item.quality_flags,
         "payload": item.payload,
         "amount": item.amount,
         "invoice_no": item.invoice_no,
         "due_date": item.due_date,
         "u_doc_type": item.doc_type,
+        "u_doctype": item.doctype,
+        "u_quality_status": item.quality_status,
+        "u_confidence": item.confidence,
+        "u_rules": item.rules,
         "u_quality_flags": item.quality_flags,
         "u_payload": item.payload,
         "u_amount": item.amount,
@@ -168,6 +188,10 @@ def _insert_only(
             tenant_id=sa.bindparam("tenant_id"),
             content_hash=sa.bindparam("content_hash", type_=sa.String),
             doc_type=sa.bindparam("doc_type", type_=sa.String),
+            doctype=sa.bindparam("doctype", type_=sa.String),
+            quality_status=sa.bindparam("quality_status", type_=sa.String),
+            confidence=sa.bindparam("confidence", type_=sa.Numeric(5, 2)),
+            rules=sa.bindparam("rules", type_=JSONB),
             quality_flags=sa.bindparam("quality_flags", type_=JSONB),
             payload=sa.bindparam("payload", type_=JSONB),
             amount=sa.bindparam("amount", type_=sa.Numeric(18, 2)),
@@ -181,6 +205,10 @@ def _insert_only(
         "tenant_id": item.tenant_id,
         "content_hash": item.content_hash,
         "doc_type": item.doc_type,
+        "doctype": item.doctype,
+        "quality_status": item.quality_status,
+        "confidence": item.confidence,
+        "rules": item.rules,
         "quality_flags": item.quality_flags,
         "payload": item.payload,
         "amount": item.amount,
@@ -268,6 +296,7 @@ def run_importer(
     upsert: bool = True,
     replace_chunks: bool = False,
     engine: Optional[Engine] = None,
+    enforce_invoice: bool = True,
 ) -> str:
     logger = get_logger("importer")
 
@@ -278,7 +307,7 @@ def run_importer(
     validate_artifact_minimum(data, tenant_id)
     validate_tables_shape(data.get("extracted", {}).get("tables", []))
 
-    item_dto, chunk_dtos = artifact_to_dtos(data)
+    item_dto, chunk_dtos = artifact_to_dtos(data, enforce_invoice=enforce_invoice)
     if item_dto.tenant_id != tenant_id:
         raise ValueError("tenant mismatch")
 
@@ -327,6 +356,8 @@ def run_importer(
             "inserted_chunks": inserted_chunks,
             "action": action,
             "dry_run": False,
+            "quality_status": item_dto.quality_status,
+            "confidence": float(item_dto.confidence),
         },
     )
 
