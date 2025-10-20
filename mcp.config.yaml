@@ -1,0 +1,9 @@
+# Default configuration for the local MCP stdio server.
+log_level: INFO
+artifacts_dir: artifacts/mcp
+allow_unix_socket: false
+timeouts:
+  default: 60
+  pdf_text_extract: 90
+  pdf_table_extract: 90
+  security_pii_redact: 45

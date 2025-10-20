@@ -12,7 +12,17 @@ allowed_tools:
   - office.powerpoint.normalize
   - office.word.normalize
   - pdf.ocr_extract
+  # Optional hooks guarded by CLI flags (planned only)
+  - data_quality.tables.boost
   - pdf.tables_extract
   - pdf.text_extract
   - security.pii.redact
   - etl.inbox_local_flow
+
+egress:
+  mode: deny_all
+  allow_unix_socket: false
+  filesystem_allowlist:
+    - artifacts
+    - docs
+    - tests
