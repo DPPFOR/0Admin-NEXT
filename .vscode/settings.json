@@ -1,4 +1,16 @@
 {
-  "python.defaultInterpreterPath": ".venv/bin/python"
+  "python.defaultInterpreterPath": ".venv/bin/python",
+  "mcpServers": {
+    "0admin-local": {
+      "command": "python",
+      "args": ["-m", "backend.mcp_server"],
+      "env": {
+        "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
+        "ARTIFACTS_DIR": "artifacts",
+        "LOG_LEVEL": "INFO"
+      },
+      "transport": "stdio",
+      "cwd": "${workspaceFolder}"
+    }
+  }
 }
-

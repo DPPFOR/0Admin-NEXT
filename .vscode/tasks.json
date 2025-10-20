@@ -46,6 +46,36 @@
       "problemMatcher": "$python"
     },
     {
+      "label": "MCP: Start (stdio)",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "backend.mcp_server"],
+      "options": {
+        "env": {
+          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
+          "ARTIFACTS_DIR": "artifacts",
+          "LOG_LEVEL": "INFO"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "MCP: Smokes (offline)",
+      "type": "process",
+      "command": "pytest",
+      "options": {
+        "env": {
+          "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
+          "ARTIFACTS_DIR": "artifacts/mcp",
+          "LOG_LEVEL": "INFO"
+        }
+      },
+      "args": ["-q", "tests/mcp/test_mcp_server_offline.py"],
+      "problemMatcher": "$pytest",
+      "group": "test"
+    },
+    {
       "label": "Inbox → MCP Shadow Analysis (sample)",
       "type": "process",
       "command": "python",
@@ -66,6 +96,22 @@
         "00000000-0000-0000-0000-000000000001",
         "--path",
         "artifacts/inbox/samples/pdf/sample_a.pdf"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Inbox Local Flow (OCR flag only)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_inbox_local_flow.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--path",
+        "artifacts/inbox/samples/pdf/sample_a.pdf",
+        "--enable-ocr",
+        "--enable-table-boost",
+        "--mvr-preview"
       ],
       "problemMatcher": "$python"
     },
@@ -135,7 +181,7 @@
       "problemMatcher": []
     },
     {
-      "label": "ReadModel: query invoices (sample)",
+      "label": "ReadModel: invoices (sample)",
       "type": "process",
       "command": "python",
       "args": [
@@ -151,7 +197,7 @@
       "problemMatcher": "$python"
     },
     {
-      "label": "ReadModel: query review (sample)",
+      "label": "ReadModel: review (sample)",
       "type": "process",
       "command": "python",
       "args": [
@@ -165,7 +211,35 @@
       "problemMatcher": "$python"
     },
     {
+      "label": "ReadModel: payments (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/query_read_model.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--what",
+        "payments",
+        "--json"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
       "label": "ReadModel: summary (sample)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/query_read_model.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--what",
+        "summary",
+        "--json"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Query Read Model (summary w/ flags)",
       "type": "process",
       "command": "python",
       "args": [
@@ -200,6 +274,106 @@
       "command": "python",
       "args": [
         "tools/flows/flock_samples.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--base-url",
+        "http://localhost:8000"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Importer: payment good",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_importer_from_artifact.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--artifact",
+        "artifacts/inbox_local/samples/payment_good.json",
+        "--no-enforce-invoice"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Importer (table-boost)",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_importer_from_artifact.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--artifact",
+        "artifacts/inbox_local/samples/payment_good.json",
+        "--no-enforce-invoice",
+        "--no-upsert"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Importer: payment bad",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flows/run_importer_from_artifact.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--artifact",
+        "artifacts/inbox_local/samples/payment_bad.json",
+        "--no-enforce-invoice"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "DB: apply migration (local)",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Outbox: enqueue sample",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "-c",
+        "from backend.core.outbox.publisher import enqueue_event; print(enqueue_event('InboxItemAnalysisReady', {'tenant_id': '00000000-0000-0000-0000-000000000000', 'item_id': 'demo'}))"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Outbox: consume one",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/flows/outbox_consume_one.py"],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Run API (dev)",
+      "type": "process",
+      "command": "uvicorn",
+      "args": ["backend.app:app", "--reload"],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Flock Sample: Invoice Triage",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_invoice_triage.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--base-url",
+        "http://localhost:8000"
+      ],
+      "problemMatcher": "$python"
+    },
+    {
+      "label": "Flock Sample: Payment Recap",
+      "type": "process",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_payment_recap.py",
         "--tenant",
         "00000000-0000-0000-0000-000000000001",
         "--base-url",
