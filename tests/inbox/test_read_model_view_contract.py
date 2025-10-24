@@ -18,7 +18,7 @@ def test_v_inbox_by_tenant_columns():
         "avg_confidence",
     }
     
-    conn = psycopg2.connect(settings.inbox_db_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -43,13 +43,14 @@ def test_v_invoices_latest_columns():
     """Contract test: v_invoices_latest must have expected columns."""
     expected_columns = {
         "tenant_id",
-        "parsed_item_id",
+        "id",
         "confidence",
-        "status",
         "created_at",
+        "amount",
+        "invoice_no",
     }
     
-    conn = psycopg2.connect(settings.inbox_db_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
     try:
         cur = conn.cursor()
         cur.execute("""
