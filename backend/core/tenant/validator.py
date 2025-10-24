@@ -102,6 +102,9 @@ class TenantAllowlistLoader:
         candidate = uuid_str.strip().lower()
         if not UUID_RE.match(candidate):
             return TenantValidationResult(ok=False, reason="malformed")
+        # In development mode, allow any valid UUID if allowlist is empty
+        if not self._allow and getattr(settings, "app_env", "production") == "development":
+            return TenantValidationResult(ok=True, reason="ok")
         if candidate not in self._allow:
             return TenantValidationResult(ok=False, reason="unknown")
         return TenantValidationResult(ok=True, reason="ok")

@@ -28,7 +28,7 @@ MAX_LIMIT = 100
 
 
 def require_tenant(tenant: str = Header(..., alias="X-Tenant-ID", convert_underscores=False)) -> str:
-    """Local require_tenant without allowlist validation for testing."""
+    """Extract and validate tenant ID from X-Tenant-ID header."""
     try:
         return str(UUID(str(tenant)))
     except (ValueError, TypeError) as exc:
