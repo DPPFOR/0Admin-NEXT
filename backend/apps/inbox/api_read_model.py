@@ -9,9 +9,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 
+from backend.core.tenant.context import require_tenant
 from backend.apps.inbox.read_model.query import (
     ReadModelError,
     fetch_invoices_latest,
+    fetch_payments_latest,
     fetch_items_needing_review,
     fetch_tenant_summary,
 )
@@ -23,10 +25,6 @@ router = APIRouter(prefix="/inbox/read", tags=["inbox-read"])
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 100
-
-
-def require_tenant(tenant: UUID = Query(..., alias="tenant")) -> str:
-    return str(tenant)
 
 
 def _serialize_value(value: Any) -> Any:
@@ -58,23 +56,74 @@ def _log(event: str, *, tenant_id: str, count: int, trace_id: Optional[str]) -> 
     )
 
 
+def _build_list_payload(
+    response: Response,
+    items: Any,
+    *,
+    limit: int,
+    offset: int,
+) -> Dict[str, Any]:
+    serialized = _serialize(items)
+    total = len(serialized)
+    response.headers["X-Total-Count"] = str(total)
+    return {
+        "items": serialized,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
 @router.get("/invoices")
 def list_invoices(
     response: Response,
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
+    min_conf: Optional[int] = Query(None, ge=0, le=100),
+    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
     trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     try:
-        items = fetch_invoices_latest(tenant_id, limit=limit, offset=offset)
+        items = fetch_invoices_latest(
+            tenant_id,
+            limit=limit,
+            offset=offset,
+            min_conf=min_conf,
+            status=status,
+        )
     except (ReadModelError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    serialized = _serialize(items)
-    response.headers["X-Total-Count"] = str(len(serialized))
-    _log("read_model_invoices", tenant_id=tenant_id, count=len(serialized), trace_id=trace_id)
-    return serialized
+    payload = _build_list_payload(response, items, limit=limit, offset=offset)
+    _log("read_model_invoices", tenant_id=tenant_id, count=payload["total"], trace_id=trace_id)
+    return payload
+
+
+@router.get("/payments")
+def list_payments(
+    response: Response,
+    tenant_id: str = Depends(require_tenant),
+    limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
+    offset: int = Query(0, ge=0),
+    min_conf: Optional[int] = Query(None, ge=0, le=100),
+    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
+    trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
+) -> Dict[str, Any]:
+    try:
+        items = fetch_payments_latest(
+            tenant_id,
+            limit=limit,
+            offset=offset,
+            min_conf=min_conf,
+            status=status,
+        )
+    except (ReadModelError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    payload = _build_list_payload(response, items, limit=limit, offset=offset)
+    _log("read_model_payments", tenant_id=tenant_id, count=payload["total"], trace_id=trace_id)
+    return payload
 
 
 @router.get("/review")
@@ -83,17 +132,24 @@ def list_items_needing_review(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
+    min_conf: Optional[int] = Query(None, ge=0, le=100),
+    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
     trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> List[Dict[str, Any]]:
+) -> Dict[str, Any]:
     try:
-        items = fetch_items_needing_review(tenant_id, limit=limit, offset=offset)
+        items = fetch_items_needing_review(
+            tenant_id,
+            limit=limit,
+            offset=offset,
+            min_conf=min_conf,
+            status=status,
+        )
     except (ReadModelError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    serialized = _serialize(items)
-    response.headers["X-Total-Count"] = str(len(serialized))
-    _log("read_model_review", tenant_id=tenant_id, count=len(serialized), trace_id=trace_id)
-    return serialized
+    payload = _build_list_payload(response, items, limit=limit, offset=offset)
+    _log("read_model_review", tenant_id=tenant_id, count=payload["total"], trace_id=trace_id)
+    return payload
 
 
 @router.get("/summary")

@@ -8,7 +8,7 @@ from backend.core.tenant.validator import validate_tenant
 from backend.core.observability.metrics import increment_counter
 
 
-async def require_tenant(tenant_header: Optional[str] = Header(None, alias="X-Tenant")) -> str:
+async def require_tenant(tenant_header: Optional[str] = Header(None, alias="X-Tenant-ID", convert_underscores=False)) -> str:
     """FastAPI dependency to validate X-Tenant against allowlist.
 
     Returns tenant_id (UUID string) on success; raises HTTPException on failure.

@@ -1,0 +1,71 @@
+"""Contract tests for inbox read model database views.
+
+Ensures that database views have expected columns to catch schema mismatches early.
+"""
+import pytest
+import psycopg2
+from backend.core.config import settings
+
+
+def test_v_inbox_by_tenant_columns():
+    """Contract test: v_inbox_by_tenant must have expected columns."""
+    expected_columns = {
+        "tenant_id",
+        "total_items",
+        "invoices",
+        "payments",
+        "others",
+        "avg_confidence",
+    }
+    
+    conn = psycopg2.connect(settings.inbox_db_url.replace("postgresql+psycopg2://", "postgresql://"))
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'inbox_parsed' 
+            AND table_name = 'v_inbox_by_tenant'
+            ORDER BY column_name
+        """)
+        actual_columns = {row[0] for row in cur.fetchall()}
+        cur.close()
+        
+        # Check that all expected columns exist
+        missing = expected_columns - actual_columns
+        assert not missing, f"Missing columns in v_inbox_by_tenant: {missing}"
+        
+    finally:
+        conn.close()
+
+
+def test_v_invoices_latest_columns():
+    """Contract test: v_invoices_latest must have expected columns."""
+    expected_columns = {
+        "tenant_id",
+        "parsed_item_id",
+        "confidence",
+        "status",
+        "created_at",
+    }
+    
+    conn = psycopg2.connect(settings.inbox_db_url.replace("postgresql+psycopg2://", "postgresql://"))
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'inbox_parsed' 
+            AND table_name = 'v_invoices_latest'
+            ORDER BY column_name
+        """)
+        actual_columns = {row[0] for row in cur.fetchall()}
+        cur.close()
+        
+        # Check that all expected columns exist
+        missing = expected_columns - actual_columns
+        assert not missing, f"Missing columns in v_invoices_latest: {missing}"
+        
+    finally:
+        conn.close()
+
