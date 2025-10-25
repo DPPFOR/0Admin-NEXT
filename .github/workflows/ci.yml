@@ -71,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare artifacts dir
         run: mkdir -p artifacts
-- name: Install gitleaks (release tarball)
+      - name: Install gitleaks (release tarball)
   run: |
     set -euo pipefail
     mkdir -p /tmp/gitleaks

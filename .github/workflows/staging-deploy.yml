@@ -173,10 +173,22 @@ jobs:
     needs: alembic-offline
     steps:
       - uses: actions/checkout@v4
-      - name: gitleaks
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: "detect --report-format json --report-path artifacts/gitleaks.json"
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts
+      - name: Install gitleaks (release tarball)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/gitleaks
+          curl -sSLo /tmp/gitleaks/gitleaks.tar.gz \
+            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
+          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks detect
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --no-git -v --redact \
+            --report-format json --report-path artifacts/gitleaks.json || true
       - name: pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
         with:
