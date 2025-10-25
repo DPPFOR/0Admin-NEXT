@@ -1,0 +1,26 @@
+Betreff: 2. Mahnung - Rechnung {{ invoice_number }}
+
+Sehr geehrte/r {{ customer_name }},
+
+trotz unserer ersten Zahlungserinnerung ist die Rechnung {{ invoice_number }} über {{ amount_str }} EUR noch nicht beglichen worden.
+
+Fälligkeitsdatum: {{ due_date | datefmt("%d.%m.%Y") }}
+Betrag: {{ amount_str }} EUR
+{% if fee != "0.00" %}
+Mahngebühr: {{ fee }} EUR
+Gesamtbetrag: {{ total_str }} EUR
+{% endif %}
+
+Wir fordern Sie auf, den ausstehenden Betrag innerhalb von 7 Tagen zu begleichen. Bei weiterer Nichtzahlung werden wir weitere Maßnahmen einleiten und rechtliche Schritte prüfen.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{ company_name or tenant_name }}
+{{ config.company_address or "Test Street 123, 12345 Test City" }}
+
+---
+Mahnstufe: {{ stage.value }}
+Referenz: {{ notice_ref }}
+E-Mail: {{ notice.recipient_email }}
+Support: {{ config.support_email or "support@test.com" }}

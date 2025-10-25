@@ -1,0 +1,26 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "fingerprints": {"content_hash": "invoice-good-qa"},
+  "pipeline": ["pdf.text_extract", "pdf.tables_extract"],
+  "mime": "application/pdf",
+  "doc_type": "unknown",
+  "amount": "199.90",
+  "invoice_no": "INV-QA-1001",
+  "due_date": "2030-01-15",
+  "quality": {"valid": true, "issues": []},
+  "flags": {
+    "enable_ocr": false,
+    "enable_browser": false,
+    "enable_table_boost": false,
+    "mvr_preview": false
+  },
+  "extracted": {
+    "tables": [
+      {
+        "headers": ["item", "amount"],
+        "rows": [["service", "199.90"]]
+      }
+    ]
+  },
+  "pii": {"steps": []}
+}

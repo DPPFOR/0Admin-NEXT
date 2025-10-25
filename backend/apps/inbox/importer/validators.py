@@ -12,6 +12,7 @@ _INVOICE_NO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-_\/]{2,63}$")
 _MAX_COLUMNS = 100
 _MAX_ROWS = 5000
 _REQUIRED_DUE_DATE_LOOKBACK_DAYS = 365
+_ALLOWED_PAYMENT_CURRENCIES = {"EUR", "USD", "GBP"}
 
 
 RuleLevel = Literal["error", "warning"]
@@ -28,6 +29,14 @@ RuleList = List[Rule]
 
 def _rule(code: str, message: str, *, level: RuleLevel = "error") -> Rule:
     return {"code": code, "level": level, "message": message}
+
+
+def non_empty_str(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        candidate = value.strip()
+        if candidate:
+            return candidate
+    return None
 
 
 def validate_currency_amount(s: str) -> bool:
@@ -149,6 +158,21 @@ def validate_table_shape(table: Dict[str, Any]) -> RuleList:
     return rules
 
 
+def table_shape_ok(table: Dict[str, Any]) -> bool:
+    if not isinstance(table, dict):
+        return False
+    headers = table.get("headers")
+    rows = table.get("rows")
+    if not isinstance(headers, list) or not any(non_empty_str(h) for h in headers):
+        return False
+    if not isinstance(rows, list) or not rows:
+        return False
+    return any(
+        isinstance(row, list) and any(non_empty_str(str(cell)) for cell in row)
+        for row in rows
+    )
+
+
 def compute_confidence(ctx: Mapping[str, Any]) -> int:
     score = 0
     if ctx.get("required_ok"):
@@ -199,9 +223,126 @@ def parse_amount(value: Optional[str]) -> Optional[Decimal]:
 def parse_iso_date(value: Optional[str]) -> Optional[date]:
     if value in (None, ""):
         return None
+    if isinstance(value, date):
+        return value
     if not isinstance(value, str) or not validate_iso_date(value):
         raise ValueError("invalid due_date format")
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError as exc:
         raise ValueError("invalid due_date format") from exc
+
+
+def payment_DoD(
+    *,
+    amount: Optional[Decimal],
+    currency: Optional[str],
+    payment_date: Optional[date],
+    counterparty: Optional[str],
+) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
+    rules: RuleList = []
+    score = 70
+
+    amount_valid = amount is not None and amount > Decimal("0")
+    if not amount_valid:
+        rules.append(_rule("payment.amount.invalid", "Payment amount must be greater than zero"))
+
+    currency_norm = non_empty_str(currency)
+    currency_valid = currency_norm is not None and currency_norm.upper() in _ALLOWED_PAYMENT_CURRENCIES
+    if currency_valid:
+        score += 10
+    else:
+        rules.append(_rule("payment.currency.unsupported", "Payment currency must be one of EUR/USD/GBP"))
+
+    date_valid = payment_date is not None
+    if date_valid:
+        score += 10
+    else:
+        rules.append(_rule("payment.date.missing", "Payment date is required"))
+
+    counterparty_norm = non_empty_str(counterparty)
+    counterparty_valid = counterparty_norm is not None
+    if counterparty_valid:
+        score += 10
+    else:
+        rules.append(_rule("payment.counterparty.missing", "Payment counterparty is required"))
+
+    score = min(score, 100)
+    confidence = Decimal(score).quantize(Decimal("1.00"))
+
+    hard_error = not amount_valid
+    error_rules = [rule for rule in rules if rule["level"] == "error"]
+
+    if hard_error or score < 60:
+        quality_status: Literal["accepted", "needs_review", "rejected"] = "rejected"
+    elif score >= 80 and not error_rules:
+        quality_status = "accepted"
+    else:
+        quality_status = "needs_review"
+
+    return confidence, rules, quality_status
+
+
+def other_DoD(
+    *,
+    kv_entries: Optional[List[Mapping[str, Any]]],
+    tables: Optional[List[Mapping[str, Any]]],
+) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
+    rules: RuleList = []
+    kv_entries = kv_entries or []
+    tables = tables or []
+
+    non_empty_fields = 0
+    for entry in kv_entries:
+        if not isinstance(entry, Mapping):
+            continue
+        value = entry.get("value")
+        if non_empty_str(value):
+            non_empty_fields += 1
+
+    table_ok = False
+    table_cells = 0
+    for table in tables:
+        if not isinstance(table, Mapping):
+            continue
+        if table_shape_ok(dict(table)):
+            table_ok = True
+            rows = table.get("rows") or []
+            for row in rows:
+                if isinstance(row, list):
+                    table_cells += sum(1 for cell in row if non_empty_str(str(cell)))
+
+    kv_ok = non_empty_fields > 0
+
+    if not kv_ok:
+        rules.append(_rule("other.fields.missing", "No extracted key/value entries found", level="warning"))
+    if not table_ok:
+        rules.append(_rule("other.tables.missing", "No structured tables detected", level="warning"))
+
+    structured = kv_ok or table_ok
+    if not structured:
+        rules.append(_rule("other.structure.empty", "Document lacks structured content"))
+
+    score = 40
+    if kv_ok:
+        score += 10
+    if table_ok:
+        score += 10
+    if kv_ok and table_ok:
+        score += 10
+    if non_empty_fields + table_cells >= 3:
+        score += 10
+    score = min(score, 90)
+
+    confidence_raw = Decimal(score)
+    confidence_capped = min(confidence_raw, Decimal("60"))
+    confidence = confidence_capped.quantize(Decimal("1.00"))
+
+    if not structured or score < 50:
+        quality_status: Literal["accepted", "needs_review", "rejected"] = "rejected"
+    elif score >= 65:
+        quality_status = "accepted"
+    else:
+        quality_status = "needs_review"
+
+    return confidence, rules, quality_status

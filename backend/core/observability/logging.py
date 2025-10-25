@@ -1,6 +1,7 @@
-"""JSON structured logging with mandatory fields."""
+"""JSON structured logging with mandatory fields and PII redaction."""
 import json
 import logging
+import re
 import sys
 from datetime import datetime
 from typing import Optional
@@ -15,21 +16,72 @@ _context = threading.local()
 
 
 class JSONFormatter(logging.Formatter):
-    """JSON formatter with mandatory fields."""
+    """JSON formatter with mandatory fields and PII redaction."""
+
+    def __init__(self):
+        super().__init__()
+        # PII patterns
+        self.iban_pattern = re.compile(r'([A-Z]{2}\d{2}[A-Z0-9]{1,30})')
+        self.email_pattern = re.compile(r'(\b\S+@\S+\.\S+\b)')
+        self.phone_pattern = re.compile(r'(\+?\d[\d \-/]{6,})')
+
+    def _redact_pii(self, text: str) -> str:
+        """Redact PII from text."""
+        if not isinstance(text, str):
+            return text
+        
+        # Redact IBANs
+        text = self.iban_pattern.sub(self._mask_iban, text)
+        # Redact emails
+        text = self.email_pattern.sub(self._mask_email, text)
+        # Redact phone numbers
+        text = self.phone_pattern.sub(self._mask_phone, text)
+        
+        return text
+
+    def _mask_iban(self, match) -> str:
+        """Mask IBAN: show first 2 chars, mask the rest."""
+        iban = match.group(1)
+        if len(iban) <= 4:
+            return "**" + "*" * (len(iban) - 2)
+        return iban[:2] + "**" + "*" * (len(iban) - 4)
+
+    def _mask_email(self, match) -> str:
+        """Mask email: show first char of user, mask domain."""
+        email = match.group(1)
+        if "@" not in email:
+            return email
+        user, domain = email.split("@", 1)
+        if len(user) <= 1:
+            masked_user = "*"
+        else:
+            masked_user = user[0] + "*" * (len(user) - 1)
+        return f"{masked_user}@{domain}"
+
+    def _mask_phone(self, match) -> str:
+        """Mask phone: show first 2 chars, mask the rest."""
+        phone = match.group(1)
+        if len(phone) <= 2:
+            return "*" * len(phone)
+        return phone[:2] + "*" * (len(phone) - 2)
 
     def format(self, record):
-        """Format log record as JSON with mandatory fields."""
+        """Format log record as JSON with mandatory fields and PII redaction."""
         # Get context values or defaults
         trace_id = getattr(_context, 'trace_id', None) or 'unknown'
         tenant_id = getattr(_context, 'tenant_id', 'unknown')
         request_id = getattr(_context, 'request_id', None)
+
+        # Get message and redact PII
+        message = record.getMessage()
+        redacted_message = self._redact_pii(message)
 
         # Build mandatory fields
         log_entry = {
             'trace_id': trace_id,
             'tenant_id': tenant_id,
             'level': record.levelname.lower(),
-            'msg': record.getMessage(),
+            'msg': redacted_message,
             'ts_utc': datetime.utcnow().isoformat() + 'Z'
         }
 
@@ -41,13 +93,16 @@ class JSONFormatter(logging.Formatter):
         if record.exc_info:
             log_entry['exc_info'] = self.formatException(record.exc_info)
 
-        # Add extra fields from record if any
+        # Add extra fields from record if any (with PII redaction)
         for key, value in record.__dict__.items():
             if key not in ('name', 'msg', 'args', 'levelname', 'levelno',
                          'pathname', 'filename', 'module', 'exc_info',
                          'exc_text', 'stack_info', 'lineno', 'funcName',
                          'created', 'msecs', 'relativeCreated', 'thread',
                          'threadName', 'processName', 'process', 'message'):
+                # Redact PII from string values
+                if isinstance(value, str):
+                    value = self._redact_pii(value)
                 log_entry[key] = value
 
         return json.dumps(log_entry)

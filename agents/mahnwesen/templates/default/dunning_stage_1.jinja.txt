@@ -1,0 +1,32 @@
+{%- set company_name = config.company_name or "0Admin" -%}
+{%- set support_email = config.support_email or "support@0admin.com" -%}
+{%- set amount_formatted = "%.2f"|format(notice.amount_decimal) -%}
+{%- set dunning_fee_formatted = "%.2f"|format(notice.dunning_fee_decimal) -%}
+{%- set total_formatted = "%.2f"|format(notice.total_amount_decimal) -%}
+{%- set due_date_formatted = notice.due_date.strftime("%d.%m.%Y") if notice.due_date else "N/A" -%}
+{%- set customer_name = notice.customer_name or "Kunde" -%}
+{%- set invoice_number = notice.invoice_number or notice.invoice_id -%}
+
+Betreff: Zahlungserinnerung - Rechnung {{ invoice_number }}
+
+Sehr geehrte Damen und Herren,
+
+wir möchten Sie freundlich daran erinnern, dass die Rechnung {{ invoice_number }} über {{ amount_formatted }} EUR fällig war.
+
+Fälligkeitsdatum: {{ due_date_formatted }}
+Rechnungsbetrag: {{ amount_formatted }} EUR
+Mahngebühr: {{ dunning_fee_formatted }} EUR
+Gesamtbetrag: {{ total_formatted }} EUR
+Kunde: {{ customer_name }}
+{% if notice.recipient_name %}An: {{ notice.recipient_name }}{% endif %}
+
+Bitte überweisen Sie den ausstehenden Betrag umgehend auf unser Konto. Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{ company_name }}
+
+---
+{{ company_name }}
+{% if config.company_address %}{{ config.company_address }}{% endif %}
+E-Mail: {{ support_email }}
+{% if notice.recipient_email %}An: {{ notice.recipient_email }}{% endif %}

@@ -29,8 +29,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--replace-chunks", action="store_true", default=False)
     p.add_argument("--enforce-invoice", dest="enforce_invoice", action="store_true")
     p.add_argument("--no-enforce-invoice", dest="enforce_invoice", action="store_false")
+    p.add_argument("--enforce-payment", dest="enforce_payment", action="store_true")
+    p.add_argument("--no-enforce-payment", dest="enforce_payment", action="store_false")
+    p.add_argument("--enforce-other", dest="enforce_other", action="store_true")
+    p.add_argument("--no-enforce-other", dest="enforce_other", action="store_false")
+    p.add_argument("--strict", action="store_true", default=False)
     p.set_defaults(upsert=True)
     p.set_defaults(enforce_invoice=True)
+    p.set_defaults(enforce_payment=True)
+    p.set_defaults(enforce_other=True)
     args = p.parse_args(argv)
     try:
         res = run_importer(
@@ -41,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
             upsert=args.upsert,
             replace_chunks=args.replace_chunks,
             enforce_invoice=args.enforce_invoice,
+            enforce_payment=args.enforce_payment,
+            enforce_other=args.enforce_other,
+            strict=args.strict,
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

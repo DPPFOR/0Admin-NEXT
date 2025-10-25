@@ -1,0 +1,89 @@
+{
+  "$id": "urn:0admin:event:dunning_resolved:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dunning Resolved Event",
+  "description": "Event published when a dunning process is resolved (payment received or other resolution)",
+  "type": "object",
+  "required": [
+    "event_id",
+    "tenant_id",
+    "invoice_id",
+    "stage",
+    "resolution",
+    "resolved_at",
+    "correlation_id"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Tenant identifier for multi-tenant isolation"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Identifier of the resolved invoice"
+    },
+    "stage": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "Final dunning stage before resolution"
+    },
+    "resolution": {
+      "type": "string",
+      "enum": [
+        "payment_received",
+        "payment_partial",
+        "payment_plan_agreed",
+        "dispute_resolved",
+        "invoice_cancelled",
+        "customer_contacted",
+        "other"
+      ],
+      "description": "Type of resolution that occurred"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when resolution occurred in RFC3339 format"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID for tracing related events"
+    },
+    "resolution_details": {
+      "type": "string",
+      "description": "Additional details about the resolution (optional)"
+    },
+    "amount_paid": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d{2}$",
+      "description": "Amount actually paid as string with 2 decimal places (optional)"
+    },
+    "payment_reference": {
+      "type": "string",
+      "description": "Reference to the payment transaction (optional)"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "event_id": "550e8400-e29b-41d4-a716-446655440000",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_id": "INV-2024-001",
+      "stage": 2,
+      "resolution": "payment_received",
+      "resolved_at": "2024-01-30T14:45:00Z",
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440001",
+      "resolution_details": "Full payment received via bank transfer",
+      "amount_paid": "155.00",
+      "payment_reference": "TXN-2024-001"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "$id": "urn:0admin:event:dunning_escalated:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dunning Escalated Event",
+  "description": "Event published when a dunning process is escalated to the next stage",
+  "type": "object",
+  "required": [
+    "event_id",
+    "tenant_id",
+    "invoice_id",
+    "from_stage",
+    "to_stage",
+    "channel",
+    "notice_ref",
+    "due_date",
+    "amount",
+    "reason",
+    "escalated_at",
+    "correlation_id"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Tenant identifier for multi-tenant isolation"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Identifier of the overdue invoice"
+    },
+    "from_stage": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "description": "Previous dunning stage"
+    },
+    "to_stage": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 3,
+      "description": "New dunning stage after escalation"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["email", "letter", "sms"],
+      "description": "Communication channel for the escalated dunning notice"
+    },
+    "notice_ref": {
+      "type": "string",
+      "description": "Reference to the generated escalated dunning notice"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Original due date of the invoice in RFC3339 format"
+    },
+    "amount": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d{2}$",
+      "description": "Invoice amount as string with 2 decimal places (e.g., '150.00')"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for escalation (e.g., 'Payment deadline exceeded')"
+    },
+    "escalated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when escalation occurred in RFC3339 format"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID for tracing related events"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "event_id": "550e8400-e29b-41d4-a716-446655440000",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_id": "INV-2024-001",
+      "from_stage": 1,
+      "to_stage": 2,
+      "channel": "email",
+      "notice_ref": "NOTICE-2024-001-ESC",
+      "due_date": "2024-01-15T00:00:00Z",
+      "amount": "150.00",
+      "reason": "Payment deadline exceeded",
+      "escalated_at": "2024-01-25T10:30:00Z",
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440001"
+    }
+  ]
+}

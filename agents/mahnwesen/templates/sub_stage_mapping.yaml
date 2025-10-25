@@ -1,0 +1,5 @@
+# Template Sub-Stage Mapping
+sub_stage-1: "/spec_main_mahnung/sub_stage-1/s0"
+
+# This maps sub-stages to template paths for MVR processing
+# Used by the importer linker to resolve template references

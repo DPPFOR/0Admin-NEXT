@@ -1,0 +1,34 @@
+{%- set company_name = config.company_name or "0Admin" -%}
+{%- set support_email = config.support_email or "support@0admin.com" -%}
+{%- set amount_formatted = "%.2f"|format(notice.amount_decimal) -%}
+{%- set dunning_fee_formatted = "%.2f"|format(notice.dunning_fee_decimal) -%}
+{%- set total_formatted = "%.2f"|format(notice.total_amount_decimal) -%}
+{%- set due_date_formatted = notice.due_date.strftime("%d.%m.%Y") if notice.due_date else "N/A" -%}
+{%- set customer_name = notice.customer_name or "Kunde" -%}
+{%- set invoice_number = notice.invoice_number or notice.invoice_id -%}
+
+Betreff: 2. Mahnung - Rechnung {{ invoice_number }}
+
+Sehr geehrte Damen und Herren,
+
+trotz unserer ersten Zahlungserinnerung ist der Rechnungsbetrag noch nicht bei uns eingegangen.
+
+Rechnung: {{ invoice_number }}
+Fälligkeitsdatum: {{ due_date_formatted }}
+Rechnungsbetrag: {{ amount_formatted }} EUR
+Mahngebühr: {{ dunning_fee_formatted }} EUR
+Gesamtbetrag: {{ total_formatted }} EUR
+Kunde: {{ customer_name }}
+
+Wir bitten Sie, den Gesamtbetrag von {{ total_formatted }} EUR innerhalb von 7 Tagen zu überweisen. Bei weiterer Nichtzahlung behalten wir uns weitere Maßnahmen vor.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{ company_name }}
+
+---
+{{ company_name }}
+{% if config.company_address %}{{ config.company_address }}{% endif %}
+E-Mail: {{ support_email }}
+{% if notice.recipient_email %}An: {{ notice.recipient_email }}{% endif %}

@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--enable-ocr", action="store_true", default=False)
     p.add_argument("--enable-browser", action="store_true", default=False)
     p.add_argument("--trace-id", default=None)
+    p.add_argument("--enable-table-boost", action="store_true", default=False)
+    p.add_argument("--mvr-preview", action="store_true", default=False)
     args = p.parse_args(argv)
 
     try:
@@ -38,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
             trace_id=args.trace_id,
             enable_ocr=args.enable_ocr,
             enable_browser=args.enable_browser,
+            enable_table_boost=args.enable_table_boost,
+            mvr_preview=args.mvr_preview,
         )
     except Exception as e:
         print(str(e), file=sys.stderr)

@@ -29,7 +29,12 @@ def _base_flow() -> dict:
         "invoice_no": "INV-12345",
         "due_date": today.isoformat(),
         "quality": {"valid": True, "issues": []},
-        "flags": {"enable_ocr": False},
+        "flags": {
+            "enable_ocr": False,
+            "enable_browser": False,
+            "enable_table_boost": False,
+            "mvr_preview": False,
+        },
         "extracted": {
             "tables": [
                 {
@@ -48,6 +53,9 @@ def test_mapper_good_invoice_sets_quality():
     assert item.doctype == "invoice"
     assert item.quality_status == "accepted"
     assert item.confidence == Decimal("100.00")
+    assert item.flags.get("enable_ocr") is False
+    assert item.mvr_preview is False
+    assert item.mvr_score is None
     assert item.rules == []
     assert item.amount == Decimal("199.90")
     assert item.invoice_no == "INV-12345"
@@ -81,6 +89,7 @@ def test_mapper_bad_invoice_collects_rules():
 def test_mapper_without_enforcement_keeps_unknown_doctype():
     data = _base_flow()
     item, _ = mapper.artifact_to_dtos(data, enforce_invoice=False)
-    assert item.doctype == "unknown"
-    assert item.quality_status == "accepted"
-    assert item.confidence == Decimal("100.00")
+    assert item.doctype == "other"
+    assert item.quality_status == "needs_review"
+    assert item.confidence == Decimal("50.00")
+    assert item.flags.get("enable_table_boost") is False

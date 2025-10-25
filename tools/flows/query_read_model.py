@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 from backend.apps.inbox.read_model.query import (
     ReadModelError,
     fetch_invoices_latest,
+    fetch_payments_latest,
     fetch_items_needing_review,
     fetch_tenant_summary,
 )
@@ -57,7 +58,12 @@ def _print_pretty_single(item: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Query inbox read-model views (read-only)")
     parser.add_argument("--tenant", required=True, help="Tenant UUID to filter on")
-    parser.add_argument("--what", required=True, choices=("invoices", "review", "summary"), help="Query target")
+    parser.add_argument(
+        "--what",
+        required=True,
+        choices=("invoices", "payments", "review", "summary"),
+        help="Query target",
+    )
     parser.add_argument("--limit", type=int, default=50, help="Pagination limit for list queries")
     parser.add_argument("--offset", type=int, default=0, help="Pagination offset for list queries")
     parser.add_argument("--json", dest="as_json", action="store_true", help="Emit JSON output")
@@ -66,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.what == "invoices":
             items = fetch_invoices_latest(args.tenant, limit=args.limit, offset=args.offset)
+        elif args.what == "payments":
+            items = fetch_payments_latest(args.tenant, limit=args.limit, offset=args.offset)
         elif args.what == "review":
             items = fetch_items_needing_review(args.tenant, limit=args.limit, offset=args.offset)
         else:

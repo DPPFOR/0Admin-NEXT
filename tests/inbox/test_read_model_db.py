@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, text
 
 from backend.apps.inbox.read_model.query import (
     fetch_invoices_latest,
+    fetch_payments_latest,
     fetch_items_needing_review,
     fetch_tenant_summary,
 )
@@ -108,6 +109,8 @@ def _seed_data(engine):
 
     accepted_invoice_id = str(uuid4())
     review_invoice_id = str(uuid4())
+    payment_id = str(uuid4())
+    other_id = str(uuid4())
 
     _reset_tenant(engine, TENANT_ID)
 
@@ -118,10 +121,12 @@ def _seed_data(engine):
                 INSERT INTO inbox_parsed.parsed_items AS pi (
                     id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
                     amount, invoice_no, due_date, quality_flags, payload, rules,
+                    flags, mvr_preview, mvr_score,
                     created_at, updated_at
                 ) VALUES (
                     :id, :tenant_id, :content_hash, 'invoice', 'invoice', 'accepted', :confidence,
                     :amount, :invoice_no, :due_date, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
+                    '{}'::jsonb, false, NULL,
                     :created_at, :updated_at
                 )
                 ON CONFLICT (tenant_id, content_hash)
@@ -136,6 +141,9 @@ def _seed_data(engine):
                     due_date = EXCLUDED.due_date,
                     payload = EXCLUDED.payload,
                     rules = EXCLUDED.rules,
+                    flags = EXCLUDED.flags,
+                    mvr_preview = EXCLUDED.mvr_preview,
+                    mvr_score = EXCLUDED.mvr_score,
                     created_at = EXCLUDED.created_at,
                     updated_at = EXCLUDED.updated_at
                 """
@@ -159,10 +167,12 @@ def _seed_data(engine):
                 INSERT INTO inbox_parsed.parsed_items AS pi (
                     id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
                     amount, invoice_no, due_date, quality_flags, payload, rules,
+                    flags, mvr_preview, mvr_score,
                     created_at, updated_at
                 ) VALUES (
                     :id, :tenant_id, :content_hash, 'invoice', 'invoice', 'needs_review', :confidence,
                     NULL, NULL, NULL, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
+                    '{}'::jsonb, false, NULL,
                     :created_at, :updated_at
                 )
                 ON CONFLICT (tenant_id, content_hash)
@@ -177,6 +187,9 @@ def _seed_data(engine):
                     due_date = EXCLUDED.due_date,
                     payload = EXCLUDED.payload,
                     rules = EXCLUDED.rules,
+                    flags = EXCLUDED.flags,
+                    mvr_preview = EXCLUDED.mvr_preview,
+                    mvr_score = EXCLUDED.mvr_score,
                     created_at = EXCLUDED.created_at,
                     updated_at = EXCLUDED.updated_at
                 """
@@ -217,9 +230,98 @@ def _seed_data(engine):
             },
         )
 
+        payment_payload = json.dumps(
+            {
+                "extracted": {
+                    "payment": {
+                        "amount": "250.00",
+                        "currency": "EUR",
+                        "payment_date": base_time.date().isoformat(),
+                        "counterparty": "ACME Bank",
+                    }
+                }
+            }
+        )
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO inbox_parsed.parsed_items (
+                    id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
+                    amount, invoice_no, due_date, quality_flags, payload, rules,
+                    flags, mvr_preview, mvr_score,
+                    created_at, updated_at
+                ) VALUES (
+                    :id, :tenant_id, :content_hash, 'payment', 'payment', 'accepted', :confidence,
+                    :amount, NULL, :payment_date, '[]'::jsonb, (:payload)::jsonb, '[]'::jsonb,
+                    (:flags)::jsonb, true, :mvr_score,
+                    :created_at, :updated_at
+                )
+                ON CONFLICT (tenant_id, content_hash)
+                DO NOTHING
+                """
+            ),
+            {
+                "id": payment_id,
+                "tenant_id": TENANT_ID,
+                "content_hash": "payment-good-0001",
+                "confidence": Decimal("100.00"),
+                "amount": Decimal("250.00"),
+                "payment_date": base_time.date(),
+                "payload": payment_payload,
+                "flags": json.dumps({"mvr_preview": True, "enable_table_boost": True}),
+                "mvr_score": Decimal("0.00"),
+                "created_at": base_time + timedelta(minutes=2),
+                "updated_at": base_time + timedelta(minutes=2),
+            },
+        )
+
+        other_payload = json.dumps(
+            {
+                "extracted": {
+                    "kv": [
+                        {"key": "Subject", "value": "General correspondence"},
+                        {"key": "Reference", "value": "REF-2025-02"},
+                    ]
+                }
+            }
+        )
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO inbox_parsed.parsed_items (
+                    id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
+                    amount, invoice_no, due_date, quality_flags, payload, rules,
+                    flags, mvr_preview, mvr_score,
+                    created_at, updated_at
+                ) VALUES (
+                    :id, :tenant_id, :content_hash, 'other', 'other', 'needs_review', :confidence,
+                    NULL, NULL, NULL, '[]'::jsonb, (:payload)::jsonb, '[]'::jsonb,
+                    (:flags)::jsonb, false, NULL,
+                    :created_at, :updated_at
+                )
+                ON CONFLICT (tenant_id, content_hash)
+                DO NOTHING
+                """
+            ),
+            {
+                "id": other_id,
+                "tenant_id": TENANT_ID,
+                "content_hash": "other-min-0001",
+                "confidence": Decimal("58.00"),
+                "payload": other_payload,
+                "flags": json.dumps({"enable_table_boost": False}),
+                "created_at": base_time - timedelta(minutes=2),
+                "updated_at": base_time - timedelta(minutes=2),
+            },
+        )
+
     return {
         "accepted_invoice_id": accepted_invoice_id,
         "review_invoice_id": review_invoice_id,
+        "payment_id": payment_id,
+        "other_id": other_id,
         "tenant": TENANT_ID,
     }
 
@@ -241,11 +343,29 @@ def test_read_model_queries():
 
     review_items = fetch_items_needing_review(ids["tenant"])
     assert review_items, "expected at least one item needing review"
-    assert any(str(item.id) == ids["review_invoice_id"] and item.quality_status == "needs_review" for item in review_items)
+    review_ids = {str(item.id): item for item in review_items}
+    assert ids["review_invoice_id"] in review_ids
+    assert review_ids[ids["review_invoice_id"]].quality_status == "needs_review"
+    assert any(item.doc_type == "other" for item in review_items)
+
+    payments = fetch_payments_latest(ids["tenant"])
+    assert payments, "expected payment projection"
+    payment = next(item for item in payments if str(item.id) == ids["payment_id"])
+    assert payment.counterparty == "ACME Bank"
+    assert payment.currency == "EUR"
+    assert payment.quality_status == "accepted"
+    assert payment.flags.get("mvr_preview") is True
+    assert payment.mvr_preview is True
+    assert payment.mvr_score == Decimal("0.00")
 
     summary = fetch_tenant_summary(ids["tenant"])
     assert summary is not None
-    assert summary.cnt_items == 2
+    assert summary.cnt_items == 4
     assert summary.cnt_invoices == 2
-    assert summary.cnt_needing_review == 1
-    assert summary.avg_confidence == pytest.approx((95.0 + 45.0) / 2, rel=1e-3)
+    assert summary.cnt_payments == 1
+    assert summary.cnt_other == 1
+    assert summary.cnt_needing_review == 2
+    expected_avg = (95.0 + 45.0 + 100.0 + 58.0) / 4
+    assert summary.avg_confidence == pytest.approx(expected_avg, rel=1e-3)
+    assert summary.cnt_mvr_preview == 1
+    assert summary.avg_mvr_score == pytest.approx(0.0, rel=1e-3)

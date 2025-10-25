@@ -1,385 +1,337 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/workbench/contrib/tasks/common/tasks.schema.json",
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "MCP Contracts validieren",
-      "type": "process",
-      "command": "python",
-      "args": ["tools/mcp/validate_contracts.py"],
-      "problemMatcher": "$python",
-      "group": "build"
-    },
-    {
-      "label": "MCP Validate (all)",
-      "type": "process",
-      "command": "python",
-      "args": ["tools/mcp/validate_contracts.py"],
-      "problemMatcher": "$python",
-      "group": "build"
-    },
-    {
-      "label": "MCP Smokes ausführen",
-      "type": "process",
-      "command": "pytest",
-      "options": {
-        "env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
-      },
-      "args": ["-q", "backend/mcp/tests/smoke"],
-      "problemMatcher": "$pytest",
-      "group": "test"
-    },
-    {
-      "label": "MCP Smokes (all)",
-      "type": "process",
-      "command": "pytest",
-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
-      "args": ["-q", "backend/mcp/tests/smoke"],
-      "problemMatcher": "$pytest",
-      "group": "test"
-    },
-    {
-      "label": "MCP Tools (tree)",
-      "type": "process",
-      "command": "python",
-      "args": ["tools/mcp/list_tools.py", "--tree"],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "MCP: Start (stdio)",
-      "type": "process",
-      "command": "python",
-      "args": ["-m", "backend.mcp_server"],
-      "options": {
-        "env": {
-          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
-          "ARTIFACTS_DIR": "artifacts",
-          "LOG_LEVEL": "INFO"
-        }
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "MCP: Smokes (offline)",
-      "type": "process",
-      "command": "pytest",
-      "options": {
-        "env": {
-          "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
-          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
-          "ARTIFACTS_DIR": "artifacts/mcp",
-          "LOG_LEVEL": "INFO"
-        }
-      },
-      "args": ["-q", "tests/mcp/test_mcp_server_offline.py"],
-      "problemMatcher": "$pytest",
-      "group": "test"
-    },
-    {
-      "label": "Inbox → MCP Shadow Analysis (sample)",
-      "type": "process",
+      "label": "Mahnwesen: Dry-Run (Flock)",
+      "type": "shell",
       "command": "python",
       "args": [
-        "tools/flows/run_inbox_shadow_for_last_validated.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Inbox Local Flow (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_inbox_local_flow.py",
+        "tools/flock/playbook_mahnwesen.py",
         "--tenant",
         "00000000-0000-0000-0000-000000000001",
-        "--path",
-        "artifacts/inbox/samples/pdf/sample_a.pdf"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Inbox Local Flow (OCR flag only)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_inbox_local_flow.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--path",
-        "artifacts/inbox/samples/pdf/sample_a.pdf",
-        "--enable-ocr",
-        "--enable-table-boost",
-        "--mvr-preview"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Validate DTO Mapping",
-      "type": "process",
-      "command": "pytest",
-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
-      "args": ["-q", "tests/inbox/test_report_to_dto_shape.py"],
-      "problemMatcher": "$pytest",
-      "group": "test"
-    },
-    {
-      "label": "MCP Playwright: Install Chromium",
-      "type": "process",
-      "command": "python",
-      "args": ["-m", "playwright", "install", "chromium"],
-      "problemMatcher": []
-    },
-    {
-      "label": "MCP Playwright: Install All",
-      "type": "process",
-      "command": "python",
-      "args": ["-m", "playwright", "install"],
-      "problemMatcher": []
-    },
-    {
-      "label": "Importer: from artifact (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_importer_from_artifact.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--artifact",
-        "artifacts/inbox_local/samples/sample_result.json",
-        "--dry-run"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Tests: importer",
-      "type": "process",
-      "command": "pytest",
-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
-      "args": ["-q", "tests/inbox/test_importer_*"]
-    },
-    {
-      "label": "Importer: consume outbox (1)",
-      "type": "process",
-      "command": "python",
-      "args": ["tools/flows/run_importer_consume_outbox.py"],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "DB: apply migration (local)",
-      "type": "process",
-      "command": "bash",
-      "args": ["-lc", "psql \"$INBOX_DB_URL\" -f ops/alembic/versions/20251019_inbox_parsed.sql"],
-      "problemMatcher": []
-    },
-    {
-      "label": "DB: upgrade (read model)",
-      "type": "process",
-      "command": "python",
-      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
-      "problemMatcher": []
-    },
-    {
-      "label": "ReadModel: invoices (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/query_read_model.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--what",
-        "invoices",
+        "--dry-run",
         "--limit",
-        "5",
-        "--json"
+        "25"
       ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "ReadModel: review (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/query_read_model.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--what",
-        "review",
-        "--json"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "ReadModel: payments (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/query_read_model.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--what",
-        "payments",
-        "--json"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "ReadModel: summary (sample)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/query_read_model.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--what",
-        "summary",
-        "--json"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Query Read Model (summary w/ flags)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/query_read_model.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--what",
-        "summary",
-        "--json"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Run Read API (uvicorn dev)",
-      "type": "process",
-      "command": "uvicorn",
-      "args": ["backend.app:app", "--reload"],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "API Smokes: read-model",
-      "type": "process",
-      "command": "pytest",
-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "RUN_DB_TESTS": "1"}},
-      "args": ["-q", "tests/inbox/test_read_api_shape.py"],
-      "problemMatcher": "$pytest",
-      "group": "test"
-    },
-    {
-      "label": "Flock Samples (local)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/flock_samples.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--base-url",
-        "http://localhost:8000"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Importer: payment good",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_importer_from_artifact.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--artifact",
-        "artifacts/inbox_local/samples/payment_good.json",
-        "--no-enforce-invoice"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Importer (table-boost)",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_importer_from_artifact.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--artifact",
-        "artifacts/inbox_local/samples/payment_good.json",
-        "--no-enforce-invoice",
-        "--no-upsert"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Importer: payment bad",
-      "type": "process",
-      "command": "python",
-      "args": [
-        "tools/flows/run_importer_from_artifact.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--artifact",
-        "artifacts/inbox_local/samples/payment_bad.json",
-        "--no-enforce-invoice"
-      ],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "DB: apply migration (local)",
-      "type": "process",
-      "command": "python",
-      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
       "problemMatcher": []
     },
     {
-      "label": "Outbox: enqueue sample",
-      "type": "process",
+      "label": "Mahnwesen: DB-Smoke (Flock, RLS-ON)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_flow_smoke_localdb.py"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "RUN_DB_TESTS": "1"
+        }
+      }
+    },
+    {
+      "label": "Mahnwesen: Dry-Run (Go-Live)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--dry-run",
+        "--limit",
+        "50",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "DB: Migrate",
+      "type": "shell",
+      "command": "alembic",
+      "args": [
+        "-c",
+        "alembic.ini",
+        "upgrade",
+        "head"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Inbox: Smoke (offline)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/inbox",
+        "-k",
+        "smoke or idempotent or views or audit or logger"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Inbox: Views check",
+      "type": "shell",
       "command": "python",
       "args": [
         "-c",
-        "from backend.core.outbox.publisher import enqueue_event; print(enqueue_event('InboxItemAnalysisReady', {'tenant_id': '00000000-0000-0000-0000-000000000000', 'item_id': 'demo'}))"
+        "import os; from sqlalchemy import create_engine, text; e = create_engine(os.environ['DATABASE_URL'], future=True); print('Views check:'); with e.begin() as c: v1 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_inbox_by_tenant')).scalar(); v2 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_invoices_latest')).scalar(); print(f'v_inbox_by_tenant: {v1} rows'); print(f'v_invoices_latest: {v2} rows')"
       ],
-      "problemMatcher": "$python"
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
     },
     {
-      "label": "Outbox: consume one",
-      "type": "process",
-      "command": "python",
-      "args": ["tools/flows/outbox_consume_one.py"],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Run API (dev)",
-      "type": "process",
-      "command": "uvicorn",
-      "args": ["backend.app:app", "--reload"],
-      "problemMatcher": "$python"
-    },
-    {
-      "label": "Flock Sample: Invoice Triage",
-      "type": "process",
+      "label": "MVR: Dry-Run (Tenant)",
+      "type": "shell",
       "command": "python",
       "args": [
-        "tools/flock/playbook_invoice_triage.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--base-url",
-        "http://localhost:8000"
+        "-c",
+        "from agents.mahnwesen.playbooks import DunningPlaybook, DunningContext; from agents.mahnwesen.config import DunningConfig; config = DunningConfig.from_tenant('00000000-0000-0000-0000-000000000001'); context = DunningContext(tenant_id='00000000-0000-0000-0000-000000000001', correlation_id='test-dry-run', dry_run=True, config=config); playbook = DunningPlaybook(config); result = playbook.run_once(context); print(f'Dry-run result: {result.notices_created} notices, {result.events_dispatched} events')"
       ],
-      "problemMatcher": "$python"
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
     },
     {
-      "label": "Flock Sample: Payment Recap",
-      "type": "process",
+      "label": "MVR: Templates Validate",
+      "type": "shell",
       "command": "python",
       "args": [
-        "tools/flock/playbook_payment_recap.py",
-        "--tenant",
-        "00000000-0000-0000-0000-000000000001",
-        "--base-url",
-        "http://localhost:8000"
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_templates_*",
+        "-v"
       ],
-      "problemMatcher": "$python"
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Dispatch Dry-Run (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_dispatch_*",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: MVR Preview (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--preview",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Approve (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--approve",
+        "${input:noticeId}",
+        "--comment",
+        "${input:approvalComment}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Live Send (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--live",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Daily KPIs (All Tenants)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--report-daily",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "tenantId",
+      "type": "promptString",
+      "description": "Tenant ID (UUID)",
+      "default": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "noticeId",
+      "type": "promptString",
+      "description": "Notice ID"
+    },
+    {
+      "id": "approvalComment",
+      "type": "promptString",
+      "description": "Approval/Rejection Comment (required)"
     }
   ]
 }

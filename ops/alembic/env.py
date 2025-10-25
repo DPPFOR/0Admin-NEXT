@@ -35,9 +35,11 @@ naming_convention = {
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+from backend.apps.inbox.importer.worker import _METADATA as inbox_metadata
+from backend.core.outbox.publisher import _METADATA as outbox_metadata
+
+# Combine all metadata objects
+target_metadata = [inbox_metadata, outbox_metadata]
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

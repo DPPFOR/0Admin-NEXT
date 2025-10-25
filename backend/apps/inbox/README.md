@@ -22,3 +22,8 @@ Das Inbox-Modul verwaltet eingehende Dokumente und deren Verarbeitung.
 - DTOs + SQLAlchemy-Queries sowie CLI unter `tools/flows/query_read_model.py`.
 - Dokumentation & Sicherheits-Hinweise: `docs/inbox/read_model.md`.
 - API-Endpunkte siehe `docs/inbox/read_api.md`.
+
+## Flock Enablement (read-only)
+
+- Read-API + Client-Dokumentation: `docs/inbox/flock_enablement.md`.
+- Beispiel-Playbooks und VS Code Tasks unter `tools/flock/`.

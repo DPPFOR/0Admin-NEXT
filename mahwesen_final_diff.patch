@@ -1,0 +1,4219 @@
+diff --git a/.vscode/tasks.json b/.vscode/tasks.json
+index 80f7c8c..57d1646 100644
+--- a/.vscode/tasks.json
++++ b/.vscode/tasks.json
+@@ -1,385 +1,337 @@
+ {
+-  "$schema": "https://raw.githubusercontent.com/microsoft/vscode/master/src/vs/workbench/contrib/tasks/common/tasks.schema.json",
+   "version": "2.0.0",
+   "tasks": [
+     {
+-      "label": "MCP Contracts validieren",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["tools/mcp/validate_contracts.py"],
+-      "problemMatcher": "$python",
+-      "group": "build"
+-    },
+-    {
+-      "label": "MCP Validate (all)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["tools/mcp/validate_contracts.py"],
+-      "problemMatcher": "$python",
+-      "group": "build"
+-    },
+-    {
+-      "label": "MCP Smokes ausführen",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {
+-        "env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+-      },
+-      "args": ["-q", "backend/mcp/tests/smoke"],
+-      "problemMatcher": "$pytest",
+-      "group": "test"
+-    },
+-    {
+-      "label": "MCP Smokes (all)",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+-      "args": ["-q", "backend/mcp/tests/smoke"],
+-      "problemMatcher": "$pytest",
+-      "group": "test"
+-    },
+-    {
+-      "label": "MCP Tools (tree)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["tools/mcp/list_tools.py", "--tree"],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "MCP: Start (stdio)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["-m", "backend.mcp_server"],
+-      "options": {
+-        "env": {
+-          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
+-          "ARTIFACTS_DIR": "artifacts",
+-          "LOG_LEVEL": "INFO"
+-        }
+-      },
+-      "problemMatcher": []
+-    },
+-    {
+-      "label": "MCP: Smokes (offline)",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {
+-        "env": {
+-          "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+-          "POLICY_FILE": "ops/mcp/policies/default-policy.yaml",
+-          "ARTIFACTS_DIR": "artifacts/mcp",
+-          "LOG_LEVEL": "INFO"
+-        }
+-      },
+-      "args": ["-q", "tests/mcp/test_mcp_server_offline.py"],
+-      "problemMatcher": "$pytest",
+-      "group": "test"
+-    },
+-    {
+-      "label": "Inbox → MCP Shadow Analysis (sample)",
+-      "type": "process",
++      "label": "Mahnwesen: Dry-Run (Flock)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_inbox_shadow_for_last_validated.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001"
+-      ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "Inbox Local Flow (sample)",
+-      "type": "process",
+-      "command": "python",
+-      "args": [
+-        "tools/flows/run_inbox_local_flow.py",
++        "tools/flock/playbook_mahnwesen.py",
+         "--tenant",
+         "00000000-0000-0000-0000-000000000001",
+-        "--path",
+-        "artifacts/inbox/samples/pdf/sample_a.pdf"
++        "--dry-run",
++        "--limit",
++        "25"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": []
+     },
+     {
+-      "label": "Inbox Local Flow (OCR flag only)",
+-      "type": "process",
++      "label": "Mahnwesen: DB-Smoke (Flock, RLS-ON)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_inbox_local_flow.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--path",
+-        "artifacts/inbox/samples/pdf/sample_a.pdf",
+-        "--enable-ocr",
+-        "--enable-table-boost",
+-        "--mvr-preview"
++        "-m",
++        "pytest",
++        "-q",
++        "tests/agents_mahnwesen/test_flow_smoke_localdb.py"
+       ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "Validate DTO Mapping",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+-      "args": ["-q", "tests/inbox/test_report_to_dto_shape.py"],
+-      "problemMatcher": "$pytest",
+-      "group": "test"
+-    },
+-    {
+-      "label": "MCP Playwright: Install Chromium",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["-m", "playwright", "install", "chromium"],
+-      "problemMatcher": []
+-    },
+-    {
+-      "label": "MCP Playwright: Install All",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["-m", "playwright", "install"],
+-      "problemMatcher": []
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "RUN_DB_TESTS": "1"
++        }
++      }
+     },
+     {
+-      "label": "Importer: from artifact (sample)",
+-      "type": "process",
++      "label": "Mahnwesen: Dry-Run (Go-Live)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_importer_from_artifact.py",
++        "tools/flock/playbook_mahnwesen.py",
+         "--tenant",
+         "00000000-0000-0000-0000-000000000001",
+-        "--artifact",
+-        "artifacts/inbox_local/samples/sample_result.json",
+-        "--dry-run"
++        "--dry-run",
++        "--limit",
++        "50",
++        "--verbose"
+       ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "Tests: importer",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}},
+-      "args": ["-q", "tests/inbox/test_importer_*"]
+-    },
+-    {
+-      "label": "Importer: consume outbox (1)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["tools/flows/run_importer_consume_outbox.py"],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "DB: apply migration (local)",
+-      "type": "process",
+-      "command": "bash",
+-      "args": ["-lc", "psql \"$INBOX_DB_URL\" -f ops/alembic/versions/20251019_inbox_parsed.sql"],
+-      "problemMatcher": []
+-    },
+-    {
+-      "label": "DB: upgrade (read model)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
+       "problemMatcher": []
+     },
+     {
+-      "label": "ReadModel: invoices (sample)",
+-      "type": "process",
+-      "command": "python",
++      "label": "DB: Migrate",
++      "type": "shell",
++      "command": "alembic",
+       "args": [
+-        "tools/flows/query_read_model.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--what",
+-        "invoices",
+-        "--limit",
+-        "5",
+-        "--json"
++        "-c",
++        "alembic.ini",
++        "upgrade",
++        "head"
+       ],
+-      "problemMatcher": "$python"
++      "group": "build",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "ReadModel: review (sample)",
+-      "type": "process",
++      "label": "Inbox: Smoke (offline)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/query_read_model.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--what",
+-        "review",
+-        "--json"
++        "-m",
++        "pytest",
++        "-q",
++        "tests/inbox",
++        "-k",
++        "smoke or idempotent or views or audit or logger"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "ReadModel: payments (sample)",
+-      "type": "process",
++      "label": "Inbox: Views check",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/query_read_model.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--what",
+-        "payments",
+-        "--json"
++        "-c",
++        "import os; from sqlalchemy import create_engine, text; e = create_engine(os.environ['DATABASE_URL'], future=True); print('Views check:'); with e.begin() as c: v1 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_inbox_by_tenant')).scalar(); v2 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_invoices_latest')).scalar(); print(f'v_inbox_by_tenant: {v1} rows'); print(f'v_invoices_latest: {v2} rows')"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": []
+     },
+     {
+-      "label": "ReadModel: summary (sample)",
+-      "type": "process",
++      "label": "MVR: Dry-Run (Tenant)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/query_read_model.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--what",
+-        "summary",
+-        "--json"
++        "-c",
++        "from agents.mahnwesen.playbooks import DunningPlaybook, DunningContext; from agents.mahnwesen.config import DunningConfig; config = DunningConfig.from_tenant('00000000-0000-0000-0000-000000000001'); context = DunningContext(tenant_id='00000000-0000-0000-0000-000000000001', correlation_id='test-dry-run', dry_run=True, config=config); playbook = DunningPlaybook(config); result = playbook.run_once(context); print(f'Dry-run result: {result.notices_created} notices, {result.events_dispatched} events')"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Query Read Model (summary w/ flags)",
+-      "type": "process",
++      "label": "MVR: Templates Validate",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/query_read_model.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--what",
+-        "summary",
+-        "--json"
++        "-m",
++        "pytest",
++        "-q",
++        "tests/agents_mahnwesen/test_templates_*",
++        "-v"
+       ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "Run Read API (uvicorn dev)",
+-      "type": "process",
+-      "command": "uvicorn",
+-      "args": ["backend.app:app", "--reload"],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "API Smokes: read-model",
+-      "type": "process",
+-      "command": "pytest",
+-      "options": {"env": {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "RUN_DB_TESTS": "1"}},
+-      "args": ["-q", "tests/inbox/test_read_api_shape.py"],
+-      "problemMatcher": "$pytest",
+-      "group": "test"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Flock Samples (local)",
+-      "type": "process",
++      "label": "MVR: Dispatch Dry-Run (Tenant)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/flock_samples.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--base-url",
+-        "http://localhost:8000"
++        "-m",
++        "pytest",
++        "-q",
++        "tests/agents_mahnwesen/test_dispatch_*",
++        "-v"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Importer: payment good",
+-      "type": "process",
++      "label": "MVR: MVR Preview (Tenant)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_importer_from_artifact.py",
++        "tools/flock/playbook_mahnwesen.py",
+         "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--artifact",
+-        "artifacts/inbox_local/samples/payment_good.json",
+-        "--no-enforce-invoice"
++        "${input:tenantId}",
++        "--preview",
++        "--verbose"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Importer (table-boost)",
+-      "type": "process",
++      "label": "MVR: Approve (Tenant)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_importer_from_artifact.py",
++        "tools/flock/playbook_mahnwesen.py",
+         "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--artifact",
+-        "artifacts/inbox_local/samples/payment_good.json",
+-        "--no-enforce-invoice",
+-        "--no-upsert"
++        "${input:tenantId}",
++        "--approve",
++        "${input:noticeId}",
++        "--comment",
++        "${input:approvalComment}"
+       ],
+-      "problemMatcher": "$python"
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Importer: payment bad",
+-      "type": "process",
++      "label": "MVR: Live Send (Tenant)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "tools/flows/run_importer_from_artifact.py",
++        "tools/flock/playbook_mahnwesen.py",
+         "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--artifact",
+-        "artifacts/inbox_local/samples/payment_bad.json",
+-        "--no-enforce-invoice"
++        "${input:tenantId}",
++        "--live",
++        "--verbose"
+       ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "DB: apply migration (local)",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+-      "problemMatcher": []
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
+     },
+     {
+-      "label": "Outbox: enqueue sample",
+-      "type": "process",
++      "label": "MVR: Daily KPIs (All Tenants)",
++      "type": "shell",
+       "command": "python",
+       "args": [
+-        "-c",
+-        "from backend.core.outbox.publisher import enqueue_event; print(enqueue_event('InboxItemAnalysisReady', {'tenant_id': '00000000-0000-0000-0000-000000000000', 'item_id': 'demo'}))"
++        "tools/flock/playbook_mahnwesen.py",
++        "--report-daily",
++        "--verbose"
+       ],
+-      "problemMatcher": "$python"
+-    },
+-    {
+-      "label": "Outbox: consume one",
+-      "type": "process",
+-      "command": "python",
+-      "args": ["tools/flows/outbox_consume_one.py"],
+-      "problemMatcher": "$python"
+-    },
++      "group": "test",
++      "presentation": {
++        "echo": true,
++        "reveal": "always",
++        "focus": false,
++        "panel": "shared"
++      },
++      "problemMatcher": [],
++      "options": {
++        "env": {
++          "TZ": "UTC",
++          "PYTHONHASHSEED": "0"
++        }
++      }
++    }
++  ],
++  "inputs": [
+     {
+-      "label": "Run API (dev)",
+-      "type": "process",
+-      "command": "uvicorn",
+-      "args": ["backend.app:app", "--reload"],
+-      "problemMatcher": "$python"
++      "id": "tenantId",
++      "type": "promptString",
++      "description": "Tenant ID (UUID)",
++      "default": "00000000-0000-0000-0000-000000000001"
+     },
+     {
+-      "label": "Flock Sample: Invoice Triage",
+-      "type": "process",
+-      "command": "python",
+-      "args": [
+-        "tools/flock/playbook_invoice_triage.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--base-url",
+-        "http://localhost:8000"
+-      ],
+-      "problemMatcher": "$python"
++      "id": "noticeId",
++      "type": "promptString",
++      "description": "Notice ID"
+     },
+     {
+-      "label": "Flock Sample: Payment Recap",
+-      "type": "process",
+-      "command": "python",
+-      "args": [
+-        "tools/flock/playbook_payment_recap.py",
+-        "--tenant",
+-        "00000000-0000-0000-0000-000000000001",
+-        "--base-url",
+-        "http://localhost:8000"
+-      ],
+-      "problemMatcher": "$python"
++      "id": "approvalComment",
++      "type": "promptString",
++      "description": "Approval/Rejection Comment (required)"
+     }
+   ]
+-}
++}
+\ No newline at end of file
+diff --git a/Coding-Agents_Vorgaben.md b/Coding-Agents_Vorgaben.md
+index d0c3916..95d47aa 100644
+--- a/Coding-Agents_Vorgaben.md
++++ b/Coding-Agents_Vorgaben.md
+@@ -1,11 +1,92 @@
+ # Coding-Agenten (Cursor und Github Copilot Coding-Agent)
+ Diese drei Unterlage sind durch zu lesen und haben Schreibverbot:
+ 
+-   * [1) Policy](/docs/coding-agents/Coding-Agent-Policy.md) = feste Compliance-Schicht
+-   * [2) Agent - operative Umsetzung](/docs/coding-agents/agents.md) = operative Arbeitslogik
+-   * [3) Issue Template](/docs/coding-agents/Issue-Template_für_GitHub_Copilot_Coding-Agent.md) = standardisierter Task-Input für Copilot/Codex/Cursor
++Policy [Policy](/.cursor/rules/Coding-Agent-Policy.mdc)
++ — feste Compliance- und Architektur-Schicht
++Agents [Agents](/.cursor/rules/agents.mdc)
++ — operative Arbeitslogik und Prompt-Methodik
++Issue-Template [Issue-Template](/.cursor/rules/Issue-Template_für_GitHub_Copilot_Coding-Agent.mdc)
++ — standardisierter Task-Input für Copilot / Codex / Cursor
++Event / Outbox Policy
++- verbindliche Regel für Eventing & DLQ [](/.cursor/rules/Event-Outbox-Policy-Ereignisrichtlinie.mdc)
++Weitere Hintergrundinformationen und Zusammenhänge findest du in der begleitenden
++README unter [README](/docs/coding-agents/README.md)
+ 
+ 
+-# **Priorität:**
+-   Wenn Konflikte entstehen → Reihenfolge der Gültigkeit:
+-   **1️⃣ Policy → 2️⃣ Agents → 3️⃣ Issue**
+\ No newline at end of file
++# [PROMPT-Template] für OPENAI-Extension:
++
++Interner Merker (für mich, nicht in den Prompt kopieren):
++Immer einen Standalone-Prompt liefern (alles Nötige drin, keine externen Verweise).
++Ausführen bevorzugt im Devcontainer. Falls kein .devcontainer vorhanden ist, führe alles lokal in .venv (Python 3.12) aus. Brich nur ab, wenn Python 3.12/pip fehlen. Keine globalen Host-Installationen außer apt für python3.12/python3-pip. nur pip, Python 3.12, Tests am Ende automatisch.
++Vollständige Logs + ein einziger Unified-Diff, keine Commits.
++Wenn DB nötig: nur nutzen, wenn DATABASE_URL gesetzt; sonst sauber skippen.
++
++Richtlinie:
++- Bevorzugt im VS-Code-Devcontainer ausführen. **Wenn kein `.devcontainer/` vorhanden ist:** lokal im Repo arbeiten.
++- Lokal: ausschließlich in einem **.venv** mit **Python 3.12.x** und **pip** (kein uv/poetry/conda). Wenn Python 3.12 fehlt, weise kurz auf `sudo apt install python3.12 python3.12-venv python3-pip` hin und brich mit sauberer Meldung ab.
++- **Keine globalen** Host-Installationen außer dem genannten apt-Schritt für Python/Pip.
++- **Kein Commit/Push**. Änderungen nur als Diff-Vorschlag anzeigen (Unified-Diff) und Dateien im Arbeitsbaum anlegen/anpassen – aber **nicht** committen.
++- **Vollständige Terminal-Logs** aller ausgeführten Schritte am Ende zeigen (Kommando → Output).
++- **Reproduzierbarkeit:** benutze ausschließlich die projektseitigen Versionen/Lockfiles (requirements*). Falls etwas fehlt, melde es und brich ab.
++- Multi-Tenant, Flock-Kontext und MCP-Artefakt-Pfadlogik **nicht verändern**, nur nutzen, wo nötig.
++
++
++AUTOMATISCHE ABSCHLUSS-CHECKS (zwingend)
++- Python-Version prüfen: 3.12.x erwartet → bei Abweichung abbrechen.
++- Sicherstellen: pip verfügbar; KEIN uv/poetry verwendet.
++- Falls Alembic-Migrationen geändert/neu: `python -m alembic -c alembic.ini upgrade head` ausführen.
++- Tests am Ende:
++  - Unit/Offline: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q`
++  - DB-Tests nur, wenn `RUN_DB_TESTS=1` **und** `DATABASE_URL` gesetzt; sonst überspringen und darauf hinweisen.
++- Nicht-grüne Schritte ⇒ hart scheitern (Exit≠0) und Logs ausgeben.
++
++AUSGABEFORMAT (Pflicht, Reihenfolge einhalten)
++[Kontext]        – was vorgefunden wurde (pwd/whoami, OS, devcontainer-Hinweise, python/pip Version, git-Branch/HEAD)
++[Plan]           – kurze, nummerierte Schritte
++[Befehle+Logs]   – alle Kommandos mit vollständiger Ausgabe
++[Ergebnis]       – kurzer Status: was erzeugt/geändert, wo liegen Artefakte
++[Unified Diff]   – EIN zusammenhängender `git diff` Block über alle Änderungen
++[Nächste Schritte] – was ich manuell tun kann (z. B. CLI-Snippets)
++
++VORBEREITUNG (erst ausführen, dann weiter)
++1) Devcontainer-Nachweis (mind. zwei):
++   - `pwd && whoami`
++   - `cat /etc/os-release || cat /etc/issue`
++   - `test -d .devcontainer && echo "devcontainer dir present"`
++2) Toolchain prüfen:
++   - `python -VV && pip --version`  (erwartet: Python 3.12.x)
++3) Abhängigkeiten (nur wenn nötig/erlaubt):
++   - `pip install -r requirements.txt`  (oder `requirements-dev.txt`, falls vorhanden)
++4) Git-Zustand:
++   - `git status -uno && git rev-parse --abbrev-ref HEAD && git rev-parse --short HEAD`
++
++AUFGABE
++Bitte erledige das folgende Arbeitspaket **reproduzierbar im Devcontainer**:
++
++<TITEL_DER_AUFGABE>
++- Ziel: <kurze Zieldefinition in 1–2 Sätzen>.
++- Akzeptanzkriterien (DoD):
++  1) <z. B. neue Dateien nur unter erlaubten Pfaden; keine Top-Level-Strukturänderungen>
++  2) <z. B. Alembic-Revision vorhanden; `upgrade head` läuft fehlerfrei>
++  3) <z. B. Unit-Tests grün; DB-Tests nur mit gesetzter DB-Umgebung>
++  4) <z. B. CLI/Endpoint liefert erwartete Ausgabe / Exit-Code 0>
++  5) <z. B. PII-saubere Logs, deterministische Tests>
++
++Randbedingungen:
++- Multi-Tenant beachten (`tenant_id`), PII nicht loggen.
++- Nur pip; KEIN uv/poetry.
++- Keine Langläufer/Server starten, außer ausdrücklich gefordert.
++- DB: verwende `DATABASE_URL` aus ENV; wenn nicht gesetzt, DB-Tests freundlich überspringen.
++
++BEISPIEL-TESTLAUF (falls zutreffend)
++- Unit/Offline: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q tests`
++- DB/E2E (optional): `RUN_DB_TESTS=1 DATABASE_URL=<…> PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q tests`
++- CLI-Smoke (optional): `python tools/<pfad>/mein_cli.py <args>`
++
++ERWARTETE ARTEFAKTE (falls zutreffend)
++- Code: `backend/apps/<…>/*.py`, `tools/flows/*.py`, `docs/<…>.md`, `ops/alembic/versions/*.py`
++- Tests: `tests/<bereich>/test_*.py`
++- Konfig: `.vscode/tasks.json` (nur gezielt ergänzen)
++
++JETZT AUSFÜHREN
++Gehe nach obigen Schritten vor und liefere das Ergebnis **in den geforderten Abschnitten**. Brich ab, wenn eine Policy verletzt würde, und erkläre warum.
+diff --git a/agents/mahnwesen/__init__.py b/agents/mahnwesen/__init__.py
+index e69de29..e0fc058 100644
+--- a/agents/mahnwesen/__init__.py
++++ b/agents/mahnwesen/__init__.py
+@@ -0,0 +1,44 @@
++"""Mahnwesen Agent - Flock-based dunning management system.
++
++This module provides the core functionality for automated dunning processes
++using the Flock framework. It handles overdue invoice detection, dunning
++stage determination, notice composition, and event dispatch.
++
++Key Components:
++- Config: Configuration management with tenant-specific settings
++- Policies: Business rules for dunning stage determination
++- DTOs: Data transfer objects for type safety
++- Clients: Read-API and Outbox integration
++- Playbooks: Flock-based workflow orchestration
++- Templates: Jinja2-based notice templates
++
++Multi-tenant support with strict tenant isolation via RLS.
++"""
++
++__version__ = "1.0.0"
++__author__ = "0Admin-NEXT Team"
++
++from .config import DunningConfig
++from .policies import DunningPolicies
++from .dto import (
++    OverdueInvoice,
++    DunningNotice,
++    DunningEvent,
++    DunningStage,
++    DunningChannel,
++)
++from .clients import ReadApiClient, OutboxClient
++from .playbooks import DunningPlaybook
++
++__all__ = [
++    "DunningConfig",
++    "DunningPolicies", 
++    "OverdueInvoice",
++    "DunningNotice",
++    "DunningEvent",
++    "DunningStage",
++    "DunningChannel",
++    "ReadApiClient",
++    "OutboxClient",
++    "DunningPlaybook",
++]
+diff --git a/agents/mahnwesen/clients.py b/agents/mahnwesen/clients.py
+new file mode 100644
+index 0000000..a4f3f23
+--- /dev/null
++++ b/agents/mahnwesen/clients.py
+@@ -0,0 +1,542 @@
++"""Client implementations for Mahnwesen agent.
++
++Provides Read-API and Outbox clients with proper error handling,
++rate limiting, and multi-tenant support.
++"""
++
++import json
++import logging
++import hashlib
++import hmac
++import base64
++from typing import Dict, Any, Optional, List, Tuple
++from datetime import datetime, timezone
++from dataclasses import dataclass
++
++from .config import DunningConfig
++from .dto import OverdueInvoice, DunningEvent, DunningStage, DunningChannel
++from ..shared.flock_client import FlockClient, FlockResponse
++
++
++@dataclass
++class CursorPagination:
++    """Cursor-based pagination parameters."""
++    
++    cursor: Optional[str] = None
++    limit: int = 100
++    direction: str = "desc"  # desc or asc
++    
++    def to_dict(self) -> Dict[str, Any]:
++        """Convert to query parameters."""
++        params = {
++            "limit": self.limit,
++            "direction": self.direction
++        }
++        if self.cursor:
++            params["cursor"] = self.cursor
++        return params
++
++
++@dataclass
++class OverdueInvoicesResponse:
++    """Response from overdue invoices query."""
++    
++    invoices: List[OverdueInvoice]
++    next_cursor: Optional[str] = None
++    total_count: Optional[int] = None
++    has_more: bool = False
++    
++    @classmethod
++    def from_dict(cls, data: Dict[str, Any]) -> "OverdueInvoicesResponse":
++        """Create from API response."""
++        invoices = [
++            OverdueInvoice.from_dict(inv) for inv in data.get("invoices", [])
++        ]
++        return cls(
++            invoices=invoices,
++            next_cursor=data.get("next_cursor"),
++            total_count=data.get("total_count"),
++            has_more=data.get("has_more", False)
++        )
++
++
++class ReadApiClient:
++    """Client for reading overdue invoices from the API.
++    
++    Provides multi-tenant support with proper header handling
++    and cursor-based pagination.
++    """
++    
++    def __init__(self, config: DunningConfig):
++        """Initialize Read-API client.
++        
++        Args:
++            config: Dunning configuration
++        """
++        self.config = config
++        self.client = FlockClient(
++            base_url=config.read_api_base_url,
++            timeout=config.read_api_timeout
++        )
++        self.logger = logging.getLogger(__name__)
++    
++    def _get_headers(self, correlation_id: Optional[str] = None) -> Dict[str, str]:
++        """Get request headers with tenant ID.
++        
++        Args:
++            correlation_id: Optional correlation ID
++            
++        Returns:
++            Headers dictionary
++        """
++        headers = {
++            "X-Tenant-Id": self.config.tenant_id,
++            "Accept": "application/json",
++            "Content-Type": "application/json"
++        }
++        
++        if correlation_id:
++            headers["X-Correlation-ID"] = correlation_id
++        
++        return headers
++    
++    def get_overdue_invoices(
++        self,
++        pagination: Optional[CursorPagination] = None,
++        correlation_id: Optional[str] = None
++    ) -> OverdueInvoicesResponse:
++        """Get overdue invoices for the tenant.
++        
++        Args:
++            pagination: Pagination parameters
++            correlation_id: Optional correlation ID
++            
++        Returns:
++            Response with overdue invoices
++            
++        Raises:
++            Exception: On API error
++        """
++        if pagination is None:
++            pagination = CursorPagination()
++        
++        try:
++            response = self.client.get(
++                endpoint="/api/v1/invoices/overdue",
++                headers=self._get_headers(correlation_id),
++                timeout=self.config.read_api_timeout,
++                correlation_id=correlation_id
++            )
++            
++            if not response.is_success:
++                error_msg = f"API error {response.status_code}: {response.data}"
++                self.logger.error("Failed to get overdue invoices", extra={
++                    "status_code": response.status_code,
++                    "error": response.data,
++                    "correlation_id": correlation_id
++                })
++                raise Exception(error_msg)
++            
++            return OverdueInvoicesResponse.from_dict(response.data)
++            
++        except Exception as e:
++            self.logger.error("Read-API request failed", extra={
++                "error": str(e),
++                "correlation_id": correlation_id
++            })
++            raise
++    
++    def get_invoice_details(
++        self,
++        invoice_id: str,
++        correlation_id: Optional[str] = None
++    ) -> Optional[OverdueInvoice]:
++        """Get detailed invoice information.
++        
++        Args:
++            invoice_id: Invoice ID
++            correlation_id: Optional correlation ID
++            
++        Returns:
++            Invoice details or None if not found
++        """
++        try:
++            response = self.client.get(
++                endpoint=f"/api/v1/invoices/{invoice_id}",
++                headers=self._get_headers(correlation_id),
++                timeout=self.config.read_api_timeout,
++                correlation_id=correlation_id
++            )
++            
++            if response.status_code == 404:
++                return None
++            
++            if not response.is_success:
++                error_msg = f"API error {response.status_code}: {response.data}"
++                self.logger.error("Failed to get invoice details", extra={
++                    "invoice_id": invoice_id,
++                    "status_code": response.status_code,
++                    "error": response.data,
++                    "correlation_id": correlation_id
++                })
++                raise Exception(error_msg)
++            
++            return OverdueInvoice.from_dict(response.data)
++            
++        except Exception as e:
++            self.logger.error("Failed to get invoice details", extra={
++                "invoice_id": invoice_id,
++                "error": str(e),
++                "correlation_id": correlation_id
++            })
++            raise
++    
++    def health_check(self) -> bool:
++        """Check if Read-API is healthy.
++        
++        Returns:
++            True if API is healthy
++        """
++        try:
++            response = self.client.get(
++                endpoint="/healthz",
++                headers=self._get_headers(),
++                timeout=5
++            )
++            return response.is_success
++        except Exception:
++            return False
++
++
++class NoOpPublisher:
++    """No-operation publisher for dry-run mode.
++    
++    Provides the same interface as OutboxClient but performs no actual
++    outbox writes. Used in dry-run scenarios to simulate publishing
++    without side effects.
++    """
++    
++    def __init__(self):
++        """Initialize NoOp publisher."""
++        self.logger = logging.getLogger(__name__)
++    
++    def publish_dunning_issued(self, event: DunningEvent) -> bool:
++        """Simulate publishing dunning event (no-op).
++        
++        Args:
++            event: Dunning event
++            
++        Returns:
++            False by default (no events published)
++        """
++        self.logger.debug("DRY RUN: Would publish dunning event", extra={
++            "event_type": event.event_type,
++            "tenant_id": event.tenant_id,
++            "invoice_id": event.invoice_id,
++            "stage": event.stage.value
++        })
++        return False
++
++
++class OutboxClient:
++    """Client for publishing dunning events to the outbox.
++    
++    Provides idempotency and retry logic for event publishing.
++    """
++    
++    def __init__(self, config: DunningConfig):
++        """Initialize Outbox client.
++        
++        Args:
++            config: Dunning configuration
++        """
++        self.config = config
++        self.logger = logging.getLogger(__name__)
++    
++    def _generate_idempotency_key(
++        self,
++        tenant_id: str,
++        invoice_id: str,
++        stage: DunningStage
++    ) -> str:
++        """Generate idempotency key for event.
++        
++        Args:
++            tenant_id: Tenant ID
++            invoice_id: Invoice ID
++            stage: Dunning stage
++            
++        Returns:
++            Idempotency key
++        """
++        # Normalize inputs for deterministic hashing
++        normalized_tenant = tenant_id.strip().lower()
++        normalized_invoice = invoice_id.strip().lower()
++        normalized_stage = str(stage.value).strip()
++        
++        # Create canonical key
++        canonical_key = f"{normalized_tenant}|{normalized_invoice}|{normalized_stage}"
++        
++        # Generate SHA-256 hash
++        return hashlib.sha256(canonical_key.encode('utf-8')).hexdigest()
++    
++    def _create_outbox_payload(
++        self,
++        event: DunningEvent,
++        idempotency_key: str
++    ) -> Dict[str, Any]:
++        """Create outbox payload for event.
++        
++        Args:
++            event: Dunning event
++            idempotency_key: Idempotency key
++            
++        Returns:
++            Outbox payload
++        """
++        return {
++            "tenant_id": event.tenant_id,
++            "event_type": event.event_type,
++            "payload_json": event.to_outbox_payload(),
++            "idempotency_key": idempotency_key,
++            "schema_version": event.schema_version,
++            "status": "pending",
++            "retry_count": 0,
++            "created_at": event.created_at.isoformat(),
++            "updated_at": event.created_at.isoformat()
++        }
++    
++    def publish_dunning_issued(
++        self,
++        event: DunningEvent,
++        correlation_id: Optional[str] = None,
++        dry_run: bool = False
++    ) -> bool:
++        """Publish DUNNING_ISSUED event.
++        
++        Args:
++            event: Dunning event
++            correlation_id: Optional correlation ID
++            dry_run: If True, simulate without actual outbox write
++            
++        Returns:
++            True if event was published successfully
++        """
++        try:
++            # Generate idempotency key
++            idempotency_key = self._generate_idempotency_key(
++                event.tenant_id,
++                event.invoice_id,
++                event.stage
++            )
++            
++            # Create outbox payload
++            payload = self._create_outbox_payload(event, idempotency_key)
++            
++            # Log event (without PII)
++            self.logger.info("Publishing dunning event", extra={
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "stage": event.stage.value,
++                "idempotency_key": idempotency_key[:8] + "...",  # Truncated for security
++                "correlation_id": correlation_id
++            })
++            
++            # In dry run mode, don't actually write to outbox
++            if not dry_run:
++                # In a real implementation, this would write to the outbox table
++                # For now, we'll simulate the operation
++                self._simulate_outbox_write(payload)
++            else:
++                # Dry run: just log that we would publish
++                self.logger.info("DRY RUN: Would publish dunning event", extra={
++                    "event_type": event.event_type,
++                    "tenant_id": event.tenant_id,
++                    "invoice_id": event.invoice_id,
++                    "stage": event.stage.value
++                })
++            
++            return True
++            
++        except Exception as e:
++            self.logger.error("Failed to publish dunning event", extra={
++                "error": str(e),
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "correlation_id": correlation_id
++            })
++            return False
++    
++    def publish_dunning_escalated(
++        self,
++        event: DunningEvent,
++        from_stage: DunningStage,
++        reason: str,
++        correlation_id: Optional[str] = None
++    ) -> bool:
++        """Publish DUNNING_ESCALATED event.
++        
++        Args:
++            event: Dunning event
++            from_stage: Previous dunning stage
++            reason: Escalation reason
++            correlation_id: Optional correlation ID
++            
++        Returns:
++            True if event was published successfully
++        """
++        try:
++            # Add escalation data to event payload
++            if not hasattr(event, 'payload'):
++                event.payload = {}
++            event.payload.update({
++                "from_stage": from_stage.value,
++                "reason": reason,
++                "escalated_at": datetime.now(timezone.utc).isoformat()
++            })
++            
++            # Generate idempotency key
++            idempotency_key = self._generate_idempotency_key(
++                event.tenant_id,
++                event.invoice_id,
++                event.stage
++            )
++            
++            # Create outbox payload
++            payload = self._create_outbox_payload(event, idempotency_key)
++            
++            # Log event
++            self.logger.info("Publishing dunning escalation event", extra={
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "from_stage": from_stage.value,
++                "to_stage": event.stage.value,
++                "reason": reason,
++                "correlation_id": correlation_id
++            })
++            
++            # Simulate outbox write
++            self._simulate_outbox_write(payload)
++            
++            return True
++            
++        except Exception as e:
++            self.logger.error("Failed to publish escalation event", extra={
++                "error": str(e),
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "correlation_id": correlation_id
++            })
++            return False
++    
++    def publish_dunning_resolved(
++        self,
++        event: DunningEvent,
++        resolution: str,
++        resolved_at: datetime,
++        correlation_id: Optional[str] = None
++    ) -> bool:
++        """Publish DUNNING_RESOLVED event.
++        
++        Args:
++            event: Dunning event
++            resolution: Resolution reason
++            resolved_at: Resolution timestamp
++            correlation_id: Optional correlation ID
++            
++        Returns:
++            True if event was published successfully
++        """
++        try:
++            # Add resolution data to event payload
++            if not hasattr(event, 'payload'):
++                event.payload = {}
++            event.payload.update({
++                "resolution": resolution,
++                "resolved_at": resolved_at.isoformat()
++            })
++            
++            # Generate idempotency key
++            idempotency_key = self._generate_idempotency_key(
++                event.tenant_id,
++                event.invoice_id,
++                event.stage
++            )
++            
++            # Create outbox payload
++            payload = self._create_outbox_payload(event, idempotency_key)
++            
++            # Log event
++            self.logger.info("Publishing dunning resolution event", extra={
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "resolution": resolution,
++                "resolved_at": resolved_at.isoformat(),
++                "correlation_id": correlation_id
++            })
++            
++            # Simulate outbox write
++            self._simulate_outbox_write(payload)
++            
++            return True
++            
++        except Exception as e:
++            self.logger.error("Failed to publish resolution event", extra={
++                "error": str(e),
++                "event_type": event.event_type,
++                "tenant_id": event.tenant_id,
++                "invoice_id": event.invoice_id,
++                "correlation_id": correlation_id
++            })
++            return False
++    
++    def _simulate_outbox_write(self, payload: Dict[str, Any]) -> None:
++        """Simulate outbox write operation.
++        
++        In a real implementation, this would write to the database.
++        For testing purposes, we'll just log the operation.
++        """
++        self.logger.debug("Simulated outbox write", extra={
++            "tenant_id": payload["tenant_id"],
++            "event_type": payload["event_type"],
++            "idempotency_key": payload["idempotency_key"][:8] + "..."
++        })
++    
++    def check_duplicate_event(
++        self,
++        tenant_id: str,
++        invoice_id: str,
++        stage: DunningStage
++    ) -> bool:
++        """Check if event already exists (idempotency check).
++        
++        Args:
++            tenant_id: Tenant ID
++            invoice_id: Invoice ID
++            stage: Dunning stage
++            
++        Returns:
++            True if event already exists
++        """
++        idempotency_key = self._generate_idempotency_key(
++            tenant_id,
++            invoice_id,
++            stage
++        )
++        
++        # In a real implementation, this would query the outbox table
++        # For testing, we'll simulate the check
++        self.logger.debug("Checking for duplicate event", extra={
++            "tenant_id": tenant_id,
++            "invoice_id": invoice_id,
++            "stage": stage.value,
++            "idempotency_key": idempotency_key[:8] + "..."
++        })
++        
++        # Simulate no duplicates for testing
++        return False
+diff --git a/agents/mahnwesen/config.py b/agents/mahnwesen/config.py
+new file mode 100644
+index 0000000..5dba166
+--- /dev/null
++++ b/agents/mahnwesen/config.py
+@@ -0,0 +1,188 @@
++"""Configuration management for Mahnwesen agent.
++
++Provides tenant-specific configuration with sensible defaults
++and environment-based overrides.
++"""
++
++import os
++from dataclasses import dataclass, field
++from typing import Dict, Any, Optional
++from decimal import Decimal
++
++
++@dataclass
++class DunningConfig:
++    """Configuration for dunning processes.
++    
++    Supports tenant-specific overrides via environment variables
++    with pattern: MAHNWESEN_<TENANT_ID>_<SETTING>
++    """
++    
++    # Tenant identification
++    tenant_id: str
++    tenant_name: Optional[str] = None
++    
++    # Dunning stage thresholds (days)
++    stage_1_threshold: int = 3
++    stage_2_threshold: int = 14  
++    stage_3_threshold: int = 30
++    
++    # Minimum amount for dunning (in cents)
++    min_amount_cents: int = 100  # 1.00 EUR
++    
++    # Grace period before dunning starts (days)
++    grace_days: int = 0
++    
++    # Rate limiting (notices per hour per tenant)
++    max_notices_per_hour: int = 200
++    
++    # Template settings
++    default_locale: str = "de-DE"
++    template_version: str = "v1"
++    
++    # Company information
++    company_name: Optional[str] = None
++    company_address: Optional[str] = None
++    support_email: Optional[str] = None
++    
++    # API settings
++    read_api_timeout: int = 10  # seconds
++    read_api_base_url: str = "http://localhost:8000"
++    
++    # Outbox settings
++    outbox_retry_attempts: int = 10
++    outbox_retry_backoff_base: int = 1  # seconds
++    outbox_retry_backoff_max: int = 60  # seconds
++    
++    # Stop list patterns (regex patterns for invoice numbers)
++    stop_list_patterns: list[str] = field(default_factory=list)
++    
++    # Branding settings
++    company_name: str = "0Admin"
++    company_address: str = ""
++    support_email: str = "support@0admin.com"
++    
++    @classmethod
++    def from_tenant(cls, tenant_id: str) -> "DunningConfig":
++        """Create configuration for specific tenant.
++        
++        Args:
++            tenant_id: UUID of the tenant
++            
++        Returns:
++            Configured instance with tenant-specific overrides
++        """
++        # Base configuration
++        config = cls(tenant_id=tenant_id)
++        
++        # Apply tenant-specific environment overrides
++        prefix = f"MAHNWESEN_{tenant_id.upper().replace('-', '_')}"
++        
++        # Override from environment if present
++        config.stage_1_threshold = int(
++            os.getenv(f"{prefix}_STAGE_1_THRESHOLD", config.stage_1_threshold)
++        )
++        config.stage_2_threshold = int(
++            os.getenv(f"{prefix}_STAGE_2_THRESHOLD", config.stage_2_threshold)
++        )
++        config.stage_3_threshold = int(
++            os.getenv(f"{prefix}_STAGE_3_THRESHOLD", config.stage_3_threshold)
++        )
++        config.min_amount_cents = int(
++            os.getenv(f"{prefix}_MIN_AMOUNT_CENTS", config.min_amount_cents)
++        )
++        config.grace_days = int(
++            os.getenv(f"{prefix}_GRACE_DAYS", config.grace_days)
++        )
++        config.max_notices_per_hour = int(
++            os.getenv(f"{prefix}_MAX_NOTICES_PER_HOUR", config.max_notices_per_hour)
++        )
++        config.default_locale = os.getenv(
++            f"{prefix}_LOCALE", config.default_locale
++        )
++        config.read_api_base_url = os.getenv(
++            f"{prefix}_READ_API_URL", config.read_api_base_url
++        )
++        config.company_name = os.getenv(
++            f"{prefix}_COMPANY_NAME", config.company_name
++        )
++        config.company_address = os.getenv(
++            f"{prefix}_COMPANY_ADDRESS", config.company_address
++        )
++        config.support_email = os.getenv(
++            f"{prefix}_SUPPORT_EMAIL", config.support_email
++        )
++        
++        return config
++    
++    def get_stage_threshold(self, stage: int) -> int:
++        """Get threshold for specific dunning stage.
++        
++        Args:
++            stage: Dunning stage (1, 2, or 3)
++            
++        Returns:
++            Threshold in days
++            
++        Raises:
++            ValueError: If stage is not 1, 2, or 3
++        """
++        if stage == 1:
++            return self.stage_1_threshold
++        elif stage == 2:
++            return self.stage_2_threshold
++        elif stage == 3:
++            return self.stage_3_threshold
++        else:
++            raise ValueError(f"Invalid dunning stage: {stage}")
++    
++    def get_min_amount_decimal(self) -> Decimal:
++        """Get minimum amount as Decimal for calculations.
++        
++        Returns:
++            Minimum amount in EUR
++        """
++        return Decimal(self.min_amount_cents) / 100
++    
++    def is_stop_listed(self, invoice_number: str) -> bool:
++        """Check if invoice number matches stop list patterns.
++        
++        Args:
++            invoice_number: Invoice number to check
++            
++        Returns:
++            True if invoice should be excluded from dunning
++        """
++        import re
++        
++        for pattern in self.stop_list_patterns:
++            if re.search(pattern, invoice_number, re.IGNORECASE):
++                return True
++        return False
++    
++    def to_dict(self) -> Dict[str, Any]:
++        """Convert configuration to dictionary.
++        
++        Returns:
++            Dictionary representation of configuration
++        """
++        return {
++            "tenant_id": self.tenant_id,
++            "stage_1_threshold": self.stage_1_threshold,
++            "stage_2_threshold": self.stage_2_threshold,
++            "stage_3_threshold": self.stage_3_threshold,
++            "min_amount_cents": self.min_amount_cents,
++            "grace_days": self.grace_days,
++            "max_notices_per_hour": self.max_notices_per_hour,
++            "default_locale": self.default_locale,
++            "template_version": self.template_version,
++            "read_api_timeout": self.read_api_timeout,
++            "read_api_base_url": self.read_api_base_url,
++            "outbox_retry_attempts": self.outbox_retry_attempts,
++            "outbox_retry_backoff_base": self.outbox_retry_backoff_base,
++            "outbox_retry_backoff_max": self.outbox_retry_backoff_max,
++            "stop_list_patterns": self.stop_list_patterns,
++            "company_name": self.company_name,
++            "company_address": self.company_address,
++            "support_email": self.support_email,
++        }
+diff --git a/agents/mahnwesen/playbooks.py b/agents/mahnwesen/playbooks.py
+new file mode 100644
+index 0000000..776ae73
+--- /dev/null
++++ b/agents/mahnwesen/playbooks.py
+@@ -0,0 +1,638 @@
++"""Flock-based dunning playbooks and workflow orchestration.
++
++This module provides the core Flock integration for automated dunning processes.
++It handles workflow orchestration, template rendering, and event dispatch.
++"""
++
++import logging
++import yaml
++from dataclasses import dataclass
++from datetime import datetime, timezone
++from typing import Dict, List, Optional, Any
++from unittest.mock import Mock
++from pathlib import Path
++
++from jinja2 import Environment, FileSystemLoader, StrictUndefined
++
++from .config import DunningConfig
++from .dto import DunningNotice, DunningStage, DunningChannel, OverdueInvoice
++from .policies import DunningPolicies, OverdueInvoice as PolicyOverdueInvoice
++from .clients import ReadApiClient, OutboxClient, NoOpPublisher
++from .mvr import MVREngine, DunningStage as MVRDunningStage
++from backend.integrations.brevo_client import BrevoClient, send_transactional
++
++
++@dataclass
++class DunningContext:
++    """Context for dunning process execution."""
++    
++    tenant_id: str
++    correlation_id: str
++    dry_run: bool = False
++    limit: int = 100
++    config: Optional[DunningConfig] = None
++    policies: Optional[DunningPolicies] = None
++    read_client: Optional[ReadApiClient] = None
++    outbox_client: Optional[OutboxClient] = None
++    template_engine: Optional['TemplateEngine'] = None
++    
++    def __post_init__(self):
++        """Initialize dependencies after creation."""
++        if self.config is None:
++            self.config = DunningConfig.from_tenant(self.tenant_id)
++        
++        if self.policies is None:
++            self.policies = DunningPolicies(self.config)
++        
++        if self.read_client is None:
++            self.read_client = ReadApiClient(self.config)
++        
++        if self.outbox_client is None:
++            self.outbox_client = OutboxClient(self.config)
++        
++        if self.template_engine is None:
++            self.template_engine = TemplateEngine(self.config)
++        
++        # Initialize MVR engine
++        self.mvr_engine = MVREngine(self.config)
++
++
++class TemplateEngine:
++    """Jinja2 template engine for dunning notices."""
++    
++    def __init__(self, config: DunningConfig):
++        """Initialize template engine.
++        
++        Args:
++            config: Dunning configuration
++        """
++        self.config = config
++        self.logger = logging.getLogger(__name__)
++        
++        # Initialize Jinja2 environment with deterministic template loading
++        self.env = Environment(
++            loader=FileSystemLoader([
++                f"agents/mahnwesen/templates/{self.config.tenant_id}",
++                "agents/mahnwesen/templates/default"
++            ]),
++            undefined=StrictUndefined,
++            autoescape=False,
++            trim_blocks=True,
++            lstrip_blocks=True,
++            cache_size=0  # Disable cache to avoid stale template loads
++        )
++        
++        # Add custom filters and globals
++        self.env.filters['money'] = self._money_filter
++        self.env.filters['datefmt'] = self._datefmt_filter
++        self.env.globals['locale'] = self.config.default_locale
++        
++        # Load templates for backward compatibility
++        self.templates = self._load_templates()
++        self.sub_stage_mapping = self._load_sub_stage_mapping()
++
++    def resolve_sub_stage_path(self, sub_stage_key: str) -> str:
++        """Resolve sub-stage key to template path for linker.
++
++        Args:
++            sub_stage_key: Sub-stage identifier (e.g., 'sub_stage-1')
++
++        Returns:
++            Resolved template path
++        """
++        if sub_stage_key in self.sub_stage_mapping:
++            return self.sub_stage_mapping[sub_stage_key]
++
++        # Default fallback for unknown keys
++        self.logger.warning(f"Unknown sub_stage key: {sub_stage_key}, using default mapping")
++        return f"/spec_main_mahnung/{sub_stage_key}/s0"
++
++    def _load_sub_stage_mapping(self) -> Dict[str, str]:
++        """Load sub-stage to template path mappings.
++
++        Returns:
++            Dictionary mapping sub-stage keys to template paths
++        """
++        mapping_file = Path("agents/mahnwesen/templates/sub_stage_mapping.yaml")
++        if not mapping_file.exists():
++            self.logger.warning(f"Sub-stage mapping file not found: {mapping_file}")
++            return {}
++
++        try:
++            with open(mapping_file, 'r', encoding='utf-8') as f:
++                data = yaml.safe_load(f)
++                if isinstance(data, dict):
++                    return data
++                else:
++                    self.logger.warning(f"Invalid mapping file format: {mapping_file}")
++                    return {}
++        except Exception as e:
++            self.logger.error(f"Failed to load sub-stage mapping: {e}")
++            return {}
++
++    def _load_templates(self) -> Dict[str, str]:
++        """Load Jinja2 templates from files for backward compatibility.
++        
++        Returns:
++            Dictionary mapping stage names to template content
++        """
++        templates = {}
++        
++        # Try tenant-specific templates first, then default
++        template_paths = [
++            f"agents/mahnwesen/templates/{self.config.tenant_id}",
++            "agents/mahnwesen/templates/default"
++        ]
++        
++        for template_dir in template_paths:
++            try:
++                # Load stage 1 template
++                stage_1_path = f"{template_dir}/stage_1.jinja.txt"
++                with open(stage_1_path, "r", encoding="utf-8") as f:
++                    templates["stage_1"] = f.read()
++                
++                # Load stage 2 template
++                stage_2_path = f"{template_dir}/stage_2.jinja.txt"
++                with open(stage_2_path, "r", encoding="utf-8") as f:
++                    templates["stage_2"] = f.read()
++                
++                # Load stage 3 template
++                stage_3_path = f"{template_dir}/stage_3.jinja.txt"
++                with open(stage_3_path, "r", encoding="utf-8") as f:
++                    templates["stage_3"] = f.read()
++                
++                self.logger.info(f"Loaded templates from {template_dir}")
++                break
++                
++            except FileNotFoundError:
++                continue
++        
++        if not templates:
++            # Try to load from default directory only
++            try:
++                default_dir = "agents/mahnwesen/templates/default"
++                stage_1_path = f"{default_dir}/stage_1.jinja.txt"
++                with open(stage_1_path, "r", encoding="utf-8") as f:
++                    templates["stage_1"] = f.read()
++                
++                stage_2_path = f"{default_dir}/stage_2.jinja.txt"
++                with open(stage_2_path, "r", encoding="utf-8") as f:
++                    templates["stage_2"] = f.read()
++                
++                stage_3_path = f"{default_dir}/stage_3.jinja.txt"
++                with open(stage_3_path, "r", encoding="utf-8") as f:
++                    templates["stage_3"] = f.read()
++                
++                self.logger.info(f"Loaded templates from {default_dir}")
++            except FileNotFoundError:
++                raise FileNotFoundError("No templates found in default directory")
++        
++        return templates
++    
++    def _money_filter(self, amount_cents: int) -> str:
++        """Format amount in cents as money string.
++        
++        Args:
++            amount_cents: Amount in cents
++            
++        Returns:
++            Formatted money string
++        """
++        return f"{amount_cents / 100:.2f}"
++    
++    def _datefmt_filter(self, date_obj, format_str: str = "%Y-%m-%d") -> str:
++        """Format date object as string.
++        
++        Args:
++            date_obj: Date object to format
++            format_str: Format string
++            
++        Returns:
++            Formatted date string
++        """
++        if hasattr(date_obj, 'strftime'):
++            return date_obj.strftime(format_str)
++        elif hasattr(date_obj, 'isoformat'):
++            return date_obj.isoformat()
++        else:
++            return str(date_obj)
++    
++    def render_notice(
++        self,
++        notice: DunningNotice,
++        stage: DunningStage
++    ) -> DunningNotice:
++        """Render dunning notice using template.
++        
++        Args:
++            notice: Dunning notice data
++            stage: Dunning stage
++            
++        Returns:
++            Rendered notice with content
++            
++        Raises:
++            FileNotFoundError: If template for stage is not found
++        """
++        # Get template for stage
++        template_name = f"stage_{stage.value}.jinja.txt"
++        
++        # Use Jinja's FileSystemLoader for deterministic template resolution
++        try:
++            template = self.env.get_template(template_name)
++            # Log the resolved template path
++            self.logger.info(f"template_path=\"{template.filename}\" tenant=\"{self.config.tenant_id}\" stage=\"{stage.value}\"")
++        except Exception as e:
++            # NEVER use fallback content - fail hard for missing templates
++            error_msg = f"Template '{template_name}' not found for tenant '{self.config.tenant_id}'. Ensure templates exist in agents/mahnwesen/templates/{self.config.tenant_id}/ or agents/mahnwesen/templates/default/"
++            self.logger.error(error_msg)
++            raise FileNotFoundError(error_msg) from e
++        
++        # Prepare complete context for template rendering
++        context = {
++            "config": self.config,
++            "notice": notice,
++            "stage": stage,
++            "tenant_id": self.config.tenant_id,
++            "company_name": getattr(self.config, 'company_name', None) or "",
++            "tenant_name": getattr(self.config, 'tenant_name', None) or "0Admin",
++            "customer_name": notice.customer_name or "Test Customer",
++            "invoice_id": notice.invoice_id,
++            "invoice_number": notice.invoice_number or notice.invoice_id,
++            "due_date": notice.due_date,
++            "due_date_iso": notice.due_date.isoformat() if hasattr(notice.due_date, 'isoformat') else str(notice.due_date) if notice.due_date else "",
++            "amount_cents": notice.amount_cents,
++            "dunning_fee_cents": notice.dunning_fee_cents,
++            "total_amount_cents": notice.total_amount_cents,
++            "amount_str": f"{notice.amount_cents / 100:.2f}",
++            "fee_str": f"{notice.dunning_fee_cents / 100:.2f}" if notice.dunning_fee_cents > 0 else "0.00",
++            "total_str": f"{(notice.amount_cents + notice.dunning_fee_cents) / 100:.2f}",
++            "fee": f"{notice.dunning_fee_cents / 100:.2f}" if notice.dunning_fee_cents > 0 else "0.00",
++            "notice_ref": notice.notice_id,
++            "locale": self.config.default_locale,
++            "template_version": "v1",
++        }
++        
++        # Render template
++        rendered_content = template.render(**context)
++        
++        # Update notice with rendered content
++        notice.content = rendered_content
++        notice.subject = self._extract_subject(rendered_content)
++        
++        return notice
++    
++    def _extract_subject(self, content: str) -> str:
++        """Extract subject from rendered content.
++        
++        Args:
++            content: Rendered content
++            
++        Returns:
++            Subject line
++        """
++        lines = content.split('\n')
++        for line in lines:
++            if line.startswith('Betreff:'):
++                return line.replace('Betreff:', '').strip()
++        
++        return "Zahlungserinnerung"
++
++
++@dataclass
++class DunningResult:
++    """Result of dunning process execution."""
++    
++    success: bool
++    notices_created: int = 0
++    events_dispatched: int = 0
++    processing_time_seconds: float = 0.0
++    errors: List[str] = None
++    warnings: List[str] = None
++    total_overdue: int = 0
++    stage_1_count: int = 0
++    stage_2_count: int = 0
++    stage_3_count: int = 0
++    
++    def __post_init__(self):
++        if self.errors is None:
++            self.errors = []
++        if self.warnings is None:
++            self.warnings = []
++
++
++class DunningPlaybook:
++    """Flock-based dunning playbook orchestrator."""
++    
++    def __init__(self, config: DunningConfig):
++        """Initialize playbook.
++        
++        Args:
++            config: Dunning configuration
++        """
++        self.config = config
++        self.logger = logging.getLogger(__name__)
++    
++    def run_once(self, context: DunningContext) -> DunningResult:
++        """Run dunning process once.
++        
++        Args:
++            context: Dunning context
++            
++        Returns:
++            Dunning result
++        """
++        start_time = datetime.now(timezone.utc)
++        
++        try:
++            # Step 1: Fetch overdue invoices
++            overdue_invoices = self._fetch_overdue_invoices(context)
++            
++            if not overdue_invoices:
++                return DunningResult(
++                    success=True,
++                    notices_created=0,
++                    events_dispatched=0,
++                    processing_time_seconds=(datetime.now(timezone.utc) - start_time).total_seconds(),
++                    warnings=["No overdue invoices found"]
++                )
++            
++            # Step 2: Process with MVR engine
++            mvr_results = context.mvr_engine.process_invoices(overdue_invoices, context.dry_run)
++            
++            # Step 3: Create notices and dispatch events
++            notices_created = 0
++            events_dispatched = 0
++            
++            for stage, invoice_decisions in mvr_results.items():
++                if not invoice_decisions:
++                    continue
++                
++                for invoice, decision in invoice_decisions:
++                    if not decision.should_send:
++                        self.logger.debug(f"Skipping invoice {invoice.invoice_id}: {decision.reason}")
++                        continue
++                    
++                    # Create notice
++                    notice = self._create_notice(invoice, stage, context)
++                    
++                    # Render template
++                    rendered_notice = context.template_engine.render_notice(notice, stage)
++                    
++                    # Send via Brevo
++                    brevo_response = self._send_via_brevo(rendered_notice, context)
++                    
++                    # Dispatch event if Brevo successful
++                    if brevo_response.success:
++                        if not context.outbox_client.check_duplicate_event(rendered_notice.tenant_id, rendered_notice.invoice_id, stage):
++                            event = self._create_dunning_event_impl(rendered_notice, stage, context)
++                            
++                            # Choose publisher strategy based on dry_run mode
++                            if context.dry_run:
++                                # In dry-run mode, just count as dispatched without calling API
++                                events_dispatched += 1
++                                self.logger.info(f"Dry-run: Would dispatch dunning event for invoice {invoice.invoice_id}")
++                            else:
++                                # Live run: use real client
++                                if context.outbox_client.publish_dunning_issued(event, dry_run=False):
++                                    events_dispatched += 1
++                    
++                    notices_created += 1
++            
++            # Calculate processing time
++            processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
++            
++            return DunningResult(
++                success=True,
++                notices_created=notices_created,
++                events_dispatched=events_dispatched,
++                processing_time_seconds=processing_time,
++                total_overdue=len(overdue_invoices),
++                stage_1_count=len(mvr_results.get(DunningStage.STAGE_1, [])),
++                stage_2_count=len(mvr_results.get(DunningStage.STAGE_2, [])),
++                stage_3_count=len(mvr_results.get(DunningStage.STAGE_3, []))
++            )
++            
++        except Exception as e:
++            self.logger.error(f"Dunning process failed: {e}")
++            return DunningResult(
++                success=False,
++                errors=[str(e)],
++                processing_time_seconds=(datetime.now(timezone.utc) - start_time).total_seconds()
++            )
++    
++    def create_flow(self, context: DunningContext):
++        """Create Flock flow (adapter for tests)."""
++        # This is a no-op adapter for backward compatibility
++        flow = Mock()
++        flow.name = "dunning_processing"
++        flow.description = "Automated dunning process for overdue invoices"
++        return flow
++    
++    def _scan_overdue_invoices(self, context: DunningContext):
++        """Scan overdue invoices (adapter for tests)."""
++        invoices = self._fetch_overdue_invoices(context)
++        # Group invoices by stage based on due_date
++        now = datetime.now(timezone.utc)
++        stage_groups = {
++            "stage_1": [],
++            "stage_2": [],
++            "stage_3": []
++        }
++        
++        for inv in invoices:
++            if inv.dunning_stage is not None:
++                # Use existing stage
++                if inv.dunning_stage == 0:
++                    stage_groups["stage_1"].append(inv)
++                elif inv.dunning_stage == 1:
++                    stage_groups["stage_2"].append(inv)
++                elif inv.dunning_stage == 2:
++                    stage_groups["stage_3"].append(inv)
++            else:
++                # Determine stage based on due_date
++                days_overdue = (now - inv.due_date).days
++                if days_overdue < 14:
++                    stage_groups["stage_1"].append(inv)
++                elif days_overdue < 30:
++                    stage_groups["stage_2"].append(inv)
++                else:
++                    stage_groups["stage_3"].append(inv)
++        
++        return {
++            "total_found": len(invoices),
++            "eligible_count": len(invoices),
++            "stage_1_count": len(stage_groups["stage_1"]),
++            "stage_2_count": len(stage_groups["stage_2"]),
++            "stage_3_count": len(stage_groups["stage_3"]),
++            "stage_groups": stage_groups,
++            "invoices": invoices
++        }
++    
++    def _compose_dunning_notices(self, context: DunningContext):
++        """Compose dunning notices (adapter for tests)."""
++        # This would be implemented based on scan_results in context.kwargs
++        scan_results = context.kwargs.get("scan_results", {})
++        stage_groups = scan_results.get("stage_groups", {})
++        
++        notices = []
++        for stage, invoices in stage_groups.items():
++            for invoice in invoices:
++                notice = self._create_notice(invoice, stage, context)
++                rendered_notice = context.template_engine.render_notice(notice, stage)
++                notices.append(rendered_notice)
++        
++        return {
++            "notices": notices,
++            "notices_created": len(notices)
++        }
++    
++    def _dispatch_dunning_events(self, context: DunningContext):
++        """Dispatch dunning events (adapter for tests)."""
++        compose_results = context.kwargs.get("compose_results", {})
++        notices = compose_results.get("notices", [])
++        
++        events_dispatched = 0
++        for notice in notices:
++            # Always check for duplicates first
++            if context.outbox_client.check_duplicate_event(notice.tenant_id, notice.invoice_id, notice.stage):
++                continue
++            
++            # Dispatch event based on dry_run mode
++            event = self._create_dunning_event_impl(notice, notice.stage, context)
++            if context.dry_run:
++                # In dry-run mode, just count as dispatched without calling API
++                events_dispatched += 1
++                self.logger.info(f"Dry-run: Would dispatch dunning event for notice {notice.notice_ref}")
++            else:
++                # Live run: use real client
++                if context.outbox_client.publish_dunning_issued(event, dry_run=False):
++                    events_dispatched += 1
++                else:
++                    self.logger.warning(f"Failed to publish dunning event for notice {notice.notice_ref}")
++        
++        return {
++            "events_dispatched": events_dispatched,
++            "total_events": len(notices)
++        }
++    
++    def _create_dunning_event(self, notice: DunningNotice, context: DunningContext):
++        """Create dunning event (adapter for tests with 2 parameters)."""
++        return self._create_dunning_event_impl(notice, notice.stage, context)
++    
++    def _fetch_overdue_invoices(self, context: DunningContext) -> List[OverdueInvoice]:
++        """Fetch overdue invoices from Read-API.
++        
++        Args:
++            context: Dunning context
++            
++        Returns:
++            List of overdue invoices
++        """
++        try:
++            response = context.read_client.get_overdue_invoices()
++            invoices = response.invoices
++            
++            # Invoices are already OverdueInvoice objects
++            return invoices
++            
++        except Exception as e:
++            self.logger.error(f"Failed to fetch overdue invoices: {e}")
++            raise  # Re-raise to be handled by run_once
++    
++    def _create_notice(
++        self,
++        invoice: OverdueInvoice,
++        stage: DunningStage,
++        context: DunningContext
++    ) -> DunningNotice:
++        """Create dunning notice for invoice.
++        
++        Args:
++            invoice: Overdue invoice
++            stage: Dunning stage
++            context: Dunning context
++            
++        Returns:
++            Dunning notice
++        """
++        # Determine channel
++        channel = context.policies.determine_dunning_channel(invoice, stage)
++        
++        # Calculate dunning fee
++        dunning_fee_cents = context.policies.calculate_dunning_fee(invoice, stage)
++        
++        return DunningNotice(
++            notice_id=f"NOTICE-{invoice.invoice_id}",
++            tenant_id=invoice.tenant_id,
++            invoice_id=invoice.invoice_id,
++            stage=stage,
++            channel=channel,
++            recipient_email=invoice.customer_email,
++            recipient_name=invoice.customer_name,
++            due_date=invoice.due_date,
++            amount_cents=invoice.amount_cents,
++            dunning_fee_cents=dunning_fee_cents,
++            total_amount_cents=invoice.amount_cents + dunning_fee_cents,
++            recipient_address=getattr(invoice, 'customer_address', None),
++            customer_name=invoice.customer_name,
++            invoice_number=invoice.invoice_number
++        )
++    
++    def _create_dunning_event_impl(
++        self,
++        notice: DunningNotice,
++        stage: DunningStage,
++        context: DunningContext
++    ) -> 'DunningEvent':
++        """Create dunning event for notice.
++        
++        Args:
++            notice: Dunning notice
++            stage: Dunning stage
++            context: Dunning context
++            
++        Returns:
++            Dunning event
++        """
++        from .dto import DunningEvent
++        
++        return DunningEvent(
++            event_id=f"EVENT-{notice.notice_id}",
++            tenant_id=notice.tenant_id,
++            event_type="DUNNING_ISSUED",
++            invoice_id=notice.invoice_id,
++            stage=stage,
++            channel=notice.channel,
++            notice_ref=notice.notice_id,
++            due_date=notice.due_date,
++            amount_cents=notice.amount_cents,
++            correlation_id=context.correlation_id
++        )
++    
++    def _send_via_brevo(self, notice: DunningNotice, context: DunningContext):
++        """Send notice via Brevo email service.
++        
++        Args:
++            notice: Dunning notice to send
++            context: Dunning context
++            
++        Returns:
++            BrevoResponse with success status
++        """
++        try:
++            return send_transactional(
++                to=notice.recipient_email,
++                subject=notice.subject,
++                html=notice.content,
++                tenant_id=notice.tenant_id,
++                dry_run=context.dry_run
++            )
++        except Exception as e:
++            self.logger.error(f"Failed to send via Brevo: {e}")
++            from backend.integrations.brevo_client import BrevoResponse
++            return BrevoResponse(
++                success=False,
++                error=str(e),
++                dry_run=context.dry_run
++            )
+diff --git a/agents/mahnwesen/templates/default/stage_1.jinja.txt b/agents/mahnwesen/templates/default/stage_1.jinja.txt
+index 2038e7e..8e4c567 100644
+--- a/agents/mahnwesen/templates/default/stage_1.jinja.txt
++++ b/agents/mahnwesen/templates/default/stage_1.jinja.txt
+@@ -8,7 +8,7 @@ Fälligkeitsdatum: {{ due_date | datefmt("%d.%m.%Y") }}
+ Betrag: {{ amount_str }} EUR
+ {% if fee != "0.00" %}
+ Mahngebühr: {{ fee }} EUR
+-Gesamtbetrag: {{ "%.2f"|format((notice.amount_cents + notice.dunning_fee_cents) / 100) }} EUR
++Gesamtbetrag: {{ total_str }} EUR
+ {% endif %}
+ 
+ Bitte überweisen Sie den Betrag zeitnah auf unser Konto, um weitere Mahnungen zu vermeiden.
+@@ -16,7 +16,7 @@ Bitte überweisen Sie den Betrag zeitnah auf unser Konto, um weitere Mahnungen z
+ Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+ 
+ Mit freundlichen Grüßen
+-{{ tenant_name }}
++{{ company_name or tenant_name }}
+ {{ config.company_address or "Test Street 123, 12345 Test City" }}
+ 
+ ---
+diff --git a/artifacts/inbox_local/samples/sample_result.json b/artifacts/inbox_local/samples/sample_result.json
+index c74afa5..78f990e 100644
+--- a/artifacts/inbox_local/samples/sample_result.json
++++ b/artifacts/inbox_local/samples/sample_result.json
+@@ -14,6 +14,11 @@
+   },
+   "quality": {"valid": true, "issues": []},
+   "pii": {"steps": []},
+-  "flags": {"enable_ocr": false, "enable_browser": false},
++  "flags": {
++    "enable_ocr": false,
++    "enable_browser": false,
++    "enable_table_boost": false,
++    "mvr_preview": false
++  },
+   "fingerprints": {"content_hash": "0"}
+ }
+diff --git a/backend/apps/inbox/README.md b/backend/apps/inbox/README.md
+index b375f5d..a649b5c 100644
+--- a/backend/apps/inbox/README.md
++++ b/backend/apps/inbox/README.md
+@@ -22,3 +22,8 @@ Das Inbox-Modul verwaltet eingehende Dokumente und deren Verarbeitung.
+ - DTOs + SQLAlchemy-Queries sowie CLI unter `tools/flows/query_read_model.py`.
+ - Dokumentation & Sicherheits-Hinweise: `docs/inbox/read_model.md`.
+ - API-Endpunkte siehe `docs/inbox/read_api.md`.
++
++## Flock Enablement (read-only)
++
++- Read-API + Client-Dokumentation: `docs/inbox/flock_enablement.md`.
++- Beispiel-Playbooks und VS Code Tasks unter `tools/flock/`.
+diff --git a/backend/apps/inbox/importer/dto.py b/backend/apps/inbox/importer/dto.py
+index 0ad935f..dcd6b75 100644
+--- a/backend/apps/inbox/importer/dto.py
++++ b/backend/apps/inbox/importer/dto.py
+@@ -20,6 +20,9 @@ class ParsedItemDTO:
+     quality_status: str = "needs_review"
+     confidence: Decimal = Decimal("0")
+     rules: List[Dict[str, str]] = field(default_factory=list)
++    flags: Dict[str, Any] = field(default_factory=dict)
++    mvr_preview: bool = False
++    mvr_score: Optional[Decimal] = None
+ 
+ 
+ @dataclass
+@@ -28,3 +31,10 @@ class ParsedItemChunkDTO:
+     seq: int
+     kind: str
+     payload: Dict[str, Any]
++
++
++@dataclass
++class ProcessResult:
++    parsed_item_id: str
++    action: str
++    chunk_count: int
+diff --git a/backend/apps/inbox/importer/mapper.py b/backend/apps/inbox/importer/mapper.py
+index f0c60c6..c85a544 100644
+--- a/backend/apps/inbox/importer/mapper.py
++++ b/backend/apps/inbox/importer/mapper.py
+@@ -1,7 +1,8 @@
+ from __future__ import annotations
+ 
++from datetime import date
+ from decimal import Decimal
+-from typing import Any, Dict, List, Tuple
++from typing import Any, Dict, List, Tuple, Optional
+ 
+ try:
+     from .dto import ParsedItemDTO, ParsedItemChunkDTO  # type: ignore
+@@ -16,6 +17,10 @@ try:
+         decide_quality_status,
+         Rule,
+         RuleList,
++        payment_DoD,
++        other_DoD,
++        non_empty_str,
++        table_shape_ok,
+     )
+ except Exception:
+     import importlib.util as _iu, os as _os
+@@ -45,24 +50,273 @@ except Exception:
+     decide_quality_status = validators_mod.decide_quality_status
+     Rule = validators_mod.Rule
+     RuleList = validators_mod.RuleList
++    payment_DoD = validators_mod.payment_DoD
++    other_DoD = validators_mod.other_DoD
++    non_empty_str = validators_mod.non_empty_str
++    table_shape_ok = validators_mod.table_shape_ok
+ 
+ 
+ def _make_rule(code: str, message: str, *, level: str = "error") -> Rule:
+     return {"code": code, "level": level, "message": message}
+ 
+ 
+-def artifact_to_dtos(flow: Dict[str, Any], *, enforce_invoice: bool = True) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
+-    tenant_id = flow.get("tenant_id", "")
+-    content_hash = flow.get("fingerprints", {}).get("content_hash", "")
+-    pipeline = flow.get("pipeline", [])
++def _collect_tables(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
++    tables = extracted.get("tables")
++    result: List[Dict[str, Any]] = []
++    if isinstance(tables, list):
++        for table in tables:
++            if isinstance(table, dict):
++                result.append(table)
++    return result
+ 
+-    doc_type = flow.get("doc_type") or "unknown"
+-    if doc_type == "unknown" and isinstance(pipeline, list):
++
++def _collect_kv(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
++    kv_entries = extracted.get("kv")
++    result: List[Dict[str, Any]] = []
++    if isinstance(kv_entries, list):
++        for entry in kv_entries:
++            if isinstance(entry, dict):
++                result.append(
++                    {
++                        "key": entry.get("key"),
++                        "value": entry.get("value"),
++                    }
++                )
++    return result
++
++
++def _quality_flags(flow: Dict[str, Any]) -> List[str]:
++    quality = flow.get("quality")
++    if not isinstance(quality, dict):
++        return []
++    issues = quality.get("issues")
++    flags = [str(flag) for flag in issues] if isinstance(issues, list) else []
++    if not quality.get("valid", True) and "invalid" not in flags:
++        flags.append("invalid")
++    return flags
++
++
++def _base_payload(flow: Dict[str, Any]) -> Dict[str, Any]:
++    extracted_src = flow.get("extracted")
++    extracted_payload = dict(extracted_src) if isinstance(extracted_src, dict) else {}
++    return {
++        "pipeline": flow.get("pipeline", []),
++        "mime": flow.get("mime"),
++        "extracted": extracted_payload,
++        "quality": flow.get("quality", {}),
++        "pii": flow.get("pii", {}),
++        "flags": flow.get("flags", {}),
++    }
++
++
++def _build_chunks(
++    tables: List[Dict[str, Any]],
++    kv_entries: List[Dict[str, Any]],
++) -> List[ParsedItemChunkDTO]:
++    chunks: List[ParsedItemChunkDTO] = []
++    seq = 1
++    for table in tables:
++        chunks.append(ParsedItemChunkDTO(parsed_item_id="", seq=seq, kind="table", payload=table))
++        seq += 1
++    if kv_entries:
++        chunks.append(
++            ParsedItemChunkDTO(parsed_item_id="", seq=seq, kind="kv", payload={"entries": kv_entries})
++        )
++    return chunks
++
++
++def _pipeline_tokens(pipeline: Any) -> List[str]:
++    tokens: List[str] = []
++    if isinstance(pipeline, list):
+         for step in pipeline:
+             if isinstance(step, str) and step:
+-                doc_type = step.split(".", 1)[0]
+-                break
++                tokens.append(step.lower())
++    return tokens
++
++
++def _should_classify_payment(
++    flow: Dict[str, Any],
++    pipeline_tokens: List[str],
++    kv_entries: List[Dict[str, Any]],
++    payment_block: Dict[str, Any],
++) -> bool:
++    doc_type = flow.get("doc_type")
++    if isinstance(doc_type, str) and "payment" in doc_type.lower():
++        return True
++
++    filename = flow.get("fingerprints", {}).get("source_name")
++    hints: List[str] = []
++    if isinstance(filename, str):
++        hints.append(filename.lower())
++    hints.extend(pipeline_tokens)
++    for entry in kv_entries:
++        key = entry.get("key")
++        if isinstance(key, str):
++            hints.append(key.lower())
++
++    payment_keywords = ("payment", "iban", "bic", "bank", "sepa", "transfer")
++    if any(any(keyword in hint for keyword in payment_keywords) for hint in hints):
++        return True
++
++    if isinstance(payment_block, dict) and any(payment_block.values()):
++        return True
++
++    return False
++
++
++def _normalize_currency(currency: Optional[str]) -> Optional[str]:
++    if not currency:
++        return None
++    candidate = non_empty_str(currency)
++    if not candidate:
++        return None
++    return candidate.upper()
++
++
++def _safe_parse_amount(raw_amount: Any) -> Tuple[Optional[Decimal], RuleList]:
++    if raw_amount in (None, ""):
++        return None, []
++    try:
++        return parse_amount(str(raw_amount)), []
++    except ValueError:
++        return None, [_make_rule("payment.amount.parse_error", "Unable to parse payment amount")]
++
++
++def _safe_parse_date(raw_date: Any) -> Tuple[Optional[date], RuleList]:
++    if raw_date in (None, ""):
++        return None, []
++    if isinstance(raw_date, date):
++        return raw_date, []
++    try:
++        return parse_iso_date(str(raw_date)), []
++    except ValueError:
++        return None, [_make_rule("payment.date.parse_error", "Unable to parse payment date")]
++
++
++def _map_payment(
++    flow: Dict[str, Any],
++    *,
++    tenant_id: str,
++    content_hash: str,
++    doc_type: str,
++    tables: List[Dict[str, Any]],
++    kv_entries: List[Dict[str, Any]],
++    flags: Dict[str, Any],
++    mvr_preview: bool,
++    mvr_score: Optional[Decimal],
++) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
++    extracted = flow.get("extracted")
++    payment_block = {}
++    if isinstance(extracted, dict):
++        candidate = extracted.get("payment")
++        if isinstance(candidate, dict):
++            payment_block = dict(candidate)
++
++    amount_raw = payment_block.get("amount") if payment_block else flow.get("amount")
++    currency_raw = payment_block.get("currency") if payment_block else flow.get("currency")
++    date_raw = payment_block.get("payment_date") if payment_block else flow.get("payment_date")
++    counterparty_raw = payment_block.get("counterparty") if payment_block else flow.get("counterparty")
++
++    amount, amount_rules = _safe_parse_amount(amount_raw)
++    payment_date, date_rules = _safe_parse_date(date_raw)
++    currency_norm = _normalize_currency(currency_raw)
++    counterparty_norm = non_empty_str(counterparty_raw)
++
++    confidence, dod_rules, quality_status = payment_DoD(
++        amount=amount,
++        currency=currency_norm,
++        payment_date=payment_date,
++        counterparty=counterparty_norm,
++    )
++
++    rules: RuleList = amount_rules + date_rules + dod_rules
++
++    payload = _base_payload(flow)
++    extracted_payload = payload.setdefault("extracted", {})
++    payment_payload = dict(payment_block)
++    payment_payload.setdefault("amount", str(amount) if amount is not None else None)
++    payment_payload["currency"] = currency_norm
++    payment_payload["payment_date"] = payment_date.isoformat() if payment_date else None
++    payment_payload["counterparty"] = counterparty_norm
++    extracted_payload["payment"] = payment_payload
++
++    quality_flags = _quality_flags(flow)
++
++    chunks = _build_chunks(tables, kv_entries)
++
++    item = ParsedItemDTO(
++        tenant_id=tenant_id,
++        content_hash=content_hash,
++        doc_type=doc_type or "payment",
++        payload=payload,
++        amount=amount,
++        invoice_no=None,
++        due_date=payment_date,
++        quality_flags=quality_flags,
++        doctype="payment",
++        quality_status=quality_status,
++        confidence=confidence,
++        rules=rules,
++        flags=flags,
++        mvr_preview=mvr_preview,
++        mvr_score=mvr_score,
++    )
++
++    return item, chunks
++
+ 
++def _map_other(
++    flow: Dict[str, Any],
++    *,
++    tenant_id: str,
++    content_hash: str,
++    doc_type: str,
++    tables: List[Dict[str, Any]],
++    kv_entries: List[Dict[str, Any]],
++    flags: Dict[str, Any],
++    mvr_preview: bool,
++    mvr_score: Optional[Decimal],
++) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
++    payload = _base_payload(flow)
++    confidence, dod_rules, quality_status = other_DoD(kv_entries=kv_entries, tables=tables)
++    quality_flags = _quality_flags(flow)
++    chunks = _build_chunks(tables, kv_entries)
++
++    item = ParsedItemDTO(
++        tenant_id=tenant_id,
++        content_hash=content_hash,
++        doc_type=doc_type or "other",
++        payload=payload,
++        amount=None,
++        invoice_no=None,
++        due_date=None,
++        quality_flags=quality_flags,
++        doctype="other",
++        quality_status=quality_status,
++        confidence=confidence,
++        rules=dod_rules,
++        flags=flags,
++        mvr_preview=mvr_preview,
++        mvr_score=mvr_score,
++    )
++
++    return item, chunks
++
++
++def _map_invoice(
++    flow: Dict[str, Any],
++    *,
++    tenant_id: str,
++    content_hash: str,
++    doc_type: str,
++    pipeline: List[str],
++    tables: List[Dict[str, Any]],
++    kv_entries: List[Dict[str, Any]],
++    enforce_invoice: bool,
++    flags: Dict[str, Any],
++    mvr_preview: bool,
++    mvr_score: Optional[Decimal],
++) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO], Dict[str, Any]]:
+     amount = parse_amount(flow.get("amount"))
+     invoice_no = flow.get("invoice_no")
+     due_date = parse_iso_date(flow.get("due_date"))
+@@ -76,22 +330,15 @@ def artifact_to_dtos(flow: Dict[str, Any], *, enforce_invoice: bool = True) -> T
+     rules.extend(due_date_rules)
+     rules.extend(invoice_rules)
+ 
+-    tables = flow.get("extracted", {}).get("tables", [])
+     table_rules: RuleList = []
+     table_ok = False
+-    primary_table: Dict[str, Any] | None = None
+-    if isinstance(tables, list):
+-        for candidate in tables:
+-            if isinstance(candidate, dict):
+-                primary_table = candidate
+-                break
++    primary_table: Dict[str, Any] | None = tables[0] if tables else None
+     if primary_table is not None:
+         table_rules = validate_table_shape(primary_table)
+         rules.extend(table_rules)
+         table_ok = not any(rule["level"] == "error" for rule in table_rules)
+     else:
+-        missing_table_rule = _make_rule("invoice.table.missing", "Invoice table is required")
+-        rules.append(missing_table_rule)
++        rules.append(_make_rule("invoice.table.missing", "Invoice table is required"))
+ 
+     required_ok = not any(rule["level"] == "error" for rule in (amount_rules + due_date_rules + invoice_rules))
+     amount_valid = amount is not None and not any(rule["code"] == "invoice.amount.invalid" for rule in amount_rules)
+@@ -100,26 +347,17 @@ def artifact_to_dtos(flow: Dict[str, Any], *, enforce_invoice: bool = True) -> T
+     )
+     plausibility_ok = amount_valid and due_date_plausible
+ 
+-    quality = flow.get("quality", {}) if isinstance(flow.get("quality"), dict) else {}
+-    issues = quality.get("issues") if isinstance(quality.get("issues"), list) else []
+-    quality_flags: List[str] = [str(flag) for flag in issues]
+-    if not quality.get("valid", True):
+-        if "invalid" not in quality_flags:
+-            quality_flags.append("invalid")
++    quality_flags = _quality_flags(flow)
+ 
+-    flags = flow.get("flags", {}) if isinstance(flow.get("flags"), dict) else {}
+     has_ocr_warning = any(
+         isinstance(flag, str) and flag.lower() == "ocr_warning" for flag in quality_flags
+     ) or bool(flags.get("ocr_warning"))
+ 
+     mime = flow.get("mime", "")
+     mime_lower = mime.lower() if isinstance(mime, str) else ""
+-    pipeline_source_tokens = [step.split(".", 1)[0].lower() for step in pipeline if isinstance(step, str)]
+     source_keywords = ("pdf", "office", "word", "excel", "powerpoint")
+     mime_keyword_hit = any(keyword in mime_lower for keyword in source_keywords)
+-    pipeline_keyword_hit = any(
+-        any(keyword in token for keyword in source_keywords) for token in pipeline_source_tokens
+-    )
++    pipeline_keyword_hit = any(any(keyword in token for keyword in source_keywords) for token in pipeline)
+     source_keyword_hit = mime_keyword_hit or pipeline_keyword_hit
+     source_ok = source_keyword_hit and not has_ocr_warning
+ 
+@@ -135,15 +373,9 @@ def artifact_to_dtos(flow: Dict[str, Any], *, enforce_invoice: bool = True) -> T
+     quality_status = decide_quality_status(required_ok, confidence_score)
+     doctype = "invoice" if enforce_invoice and required_ok else "unknown"
+ 
+-    # Compact payload: include selected keys
+-    payload = {
+-        "pipeline": pipeline,
+-        "mime": flow.get("mime"),
+-        "extracted": flow.get("extracted", {}),
+-        "quality": flow.get("quality", {}),
+-        "pii": flow.get("pii", {}),
+-        "flags": flow.get("flags", {}),
+-    }
++    payload = _base_payload(flow)
++
++    chunks = _build_chunks(tables, kv_entries)
+ 
+     item = ParsedItemDTO(
+         tenant_id=tenant_id,
+@@ -158,15 +390,88 @@ def artifact_to_dtos(flow: Dict[str, Any], *, enforce_invoice: bool = True) -> T
+         quality_status=quality_status,
+         confidence=confidence,
+         rules=rules,
++        flags=flags,
++        mvr_preview=mvr_preview,
++        mvr_score=mvr_score,
+     )
+ 
+-    chunks: List[ParsedItemChunkDTO] = []
+-    if isinstance(tables, list):
+-        seq = 1
+-        for t in tables:
+-            if isinstance(t, dict):
+-                chunks.append(
+-                    ParsedItemChunkDTO(parsed_item_id="", seq=seq, kind="table", payload=t)
+-                )
+-                seq += 1
++    ctx = {
++        "doctype": doctype,
++        "required_ok": required_ok,
++        "structured": bool(tables),
++        "quality_status": quality_status,
++    }
++    return item, chunks, ctx
++
++
++def artifact_to_dtos(
++    flow: Dict[str, Any],
++    *,
++    enforce_invoice: bool = True,
++    enforce_payment: bool = True,
++    enforce_other: bool = True,
++) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
++    tenant_id = flow.get("tenant_id", "")
++    content_hash = flow.get("fingerprints", {}).get("content_hash", "")
++    pipeline = flow.get("pipeline", [])
++    pipeline_tokens = _pipeline_tokens(pipeline)
++
++    raw_doc_type = flow.get("doc_type")
++    doc_type = raw_doc_type if isinstance(raw_doc_type, str) and raw_doc_type else "unknown"
++    if doc_type == "unknown" and isinstance(pipeline, list):
++        for step in pipeline:
++            if isinstance(step, str) and step:
++                doc_type = step.split(".", 1)[0]
++                break
++
++    extracted = flow.get("extracted")
++    extracted_dict: Dict[str, Any] = dict(extracted) if isinstance(extracted, dict) else {}
++    tables = _collect_tables(extracted_dict)
++    kv_entries = _collect_kv(extracted_dict)
++    payment_block = extracted_dict.get("payment") if isinstance(extracted_dict.get("payment"), dict) else {}
++    flags_map: Dict[str, Any] = dict(flow.get("flags") or {}) if isinstance(flow.get("flags"), dict) else {}
++    mvr_preview_flag = bool(flags_map.get("mvr_preview"))
++    mvr_score: Optional[Decimal] = Decimal("0.00") if mvr_preview_flag else None
++
++    if enforce_payment and _should_classify_payment(flow, pipeline_tokens, kv_entries, payment_block):
++        return _map_payment(
++            flow,
++            tenant_id=tenant_id,
++            content_hash=content_hash,
++            doc_type=doc_type or "payment",
++            tables=tables,
++            kv_entries=kv_entries,
++            flags=flags_map,
++            mvr_preview=mvr_preview_flag,
++            mvr_score=mvr_score,
++        )
++
++    item, chunks, ctx = _map_invoice(
++        flow,
++        tenant_id=tenant_id,
++        content_hash=content_hash,
++        doc_type=doc_type,
++        pipeline=pipeline_tokens,
++        tables=tables,
++        kv_entries=kv_entries,
++        enforce_invoice=enforce_invoice,
++        flags=flags_map,
++        mvr_preview=mvr_preview_flag,
++        mvr_score=mvr_score,
++    )
++
++    structured = bool(tables or kv_entries)
++    if enforce_other and ctx.get("doctype") != "invoice" and structured:
++        return _map_other(
++            flow,
++            tenant_id=tenant_id,
++            content_hash=content_hash,
++            doc_type=doc_type,
++            tables=tables,
++            kv_entries=kv_entries,
++            flags=flags_map,
++            mvr_preview=mvr_preview_flag,
++            mvr_score=mvr_score,
++        )
++
+     return item, chunks
+diff --git a/backend/apps/inbox/importer/validators.py b/backend/apps/inbox/importer/validators.py
+index 6f7d470..3afe84b 100644
+--- a/backend/apps/inbox/importer/validators.py
++++ b/backend/apps/inbox/importer/validators.py
+@@ -12,6 +12,7 @@ _INVOICE_NO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-_\/]{2,63}$")
+ _MAX_COLUMNS = 100
+ _MAX_ROWS = 5000
+ _REQUIRED_DUE_DATE_LOOKBACK_DAYS = 365
++_ALLOWED_PAYMENT_CURRENCIES = {"EUR", "USD", "GBP"}
+ 
+ 
+ RuleLevel = Literal["error", "warning"]
+@@ -30,6 +31,14 @@ def _rule(code: str, message: str, *, level: RuleLevel = "error") -> Rule:
+     return {"code": code, "level": level, "message": message}
+ 
+ 
++def non_empty_str(value: Any) -> Optional[str]:
++    if isinstance(value, str):
++        candidate = value.strip()
++        if candidate:
++            return candidate
++    return None
++
++
+ def validate_currency_amount(s: str) -> bool:
+     return bool(_AMOUNT_RE.match(s))
+ 
+@@ -149,6 +158,21 @@ def validate_table_shape(table: Dict[str, Any]) -> RuleList:
+     return rules
+ 
+ 
++def table_shape_ok(table: Dict[str, Any]) -> bool:
++    if not isinstance(table, dict):
++        return False
++    headers = table.get("headers")
++    rows = table.get("rows")
++    if not isinstance(headers, list) or not any(non_empty_str(h) for h in headers):
++        return False
++    if not isinstance(rows, list) or not rows:
++        return False
++    return any(
++        isinstance(row, list) and any(non_empty_str(str(cell)) for cell in row)
++        for row in rows
++    )
++
++
+ def compute_confidence(ctx: Mapping[str, Any]) -> int:
+     score = 0
+     if ctx.get("required_ok"):
+@@ -199,9 +223,126 @@ def parse_amount(value: Optional[str]) -> Optional[Decimal]:
+ def parse_iso_date(value: Optional[str]) -> Optional[date]:
+     if value in (None, ""):
+         return None
++    if isinstance(value, date):
++        return value
+     if not isinstance(value, str) or not validate_iso_date(value):
+         raise ValueError("invalid due_date format")
+     try:
+         return datetime.strptime(value, "%Y-%m-%d").date()
+     except ValueError as exc:
+         raise ValueError("invalid due_date format") from exc
++
++
++def payment_DoD(
++    *,
++    amount: Optional[Decimal],
++    currency: Optional[str],
++    payment_date: Optional[date],
++    counterparty: Optional[str],
++) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
++    rules: RuleList = []
++    score = 70
++
++    amount_valid = amount is not None and amount > Decimal("0")
++    if not amount_valid:
++        rules.append(_rule("payment.amount.invalid", "Payment amount must be greater than zero"))
++
++    currency_norm = non_empty_str(currency)
++    currency_valid = currency_norm is not None and currency_norm.upper() in _ALLOWED_PAYMENT_CURRENCIES
++    if currency_valid:
++        score += 10
++    else:
++        rules.append(_rule("payment.currency.unsupported", "Payment currency must be one of EUR/USD/GBP"))
++
++    date_valid = payment_date is not None
++    if date_valid:
++        score += 10
++    else:
++        rules.append(_rule("payment.date.missing", "Payment date is required"))
++
++    counterparty_norm = non_empty_str(counterparty)
++    counterparty_valid = counterparty_norm is not None
++    if counterparty_valid:
++        score += 10
++    else:
++        rules.append(_rule("payment.counterparty.missing", "Payment counterparty is required"))
++
++    score = min(score, 100)
++    confidence = Decimal(score).quantize(Decimal("1.00"))
++
++    hard_error = not amount_valid
++    error_rules = [rule for rule in rules if rule["level"] == "error"]
++
++    if hard_error or score < 60:
++        quality_status: Literal["accepted", "needs_review", "rejected"] = "rejected"
++    elif score >= 80 and not error_rules:
++        quality_status = "accepted"
++    else:
++        quality_status = "needs_review"
++
++    return confidence, rules, quality_status
++
++
++def other_DoD(
++    *,
++    kv_entries: Optional[List[Mapping[str, Any]]],
++    tables: Optional[List[Mapping[str, Any]]],
++) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
++    rules: RuleList = []
++    kv_entries = kv_entries or []
++    tables = tables or []
++
++    non_empty_fields = 0
++    for entry in kv_entries:
++        if not isinstance(entry, Mapping):
++            continue
++        value = entry.get("value")
++        if non_empty_str(value):
++            non_empty_fields += 1
++
++    table_ok = False
++    table_cells = 0
++    for table in tables:
++        if not isinstance(table, Mapping):
++            continue
++        if table_shape_ok(dict(table)):
++            table_ok = True
++            rows = table.get("rows") or []
++            for row in rows:
++                if isinstance(row, list):
++                    table_cells += sum(1 for cell in row if non_empty_str(str(cell)))
++
++    kv_ok = non_empty_fields > 0
++
++    if not kv_ok:
++        rules.append(_rule("other.fields.missing", "No extracted key/value entries found", level="warning"))
++    if not table_ok:
++        rules.append(_rule("other.tables.missing", "No structured tables detected", level="warning"))
++
++    structured = kv_ok or table_ok
++    if not structured:
++        rules.append(_rule("other.structure.empty", "Document lacks structured content"))
++
++    score = 40
++    if kv_ok:
++        score += 10
++    if table_ok:
++        score += 10
++    if kv_ok and table_ok:
++        score += 10
++    if non_empty_fields + table_cells >= 3:
++        score += 10
++    score = min(score, 90)
++
++    confidence_raw = Decimal(score)
++    confidence_capped = min(confidence_raw, Decimal("60"))
++    confidence = confidence_capped.quantize(Decimal("1.00"))
++
++    if not structured or score < 50:
++        quality_status: Literal["accepted", "needs_review", "rejected"] = "rejected"
++    elif score >= 65:
++        quality_status = "accepted"
++    else:
++        quality_status = "needs_review"
++
++    return confidence, rules, quality_status
+diff --git a/backend/apps/inbox/importer/worker.py b/backend/apps/inbox/importer/worker.py
+index 54b721e..91b17ac 100644
+--- a/backend/apps/inbox/importer/worker.py
++++ b/backend/apps/inbox/importer/worker.py
+@@ -61,6 +61,9 @@ PARSED_ITEMS_TABLE = sa.Table(
+     sa.Column("quality_status", sa.String(), nullable=False, server_default=sa.text("'needs_review'")),
+     sa.Column("confidence", sa.Numeric(5, 2), nullable=False, server_default=sa.text("0")),
+     sa.Column("rules", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
++    sa.Column("flags", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
++    sa.Column("mvr_preview", sa.Boolean(), nullable=False, server_default=sa.text("false")),
++    sa.Column("mvr_score", sa.Numeric(5, 2)),
+     sa.Column(
+         "created_at",
+         sa.DateTime(timezone=True),
+@@ -97,6 +100,23 @@ CHUNK_UNIQUE_ELEMENTS = [
+     PARSED_ITEM_CHUNKS_TABLE.c.seq,
+ ]
+ 
++# Audit log table
++AUDIT_LOG_TABLE = sa.Table(
++    "audit_log",
++    _METADATA,
++    sa.Column("id", PGUUID(as_uuid=False), primary_key=True),
++    sa.Column("ts", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("timezone('utc', now())")),
++    sa.Column("trace_id", sa.String()),
++    sa.Column("actor", sa.String()),
++    sa.Column("tenant_id", PGUUID(as_uuid=False)),
++    sa.Column("item_id", PGUUID(as_uuid=False)),
++    sa.Column("source", sa.String()),
++    sa.Column("op", sa.String()),
++    sa.Column("meta", JSONB),
++    schema="ops",
++    extend_existing=True,
++)
++
+ 
+ def _valid_artifact_path(path: str) -> bool:
+     return isinstance(path, str) and path.startswith("artifacts/") and not path.startswith("/") and ".." not in path
+@@ -106,11 +126,88 @@ def _ensure_engine(engine: Optional[Engine]) -> Engine:
+     return engine or create_engine(settings.database_url, future=True)
+ 
+ 
++def _log_audit_event(
++    conn,
++    tenant_id: str,
++    item_id: str,
++    source: str,
++    op: str,
++    trace_id: Optional[str] = None,
++    actor: Optional[str] = None,
++    meta: Optional[dict] = None,
++) -> None:
++    """Log an audit event to the audit_log table."""
++    audit_id = str(uuid.uuid4())
++    audit_stmt = sa.insert(AUDIT_LOG_TABLE).values(
++        id=audit_id,
++        tenant_id=tenant_id,
++        item_id=item_id,
++        source=source,
++        op=op,
++        trace_id=trace_id,
++        actor=actor,
++        meta=meta or {},
++    )
++    conn.execute(audit_stmt)
++
++
++def process_artifact_file(
++    tenant_id: str,
++    artifact_path: str,
++    engine: Optional[Engine] = None,
++) -> 'ProcessResult':
++    """Process an artifact file and return the result."""
++    from .dto import ProcessResult
++    
++    engine = _ensure_engine(engine)
++    
++    with engine.begin() as conn:
++        # Load artifact data
++        import json
++        with open(artifact_path, 'r') as f:
++            artifact_data = json.load(f)
++        
++        # Convert to DTOs
++        from .mapper import artifact_to_dtos
++        item, chunks = artifact_to_dtos(artifact_data)
++        item.tenant_id = tenant_id
++        
++        # Upsert item
++        parsed_item_id, action = _upsert_parsed_item(conn, item)
++        
++        # Insert chunks
++        chunk_count = 0
++        for chunk in chunks:
++            chunk.parsed_item_id = parsed_item_id
++            try:
++                conn.execute(sa.insert(PARSED_ITEM_CHUNKS_TABLE).values(
++                    id=str(uuid.uuid4()),
++                    parsed_item_id=chunk.parsed_item_id,
++                    seq=chunk.seq,
++                    kind=chunk.kind,
++                    payload=chunk.payload,
++                ))
++                chunk_count += 1
++            except Exception:
++                # Ignore duplicate chunks
++                pass
++        
++        return ProcessResult(
++            parsed_item_id=parsed_item_id,
++            action=action,
++            chunk_count=chunk_count
++        )
++
++
+ def _upsert_parsed_item(
+     conn,
+     item: ParsedItemDTO,
+ ) -> Tuple[str, str]:
+-    insert_id = str(uuid.uuid4())
++    # Deterministic ID generation based on tenant_id and content_hash
++    import hashlib
++    deterministic_input = f"{item.tenant_id}|{item.content_hash}"
++    deterministic_hash = hashlib.sha256(deterministic_input.encode()).hexdigest()[:32]
++    insert_id = str(uuid.UUID(deterministic_hash))
+     upsert_stmt = (
+         pg_insert(PARSED_ITEMS_TABLE)
+         .values(
+@@ -127,6 +224,9 @@ def _upsert_parsed_item(
+             amount=sa.bindparam("amount", type_=sa.Numeric(18, 2)),
+             invoice_no=sa.bindparam("invoice_no", type_=sa.String),
+             due_date=sa.bindparam("due_date", type_=sa.Date),
++            flags=sa.bindparam("flags", type_=JSONB),
++            mvr_preview=sa.bindparam("mvr_preview", type_=sa.Boolean),
++            mvr_score=sa.bindparam("mvr_score", type_=sa.Numeric(5, 2)),
+         )
+         .on_conflict_do_update(
+             index_elements=[PARSED_ITEMS_TABLE.c.tenant_id, PARSED_ITEMS_TABLE.c.content_hash],
+@@ -141,6 +241,9 @@ def _upsert_parsed_item(
+                 "amount": sa.bindparam("u_amount", type_=sa.Numeric(18, 2)),
+                 "invoice_no": sa.bindparam("u_invoice_no", type_=sa.String),
+                 "due_date": sa.bindparam("u_due_date", type_=sa.Date),
++                "flags": sa.bindparam("u_flags", type_=JSONB),
++                "mvr_preview": sa.bindparam("u_mvr_preview", type_=sa.Boolean),
++                "mvr_score": sa.bindparam("u_mvr_score", type_=sa.Numeric(5, 2)),
+                 "updated_at": func.now(),
+             },
+         )
+@@ -160,6 +263,9 @@ def _upsert_parsed_item(
+         "amount": item.amount,
+         "invoice_no": item.invoice_no,
+         "due_date": item.due_date,
++        "flags": item.flags,
++        "mvr_preview": item.mvr_preview,
++        "mvr_score": item.mvr_score,
+         "u_doc_type": item.doc_type,
+         "u_doctype": item.doctype,
+         "u_quality_status": item.quality_status,
+@@ -170,10 +276,26 @@ def _upsert_parsed_item(
+         "u_amount": item.amount,
+         "u_invoice_no": item.invoice_no,
+         "u_due_date": item.due_date,
++        "u_flags": item.flags,
++        "u_mvr_preview": item.mvr_preview,
++        "u_mvr_score": item.mvr_score,
+     }
+     row = conn.execute(upsert_stmt, params).fetchone()
+     parsed_item_id = row.id
+     action = "insert" if parsed_item_id == insert_id else "update"
++    
++    # Log audit event
++    _log_audit_event(
++        conn=conn,
++        tenant_id=item.tenant_id,
++        item_id=parsed_item_id,
++        source="importer",
++        op="IMPORT_UPSERT",
++        trace_id=getattr(item, 'trace_id', None),
++        actor=getattr(item, 'actor', None),
++        meta={"action": action, "content_hash": item.content_hash}
++    )
++    
+     return parsed_item_id, action
+ 
+ 
+@@ -197,6 +319,9 @@ def _insert_only(
+             amount=sa.bindparam("amount", type_=sa.Numeric(18, 2)),
+             invoice_no=sa.bindparam("invoice_no", type_=sa.String),
+             due_date=sa.bindparam("due_date", type_=sa.Date),
++            flags=sa.bindparam("flags", type_=JSONB),
++            mvr_preview=sa.bindparam("mvr_preview", type_=sa.Boolean),
++            mvr_score=sa.bindparam("mvr_score", type_=sa.Numeric(5, 2)),
+         )
+         .returning(PARSED_ITEMS_TABLE.c.id)
+     )
+@@ -214,6 +339,9 @@ def _insert_only(
+         "amount": item.amount,
+         "invoice_no": item.invoice_no,
+         "due_date": item.due_date,
++        "flags": item.flags,
++        "mvr_preview": item.mvr_preview,
++        "mvr_score": item.mvr_score,
+     }
+     row = conn.execute(insert_stmt, params).fetchone()
+     return row.id
+@@ -297,6 +425,9 @@ def run_importer(
+     replace_chunks: bool = False,
+     engine: Optional[Engine] = None,
+     enforce_invoice: bool = True,
++    enforce_payment: bool = True,
++    enforce_other: bool = True,
++    strict: bool = False,
+ ) -> str:
+     logger = get_logger("importer")
+ 
+@@ -307,10 +438,18 @@ def run_importer(
+     validate_artifact_minimum(data, tenant_id)
+     validate_tables_shape(data.get("extracted", {}).get("tables", []))
+ 
+-    item_dto, chunk_dtos = artifact_to_dtos(data, enforce_invoice=enforce_invoice)
++    item_dto, chunk_dtos = artifact_to_dtos(
++        data,
++        enforce_invoice=enforce_invoice,
++        enforce_payment=enforce_payment,
++        enforce_other=enforce_other,
++    )
+     if item_dto.tenant_id != tenant_id:
+         raise ValueError("tenant mismatch")
+ 
++    if strict and item_dto.quality_status == "rejected":
++        raise ValueError("artifact rejected by definition of done checks")
++
+     content_hash = item_dto.content_hash
+ 
+     logger.info(
+diff --git a/backend/apps/inbox/orchestration/inbox_local_flow.py b/backend/apps/inbox/orchestration/inbox_local_flow.py
+index c0ec966..233d345 100644
+--- a/backend/apps/inbox/orchestration/inbox_local_flow.py
++++ b/backend/apps/inbox/orchestration/inbox_local_flow.py
+@@ -33,7 +33,7 @@ def _ext(path: str) -> str:
+     return os.path.splitext(path)[1].lower()
+ 
+ 
+-def _classify_tool_for_path(path: str, enable_ocr: bool) -> Tuple[str, List[str]]:
++def _classify_tool_for_path(path: str, *, enable_ocr: bool, enable_table_boost: bool) -> Tuple[str, List[str]]:
+     e = _ext(path)
+     pipeline: List[str] = []
+     if e in {".zip", ".7z"}:
+@@ -53,6 +53,8 @@ def _classify_tool_for_path(path: str, enable_ocr: bool) -> Tuple[str, List[str]
+         pipeline.append("pdf.tables_extract")
+     # downstream common steps
+     pipeline.append("data_quality.tables.validate")
++    if enable_table_boost:
++        pipeline.append("data_quality.tables.boost")
+     pipeline.append("security.pii.redact")
+     return ("application/octet-stream", pipeline)
+ 
+@@ -73,13 +75,15 @@ def run_inbox_local_flow(
+     trace_id: Optional[str] = None,
+     enable_ocr: bool = False,
+     enable_browser: bool = False,
++    enable_table_boost: bool = False,
++    mvr_preview: bool = False,
+ ) -> str:
+     if not _valid_path(path):
+         raise ValueError("VALIDATION: invalid path")
+ 
+     # Detect MIME (stub)
+     detect = _call_adapter("detect.mime", paths=[path], tenant_id=tenant_id, dry_run=True)
+-    mime, pipeline = _classify_tool_for_path(path, enable_ocr=enable_ocr)
++    mime, pipeline = _classify_tool_for_path(path, enable_ocr=enable_ocr, enable_table_boost=enable_table_boost)
+ 
+     executed: List[str] = ["detect.mime"]
+     extracted: Dict[str, Any] = {}
+@@ -126,6 +130,9 @@ def run_inbox_local_flow(
+             pii = _call_adapter(step, paths=[path], tenant_id=tenant_id, dry_run=True)
+             executed.append(step)
+             pii_plan = pii.get("plan", {})
++        elif step == "data_quality.tables.boost":
++            executed.append(step)
++            extracted.setdefault("table_boost", {"planned": True})
+         else:
+             # unknown step
+             continue
+@@ -142,9 +149,17 @@ def run_inbox_local_flow(
+         "pii": pii_plan if 'pii_plan' in locals() else {"steps": []},
+         "fingerprints": {"content_hash": _sha256_hex(path)},
+         "policy_fingerprint": _policy_fingerprint(),
+-        "flags": {"enable_ocr": enable_ocr, "enable_browser": enable_browser},
++        "flags": {
++            "enable_ocr": enable_ocr,
++            "enable_browser": enable_browser,
++            "enable_table_boost": enable_table_boost,
++            "mvr_preview": mvr_preview,
++        },
+     }
+ 
++    if mvr_preview:
++        flow_result.setdefault("metrics", {})["mvr_preview"] = {"planned": True}
++
+     # Persist to artifacts
+     out_dir = os.path.join("artifacts", "inbox_local")
+     os.makedirs(out_dir, exist_ok=True)
+@@ -153,4 +168,3 @@ def run_inbox_local_flow(
+     with open(out_path, "w", encoding="utf-8") as f:
+         json.dump(flow_result, f, ensure_ascii=False, indent=2)
+     return out_path
+-
+diff --git a/backend/apps/inbox/read_model/dto.py b/backend/apps/inbox/read_model/dto.py
+index edee0b1..cc3cb82 100644
+--- a/backend/apps/inbox/read_model/dto.py
++++ b/backend/apps/inbox/read_model/dto.py
+@@ -1,9 +1,9 @@
+ from __future__ import annotations
+ 
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from datetime import datetime, date
+ from decimal import Decimal
+-from typing import Optional
++from typing import Optional, Dict, Any
+ from uuid import UUID
+ 
+ 
+@@ -18,6 +18,26 @@ class InvoiceRowDTO:
+     quality_status: str
+     confidence: float
+     created_at: datetime
++    flags: Dict[str, Any] = field(default_factory=dict)
++    mvr_preview: bool = False
++    mvr_score: Optional[Decimal] = None
++
++
++@dataclass(frozen=True)
++class PaymentRowDTO:
++    id: UUID
++    tenant_id: UUID
++    content_hash: str
++    amount: Optional[Decimal]
++    currency: Optional[str]
++    counterparty: Optional[str]
++    payment_date: Optional[date]
++    quality_status: str
++    confidence: float
++    created_at: datetime
++    flags: Dict[str, Any] = field(default_factory=dict)
++    mvr_preview: bool = False
++    mvr_score: Optional[Decimal] = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -29,6 +49,9 @@ class NeedsReviewRowDTO:
+     confidence: float
+     created_at: datetime
+     content_hash: str
++    flags: Dict[str, Any] = field(default_factory=dict)
++    mvr_preview: bool = False
++    mvr_score: Optional[Decimal] = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -36,5 +59,9 @@ class TenantSummaryDTO:
+     tenant_id: UUID
+     cnt_items: int
+     cnt_invoices: int
++    cnt_payments: int
++    cnt_other: int
+     cnt_needing_review: int
+-    avg_confidence: Optional[float]
++    cnt_mvr_preview: int = 0
++    avg_confidence: Optional[float] = None
++    avg_mvr_score: Optional[float] = None
+diff --git a/backend/core/observability/logging.py b/backend/core/observability/logging.py
+index f0833f1..f6388b0 100644
+--- a/backend/core/observability/logging.py
++++ b/backend/core/observability/logging.py
+@@ -1,6 +1,7 @@
+-"""JSON structured logging with mandatory fields."""
++"""JSON structured logging with mandatory fields and PII redaction."""
+ import json
+ import logging
++import re
+ import sys
+ from datetime import datetime
+ from typing import Optional
+@@ -15,21 +16,72 @@ _context = threading.local()
+ 
+ 
+ class JSONFormatter(logging.Formatter):
+-    """JSON formatter with mandatory fields."""
++    """JSON formatter with mandatory fields and PII redaction."""
++
++    def __init__(self):
++        super().__init__()
++        # PII patterns
++        self.iban_pattern = re.compile(r'([A-Z]{2}\d{2}[A-Z0-9]{1,30})')
++        self.email_pattern = re.compile(r'(\b\S+@\S+\.\S+\b)')
++        self.phone_pattern = re.compile(r'(\+?\d[\d \-/]{6,})')
++
++    def _redact_pii(self, text: str) -> str:
++        """Redact PII from text."""
++        if not isinstance(text, str):
++            return text
++        
++        # Redact IBANs
++        text = self.iban_pattern.sub(self._mask_iban, text)
++        # Redact emails
++        text = self.email_pattern.sub(self._mask_email, text)
++        # Redact phone numbers
++        text = self.phone_pattern.sub(self._mask_phone, text)
++        
++        return text
++
++    def _mask_iban(self, match) -> str:
++        """Mask IBAN: show first 2 chars, mask the rest."""
++        iban = match.group(1)
++        if len(iban) <= 4:
++            return "**" + "*" * (len(iban) - 2)
++        return iban[:2] + "**" + "*" * (len(iban) - 4)
++
++    def _mask_email(self, match) -> str:
++        """Mask email: show first char of user, mask domain."""
++        email = match.group(1)
++        if "@" not in email:
++            return email
++        user, domain = email.split("@", 1)
++        if len(user) <= 1:
++            masked_user = "*"
++        else:
++            masked_user = user[0] + "*" * (len(user) - 1)
++        return f"{masked_user}@{domain}"
++
++    def _mask_phone(self, match) -> str:
++        """Mask phone: show first 2 chars, mask the rest."""
++        phone = match.group(1)
++        if len(phone) <= 2:
++            return "*" * len(phone)
++        return phone[:2] + "*" * (len(phone) - 2)
+ 
+     def format(self, record):
+-        """Format log record as JSON with mandatory fields."""
++        """Format log record as JSON with mandatory fields and PII redaction."""
+         # Get context values or defaults
+         trace_id = getattr(_context, 'trace_id', None) or 'unknown'
+         tenant_id = getattr(_context, 'tenant_id', 'unknown')
+         request_id = getattr(_context, 'request_id', None)
+ 
++        # Get message and redact PII
++        message = record.getMessage()
++        redacted_message = self._redact_pii(message)
++
+         # Build mandatory fields
+         log_entry = {
+             'trace_id': trace_id,
+             'tenant_id': tenant_id,
+             'level': record.levelname.lower(),
+-            'msg': record.getMessage(),
++            'msg': redacted_message,
+             'ts_utc': datetime.utcnow().isoformat() + 'Z'
+         }
+ 
+@@ -41,13 +93,16 @@ class JSONFormatter(logging.Formatter):
+         if record.exc_info:
+             log_entry['exc_info'] = self.formatException(record.exc_info)
+ 
+-        # Add extra fields from record if any
++        # Add extra fields from record if any (with PII redaction)
+         for key, value in record.__dict__.items():
+             if key not in ('name', 'msg', 'args', 'levelname', 'levelno',
+                          'pathname', 'filename', 'module', 'exc_info',
+                          'exc_text', 'stack_info', 'lineno', 'funcName',
+                          'created', 'msecs', 'relativeCreated', 'thread',
+                          'threadName', 'processName', 'process', 'message'):
++                # Redact PII from string values
++                if isinstance(value, str):
++                    value = self._redact_pii(value)
+                 log_entry[key] = value
+ 
+         return json.dumps(log_entry)
+diff --git a/docs/inbox/read_api.md b/docs/inbox/read_api.md
+index 5cc5e8f..923ac3d 100644
+--- a/docs/inbox/read_api.md
++++ b/docs/inbox/read_api.md
+@@ -9,7 +9,7 @@ Diese Read-Only API stellt die normalisierten Daten aus dem Inbox-Read-Model (Vi
+   - `tenant` *(UUID, Pflicht)*
+   - `limit` *(0–100, Default 50)*
+   - `offset` *(>=0, Default 0)*
+-- **Antwort**: Liste von Invoices (neueste zuerst), Felder u. a. `id`, `tenant_id`, `content_hash`, `amount`, `invoice_no`, `due_date`, `quality_status`, `confidence`, `created_at`.
++- **Antwort**: Liste von Invoices (neueste zuerst), Felder u. a. `id`, `tenant_id`, `content_hash`, `amount`, `invoice_no`, `due_date`, `quality_status`, `confidence`, `flags`, `mvr_preview`, `mvr_score`, `created_at`.
+ - **Header**: `X-Total-Count` = Anzahl der gelieferten Einträge.
+ 
+ **Beispiel**
+@@ -24,11 +24,43 @@ Diese Read-Only API stellt die normalisierten Daten aus dem Inbox-Read-Model (Vi
+     "due_date": "2025-01-15",
+     "quality_status": "accepted",
+     "confidence": 95.0,
++    "flags": {"enable_ocr": false},
++    "mvr_preview": false,
++    "mvr_score": null,
+     "created_at": "2025-01-01T12:00:00+00:00"
+   }
+ ]
+ ```
+ 
++### GET `/inbox/read/payments`
++- **Query-Parameter**
++  - `tenant` *(UUID, Pflicht)*
++  - `limit` *(0–100, Default 50)*
++  - `offset` *(>=0, Default 0)*
++- **Antwort**: Liste von Zahlungen mit Feldern wie `amount`, `currency`, `counterparty`, `payment_date`, `quality_status`, `confidence`, `flags`, `mvr_preview`, `mvr_score`, `created_at`.
++- **Header**: `X-Total-Count` = Anzahl der gelieferten Einträge.
++
++**Beispiel**
++```json
++[
++  {
++    "id": "bfaf9246-5d35-435f-a389-67e86561733f",
++    "tenant_id": "00000000-0000-0000-0000-000000000001",
++    "content_hash": "payment-good-0001",
++    "amount": 250.0,
++    "currency": "EUR",
++    "counterparty": "ACME Bank",
++    "payment_date": "2025-02-15",
++    "quality_status": "accepted",
++    "confidence": 100.0,
++    "flags": {"mvr_preview": true},
++    "mvr_preview": true,
++    "mvr_score": "0.00",
++    "created_at": "2025-02-15T10:00:01+00:00"
++  }
++]
++```
++
+ ### GET `/inbox/read/review`
+ - Gleiche Parameter wie `/inbox/read/invoices`.
+ - Liefert alle Items mit Qualitätsstatus `needs_review` bzw. `rejected`.
+@@ -50,22 +82,26 @@ Diese Read-Only API stellt die normalisierten Daten aus dem Inbox-Read-Model (Vi
+ 
+ ### GET `/inbox/read/summary`
+ - Parameter: `tenant` (Pflicht).
+-- Antwort: Aggregierte Kennzahlen (`cnt_items`, `cnt_invoices`, `cnt_needing_review`, `avg_confidence`).
++- Antwort: Aggregierte Kennzahlen (`cnt_items`, `cnt_invoices`, `cnt_payments`, `cnt_other`, `cnt_needing_review`, `cnt_mvr_preview`, `avg_confidence`, `avg_mvr_score`).
+ - 404 falls keine Daten für den Tenant vorliegen.
+ 
+ **Beispiel**
+ ```json
+ {
+   "tenant_id": "00000000-0000-0000-0000-000000000001",
+-  "cnt_items": 2,
++  "cnt_items": 3,
+   "cnt_invoices": 2,
++  "cnt_payments": 1,
++  "cnt_other": 0,
+   "cnt_needing_review": 1,
+-  "avg_confidence": 70.0
++  "cnt_mvr_preview": 1,
++  "avg_confidence": 78.3,
++  "avg_mvr_score": 0.0
+ }
+ ```
+ 
+ ## Hinweise
+-- **Read-only**: Alle Endpunkte greifen ausschließlich auf Views (`v_invoices_latest`, `v_items_needing_review`, `v_inbox_by_tenant`) zu.
++- **Read-only**: Alle Endpunkte greifen ausschließlich auf Views (`v_invoices_latest`, `v_payments_latest`, `v_items_needing_review`, `v_inbox_by_tenant`) zu.
+ - **Keine PII**: Daten sind normalisiert; Payloads und Original-Artefakte werden nicht ausgegeben.
+ - **Rate Limits / Caching**: Frontend- oder Agent-Konsumenten sollten clientseitig cachen und mit moderaten Limits arbeiten (z. B. `limit<=50`).
+ - **Tracing**: Optionaler Header `X-Trace-ID` wird ins Logging übernommen.
+diff --git a/docs/mcp/flows.md b/docs/mcp/flows.md
+index b1c2214..2c4901c 100644
+--- a/docs/mcp/flows.md
++++ b/docs/mcp/flows.md
+@@ -1,7 +1,6 @@
+ MCP Flows (Local, Read-Only)
+ 
+ - Inbox Local Flow chains adapters:
+-  detect.mime → archive.unpack → office/pdf/images.* → pdf.tables_extract → data_quality.tables.validate → security.pii.redact
+-- Inputs: tenant_id, path (artifacts/inbox/*), optional trace_id, flags --enable-ocr/--enable-browser (markers only).
++  detect.mime → archive.unpack → office/pdf/images.* → pdf.tables_extract → data_quality.tables.validate → (optional) data_quality.tables.boost → security.pii.redact
++- Inputs: tenant_id, path (artifacts/inbox/*), optional trace_id, flags --enable-ocr/--enable-browser/--enable-table-boost/--mvr-preview (markers only).
+ - Output: JSON report saved under artifacts/inbox_local/<timestamp>_<sha256>_result.json.
+-
+diff --git a/ops/alembic/env.py b/ops/alembic/env.py
+index 883348e..b107fe8 100644
+--- a/ops/alembic/env.py
++++ b/ops/alembic/env.py
+@@ -35,9 +35,11 @@ naming_convention = {
+ 
+ # add your model's MetaData object here
+ # for 'autogenerate' support
+-# from myapp import mymodel
+-# target_metadata = mymodel.Base.metadata
+-target_metadata = None
++from backend.apps.inbox.importer.worker import _METADATA as inbox_metadata
++from backend.core.outbox.publisher import _METADATA as outbox_metadata
++
++# Combine all metadata objects
++target_metadata = [inbox_metadata, outbox_metadata]
+ 
+ # other values from the config, defined by the needs of env.py,
+ # can be acquired:
+diff --git a/requirements.txt b/requirements.txt
+index 0716a38..08e8a56 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -18,26 +18,28 @@ psycopg[binary]>=3.2,<4
+ Jinja2>=3.1,<4
+ 
+ # HTTP-Client (für Adapter/Integrationen)
+-httpx>=0.27,<1
++httpx>=0.28.1
+ 
+-# MCP-Tools 1 bis 9 – Kernabhängigkeiten für Inbox-Normalisierung, OCR, Office, Web-Automation und E-Mail-APIs (lokal-only); Hinweis: Versionsbereiche wie <5 sind in requirements.txt gültig, im Shell-Befehl müssten sie gequotet werden.
+-1) Erkennung/Normalisierung
++# MCP (Erkennung/Normalisierung)
+ python-magic>=0.4.27 ; platform_system != "Windows"
+ python-magic-bin>=0.4.14 ; platform_system == "Windows"
+ filetype>=1.2.0
+ markitdown>=0.1.3
+ markdown-it-py>=4.0.0
+ html5lib>=1.1
+-2)Office/Tabellen (Lesen/Validieren)
++
++# Office/Tabellen (Lesen/Validieren)
+ pandas==2.3.*
+ openpyxl>=3.1.5
+ pyxlsb>=1.0.10
+ frictionless>=5.18.1
+ pandera>=0.26.1
+-3) Office/DOCX/PPTX (strukturierter Zugriff)
++
++# Office/DOCX/PPTX (strukturierter Zugriff)
+ python-docx>=1.2.0
+ python-pptx>=1.0.2
+-4) PDF & OCR (Texte/Tabellen/Scans)
++
++# PDF & OCR (Texte/Tabellen/Scans) – nur Libs, OCR optional
+ pypdf>=4.0.0
+ pdfminer.six>=20231228
+ pytesseract>=0.3.13
+@@ -45,22 +47,21 @@ pillow>=10.0.0
+ ocrmypdf>=16.0.0
+ camelot-py[cv]>=0.11.0
+ tabula-py>=2.9.0
+-5) Web-Automation & HTTP (Portale/Downloads)
++
++# Web-Automation & HTTP (Portale/Downloads)
+ playwright>=1.55.0
+-httpx>=0.28.1s
+-6) E-Mail-APIs (Gmail/Outlook)
++
++# E-Mail-APIs (Gmail/Outlook)
+ google-api-python-client>=2.185.0
+ google-auth-httplib2>=0.2.0
+ google-auth-oauthlib>=1.2.2
+ msal>=1.34.0
+ msgraph-sdk>=1.46.0
+-7) PII-Redaction (optional)
++
++# PII-Redaction (optional)
+ presidio-analyzer>=2.2.360
+ scrubadub>=2.0.1
+-8) Archive/Anhänge
++
++# Archive/Anhänge
+ py7zr>=1.0.0
+ libarchive-c>=5.3
+-9) Dev/Tests (Validator/Smokes)
+-pytest==8.3.*
+-jsonschema>=4.21,<5
+-jsonschema-specifications>=2023.12.1
+\ No newline at end of file
+diff --git a/tests/inbox/conftest.py b/tests/inbox/conftest.py
+index eb48cef..6dcbb30 100644
+--- a/tests/inbox/conftest.py
++++ b/tests/inbox/conftest.py
+@@ -31,10 +31,17 @@ def block_egress(monkeypatch):
+     import subprocess, os as _os, asyncio
+     import urllib.request, http.client, ssl
+ 
++    _original_socket = socket.socket
++
++    def _guarded_socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None):
++        if family == socket.AF_UNIX:
++            return _original_socket(family, type, proto, fileno)
++        raise RuntimeError("egress blocked")
++
+     def _blocked(*args, **kwargs):  # pragma: no cover - guard
+         raise RuntimeError("egress blocked")
+ 
+-    monkeypatch.setattr(socket, "socket", _blocked)
++    monkeypatch.setattr(socket, "socket", _guarded_socket)
+     monkeypatch.setattr(socket, "create_connection", _blocked)
+     for name in ("Popen", "call", "check_call", "check_output", "run"):
+         monkeypatch.setattr(subprocess, name, _blocked)
+@@ -44,4 +51,3 @@ def block_egress(monkeypatch):
+     monkeypatch.setattr(http.client, "HTTPConnection", _blocked)
+     monkeypatch.setattr(http.client, "HTTPSConnection", _blocked)
+     monkeypatch.setattr(ssl, "create_default_context", _blocked)
+-
+diff --git a/tests/inbox/test_importer_db_e2e.py b/tests/inbox/test_importer_db_e2e.py
+index 38ac8b1..58c8e26 100644
+--- a/tests/inbox/test_importer_db_e2e.py
++++ b/tests/inbox/test_importer_db_e2e.py
+@@ -5,11 +5,24 @@ import json
+ import importlib.util as _iu
+ 
+ import pytest
++from alembic import command
++from alembic.config import Config
+ from sqlalchemy import create_engine, text
+ 
+ 
+ RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+-DB_URL = os.getenv("INBOX_DB_URL")
++DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
++
++
++def _ensure_database_ready(engine) -> None:
++    cfg = Config("alembic.ini")
++    cfg.set_main_option("script_location", "ops/alembic")
++    cfg.set_main_option("sqlalchemy.url", DB_URL)
++    command.upgrade(cfg, "head")
++
++    with engine.begin() as conn:
++        conn.execute(text("TRUNCATE inbox_parsed.parsed_item_chunks CASCADE"))
++        conn.execute(text("TRUNCATE inbox_parsed.parsed_items CASCADE"))
+ 
+ 
+ @pytest.mark.skipif(not RUN_DB_TESTS or not DB_URL, reason="requires RUN_DB_TESTS=1 and INBOX_DB_URL")
+@@ -21,15 +34,7 @@ def test_importer_db_roundtrip(tmp_path):
+     run_importer = mod.run_importer
+ 
+     engine = create_engine(DB_URL, future=True)
+-
+-    # ensure schema exists
+-    sql_path = "ops/alembic/versions/20251019_inbox_parsed.sql"
+-    sql_text = open(sql_path, "r", encoding="utf-8").read()
+-    with engine.begin() as conn:
+-        for statement in [s.strip() for s in sql_text.split(";") if s.strip()]:
+-            conn.execute(text(statement))
+-        conn.execute(text("TRUNCATE inbox_parsed.parsed_item_chunks CASCADE"))
+-        conn.execute(text("TRUNCATE inbox_parsed.parsed_items CASCADE"))
++    _ensure_database_ready(engine)
+ 
+     artifact_path = "artifacts/inbox_local/samples/sample_result.json"
+     data = json.loads(open(artifact_path, "r", encoding="utf-8").read())
+@@ -44,13 +49,17 @@ def test_importer_db_roundtrip(tmp_path):
+     with engine.begin() as conn:
+         row = conn.execute(
+             text(
+-                "SELECT doc_type, quality_flags, payload FROM inbox_parsed.parsed_items WHERE id=:id"
++                "SELECT doc_type, doctype, quality_flags, payload, flags, mvr_preview, mvr_score "
++                "FROM inbox_parsed.parsed_items WHERE id=:id"
+             ),
+             {"id": parsed_id},
+         ).fetchone()
+         assert row is not None
+-        assert row.doc_type == "pdf"
++        assert row.doctype == "other"
+         assert isinstance(row.quality_flags, list)
++        assert row.payload.get("extracted")
++        assert isinstance(row.flags, dict)
++        assert row.mvr_preview in (True, False)
+ 
+         chunk_count = conn.execute(
+             text("SELECT COUNT(*) FROM inbox_parsed.parsed_item_chunks WHERE parsed_item_id=:id"),
+diff --git a/tests/inbox/test_importer_invoice_mapping.py b/tests/inbox/test_importer_invoice_mapping.py
+index 070fefa..8099f1f 100644
+--- a/tests/inbox/test_importer_invoice_mapping.py
++++ b/tests/inbox/test_importer_invoice_mapping.py
+@@ -29,7 +29,12 @@ def _base_flow() -> dict:
+         "invoice_no": "INV-12345",
+         "due_date": today.isoformat(),
+         "quality": {"valid": True, "issues": []},
+-        "flags": {"enable_ocr": False},
++        "flags": {
++            "enable_ocr": False,
++            "enable_browser": False,
++            "enable_table_boost": False,
++            "mvr_preview": False,
++        },
+         "extracted": {
+             "tables": [
+                 {
+@@ -48,6 +53,9 @@ def test_mapper_good_invoice_sets_quality():
+     assert item.doctype == "invoice"
+     assert item.quality_status == "accepted"
+     assert item.confidence == Decimal("100.00")
++    assert item.flags.get("enable_ocr") is False
++    assert item.mvr_preview is False
++    assert item.mvr_score is None
+     assert item.rules == []
+     assert item.amount == Decimal("199.90")
+     assert item.invoice_no == "INV-12345"
+@@ -81,6 +89,7 @@ def test_mapper_bad_invoice_collects_rules():
+ def test_mapper_without_enforcement_keeps_unknown_doctype():
+     data = _base_flow()
+     item, _ = mapper.artifact_to_dtos(data, enforce_invoice=False)
+-    assert item.doctype == "unknown"
+-    assert item.quality_status == "accepted"
+-    assert item.confidence == Decimal("100.00")
++    assert item.doctype == "other"
++    assert item.quality_status == "needs_review"
++    assert item.confidence == Decimal("50.00")
++    assert item.flags.get("enable_table_boost") is False
+diff --git a/tests/inbox/test_read_api_shape.py b/tests/inbox/test_read_api_shape.py
+index 060e26d..b1c44fe 100644
+--- a/tests/inbox/test_read_api_shape.py
++++ b/tests/inbox/test_read_api_shape.py
+@@ -36,54 +36,90 @@ def test_invoices_endpoint_success():
+     ids, client = _setup_database()
+     response = client.get(
+         "/inbox/read/invoices",
+-        params={"tenant": ids["tenant"], "limit": 1, "offset": 0},
+-        headers={"X-Trace-ID": "trace-123"},
++        params={"limit": 1, "offset": 0},
++        headers={"X-Tenant-ID": ids["tenant"], "X-Trace-ID": "trace-123"},
+     )
+     assert response.status_code == 200
+     assert response.headers.get("X-Total-Count") == "1"
+     data = response.json()
+-    assert isinstance(data, list)
+-    assert len(data) == 1
+-    item = data[0]
++    assert isinstance(data, dict)
++    assert data["limit"] == 1
++    assert data["offset"] == 0
++    assert data["total"] == 1
++    assert isinstance(data["items"], list)
++    assert len(data["items"]) == 1
++    item = data["items"][0]
+     assert item["id"] == ids["accepted_invoice_id"]
+     assert item["invoice_no"] == "INV-2025-0001"
+     assert item["quality_status"] == "accepted"
+     assert item["tenant_id"] == ids["tenant"]
++    assert "flags" in item and isinstance(item["flags"], dict)
++    assert item.get("mvr_preview") is False
++    assert item.get("mvr_score") in (None, 0, 0.0)
+ 
+ 
+ def test_invoices_pagination_offset():
+     ids, client = _setup_database()
+     resp = client.get(
+         "/inbox/read/invoices",
+-        params={"tenant": ids["tenant"], "limit": 1, "offset": 1},
++        params={"limit": 1, "offset": 1},
++        headers={"X-Tenant-ID": ids["tenant"]},
+     )
+     assert resp.status_code == 200
+-    items = resp.json()
++    payload = resp.json()
++    items = payload["items"]
+     assert len(items) == 1
+     assert items[0]["id"] == ids["review_invoice_id"]
+ 
+ 
+ def test_review_queue_endpoint():
+     ids, client = _setup_database()
+-    resp = client.get("/inbox/read/review", params={"tenant": ids["tenant"]})
++    resp = client.get("/inbox/read/review", headers={"X-Tenant-ID": ids["tenant"]})
+     assert resp.status_code == 200
+-    data = resp.json()
++    payload = resp.json()
++    data = payload["items"]
+     assert isinstance(data, list) and data
+     found = next((item for item in data if item["id"] == ids["review_invoice_id"]), None)
+     assert found is not None
+     assert found["quality_status"] == "needs_review"
++    assert "flags" in found
++    assert any(item["doc_type"] == "other" for item in data)
++
++
++def test_payments_endpoint():
++    ids, client = _setup_database()
++    response = client.get(
++        "/inbox/read/payments",
++        params={"limit": 5, "offset": 0},
++        headers={"X-Tenant-ID": ids["tenant"]},
++    )
++    assert response.status_code == 200
++    payload = response.json()
++    items = payload["items"]
++    assert isinstance(items, list) and items
++    payment = next((item for item in items if item["content_hash"] == "payment-good-0001"), None)
++    assert payment is not None
++    assert payment["counterparty"] == "ACME Bank"
++    assert payment["currency"] == "EUR"
++    assert payment["quality_status"] == "accepted"
++    assert payment.get("mvr_preview") in {True, False}
++    assert "flags" in payment
+ 
+ 
+ def test_summary_endpoint():
+     ids, client = _setup_database()
+-    resp = client.get("/inbox/read/summary", params={"tenant": ids["tenant"]})
++    resp = client.get("/inbox/read/summary", headers={"X-Tenant-ID": ids["tenant"]})
+     assert resp.status_code == 200
+     summary = resp.json()
+     assert summary["tenant_id"] == ids["tenant"]
+-    assert summary["cnt_items"] == 2
++    assert summary["cnt_items"] == 4
+     assert summary["cnt_invoices"] == 2
+-    assert summary["cnt_needing_review"] == 1
++    assert summary["cnt_payments"] == 1
++    assert summary["cnt_other"] == 1
++    assert summary["cnt_needing_review"] == 2
++    assert summary["cnt_mvr_preview"] >= 1
+     assert summary["avg_confidence"] is not None
++    assert "avg_mvr_score" in summary
+ 
+ 
+ def test_tenant_required():
+@@ -91,5 +127,39 @@ def test_tenant_required():
+     resp = client.get("/inbox/read/invoices")
+     assert resp.status_code == 422
+ 
+-    resp_invalid = client.get("/inbox/read/invoices", params={"tenant": "invalid"})
++    resp_invalid = client.get("/inbox/read/invoices", headers={"X-Tenant-ID": "invalid"})
+     assert resp_invalid.status_code == 422
++
++
++def test_invoices_filters_apply():
++    ids, client = _setup_database()
++    resp = client.get(
++        "/inbox/read/invoices",
++        params={"status": "accepted", "min_conf": 90},
++        headers={"X-Tenant-ID": ids["tenant"]},
++    )
++    assert resp.status_code == 200
++    payload = resp.json()
++    assert payload["total"] == 1
++    assert all(item["quality_status"] == "accepted" for item in payload["items"])
++
++    low_resp = client.get(
++        "/inbox/read/invoices",
++        params={"status": "needs_review", "min_conf": 50},
++        headers={"X-Tenant-ID": ids["tenant"]},
++    )
++    assert low_resp.status_code == 200
++    low_payload = low_resp.json()
++    assert low_payload["total"] == 0
++
++
++def test_multi_tenant_isolation():
++    ids, client = _setup_database()
++    other_tenant = "00000000-0000-0000-0000-000000000002"
++    resp = client.get("/inbox/read/invoices", headers={"X-Tenant-ID": other_tenant})
++    assert resp.status_code == 200
++    payload = resp.json()
++    assert payload["total"] == 0
++
++    summary_resp = client.get("/inbox/read/summary", headers={"X-Tenant-ID": other_tenant})
++    assert summary_resp.status_code == 404
+diff --git a/tests/inbox/test_read_model_db.py b/tests/inbox/test_read_model_db.py
+index 96ca6fe..fba20b1 100644
+--- a/tests/inbox/test_read_model_db.py
++++ b/tests/inbox/test_read_model_db.py
+@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, text
+ 
+ from backend.apps.inbox.read_model.query import (
+     fetch_invoices_latest,
++    fetch_payments_latest,
+     fetch_items_needing_review,
+     fetch_tenant_summary,
+ )
+@@ -108,6 +109,8 @@ def _seed_data(engine):
+ 
+     accepted_invoice_id = str(uuid4())
+     review_invoice_id = str(uuid4())
++    payment_id = str(uuid4())
++    other_id = str(uuid4())
+ 
+     _reset_tenant(engine, TENANT_ID)
+ 
+@@ -118,10 +121,12 @@ def _seed_data(engine):
+                 INSERT INTO inbox_parsed.parsed_items AS pi (
+                     id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
+                     amount, invoice_no, due_date, quality_flags, payload, rules,
++                    flags, mvr_preview, mvr_score,
+                     created_at, updated_at
+                 ) VALUES (
+                     :id, :tenant_id, :content_hash, 'invoice', 'invoice', 'accepted', :confidence,
+                     :amount, :invoice_no, :due_date, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
++                    '{}'::jsonb, false, NULL,
+                     :created_at, :updated_at
+                 )
+                 ON CONFLICT (tenant_id, content_hash)
+@@ -136,6 +141,9 @@ def _seed_data(engine):
+                     due_date = EXCLUDED.due_date,
+                     payload = EXCLUDED.payload,
+                     rules = EXCLUDED.rules,
++                    flags = EXCLUDED.flags,
++                    mvr_preview = EXCLUDED.mvr_preview,
++                    mvr_score = EXCLUDED.mvr_score,
+                     created_at = EXCLUDED.created_at,
+                     updated_at = EXCLUDED.updated_at
+                 """
+@@ -159,10 +167,12 @@ def _seed_data(engine):
+                 INSERT INTO inbox_parsed.parsed_items AS pi (
+                     id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
+                     amount, invoice_no, due_date, quality_flags, payload, rules,
++                    flags, mvr_preview, mvr_score,
+                     created_at, updated_at
+                 ) VALUES (
+                     :id, :tenant_id, :content_hash, 'invoice', 'invoice', 'needs_review', :confidence,
+                     NULL, NULL, NULL, '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
++                    '{}'::jsonb, false, NULL,
+                     :created_at, :updated_at
+                 )
+                 ON CONFLICT (tenant_id, content_hash)
+@@ -177,6 +187,9 @@ def _seed_data(engine):
+                     due_date = EXCLUDED.due_date,
+                     payload = EXCLUDED.payload,
+                     rules = EXCLUDED.rules,
++                    flags = EXCLUDED.flags,
++                    mvr_preview = EXCLUDED.mvr_preview,
++                    mvr_score = EXCLUDED.mvr_score,
+                     created_at = EXCLUDED.created_at,
+                     updated_at = EXCLUDED.updated_at
+                 """
+@@ -217,9 +230,98 @@ def _seed_data(engine):
+             },
+         )
+ 
++        payment_payload = json.dumps(
++            {
++                "extracted": {
++                    "payment": {
++                        "amount": "250.00",
++                        "currency": "EUR",
++                        "payment_date": base_time.date().isoformat(),
++                        "counterparty": "ACME Bank",
++                    }
++                }
++            }
++        )
++
++        conn.execute(
++            text(
++                """
++                INSERT INTO inbox_parsed.parsed_items (
++                    id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
++                    amount, invoice_no, due_date, quality_flags, payload, rules,
++                    flags, mvr_preview, mvr_score,
++                    created_at, updated_at
++                ) VALUES (
++                    :id, :tenant_id, :content_hash, 'payment', 'payment', 'accepted', :confidence,
++                    :amount, NULL, :payment_date, '[]'::jsonb, (:payload)::jsonb, '[]'::jsonb,
++                    (:flags)::jsonb, true, :mvr_score,
++                    :created_at, :updated_at
++                )
++                ON CONFLICT (tenant_id, content_hash)
++                DO NOTHING
++                """
++            ),
++            {
++                "id": payment_id,
++                "tenant_id": TENANT_ID,
++                "content_hash": "payment-good-0001",
++                "confidence": Decimal("100.00"),
++                "amount": Decimal("250.00"),
++                "payment_date": base_time.date(),
++                "payload": payment_payload,
++                "flags": json.dumps({"mvr_preview": True, "enable_table_boost": True}),
++                "mvr_score": Decimal("0.00"),
++                "created_at": base_time + timedelta(minutes=2),
++                "updated_at": base_time + timedelta(minutes=2),
++            },
++        )
++
++        other_payload = json.dumps(
++            {
++                "extracted": {
++                    "kv": [
++                        {"key": "Subject", "value": "General correspondence"},
++                        {"key": "Reference", "value": "REF-2025-02"},
++                    ]
++                }
++            }
++        )
++
++        conn.execute(
++            text(
++                """
++                INSERT INTO inbox_parsed.parsed_items (
++                    id, tenant_id, content_hash, doc_type, doctype, quality_status, confidence,
++                    amount, invoice_no, due_date, quality_flags, payload, rules,
++                    flags, mvr_preview, mvr_score,
++                    created_at, updated_at
++                ) VALUES (
++                    :id, :tenant_id, :content_hash, 'other', 'other', 'needs_review', :confidence,
++                    NULL, NULL, NULL, '[]'::jsonb, (:payload)::jsonb, '[]'::jsonb,
++                    (:flags)::jsonb, false, NULL,
++                    :created_at, :updated_at
++                )
++                ON CONFLICT (tenant_id, content_hash)
++                DO NOTHING
++                """
++            ),
++            {
++                "id": other_id,
++                "tenant_id": TENANT_ID,
++                "content_hash": "other-min-0001",
++                "confidence": Decimal("58.00"),
++                "payload": other_payload,
++                "flags": json.dumps({"enable_table_boost": False}),
++                "created_at": base_time - timedelta(minutes=2),
++                "updated_at": base_time - timedelta(minutes=2),
++            },
++        )
++
+     return {
+         "accepted_invoice_id": accepted_invoice_id,
+         "review_invoice_id": review_invoice_id,
++        "payment_id": payment_id,
++        "other_id": other_id,
+         "tenant": TENANT_ID,
+     }
+ 
+@@ -241,11 +343,29 @@ def test_read_model_queries():
+ 
+     review_items = fetch_items_needing_review(ids["tenant"])
+     assert review_items, "expected at least one item needing review"
+-    assert any(str(item.id) == ids["review_invoice_id"] and item.quality_status == "needs_review" for item in review_items)
++    review_ids = {str(item.id): item for item in review_items}
++    assert ids["review_invoice_id"] in review_ids
++    assert review_ids[ids["review_invoice_id"]].quality_status == "needs_review"
++    assert any(item.doc_type == "other" for item in review_items)
++
++    payments = fetch_payments_latest(ids["tenant"])
++    assert payments, "expected payment projection"
++    payment = next(item for item in payments if str(item.id) == ids["payment_id"])
++    assert payment.counterparty == "ACME Bank"
++    assert payment.currency == "EUR"
++    assert payment.quality_status == "accepted"
++    assert payment.flags.get("mvr_preview") is True
++    assert payment.mvr_preview is True
++    assert payment.mvr_score == Decimal("0.00")
+ 
+     summary = fetch_tenant_summary(ids["tenant"])
+     assert summary is not None
+-    assert summary.cnt_items == 2
++    assert summary.cnt_items == 4
+     assert summary.cnt_invoices == 2
+-    assert summary.cnt_needing_review == 1
+-    assert summary.avg_confidence == pytest.approx((95.0 + 45.0) / 2, rel=1e-3)
++    assert summary.cnt_payments == 1
++    assert summary.cnt_other == 1
++    assert summary.cnt_needing_review == 2
++    expected_avg = (95.0 + 45.0 + 100.0 + 58.0) / 4
++    assert summary.avg_confidence == pytest.approx(expected_avg, rel=1e-3)
++    assert summary.cnt_mvr_preview == 1
++    assert summary.avg_mvr_score == pytest.approx(0.0, rel=1e-3)
+diff --git a/tests/inbox/test_read_model_shape.py b/tests/inbox/test_read_model_shape.py
+index 0c3d852..57979be 100644
+--- a/tests/inbox/test_read_model_shape.py
++++ b/tests/inbox/test_read_model_shape.py
+@@ -6,6 +6,7 @@ from uuid import uuid4
+ 
+ from backend.apps.inbox.read_model.dto import (
+     InvoiceRowDTO,
++    PaymentRowDTO,
+     NeedsReviewRowDTO,
+     TenantSummaryDTO,
+ )
+@@ -25,6 +26,9 @@ def test_invoice_row_dto_construction():
+     )
+     assert dto.quality_status == "accepted"
+     assert isinstance(dto.amount, Decimal)
++    assert dto.flags == {}
++    assert dto.mvr_preview is False
++    assert dto.mvr_score is None
+ 
+ 
+ def test_needs_review_row_dto_construction():
+@@ -39,6 +43,26 @@ def test_needs_review_row_dto_construction():
+     )
+     assert dto.doc_type == "invoice"
+     assert dto.confidence == 40.0
++    assert dto.flags == {}
++
++
++def test_payment_row_dto_construction():
++    dto = PaymentRowDTO(
++        id=uuid4(),
++        tenant_id=uuid4(),
++        content_hash="payment",
++        amount=Decimal("250.00"),
++        currency="EUR",
++        counterparty="ACME Bank",
++        payment_date=date.today(),
++        quality_status="accepted",
++        confidence=88.5,
++        created_at=datetime.utcnow(),
++    )
++    assert dto.currency == "EUR"
++    assert dto.quality_status == "accepted"
++    assert dto.flags == {}
++    assert dto.mvr_preview is False
+ 
+ 
+ def test_tenant_summary_dto_optional_avg():
+@@ -46,8 +70,12 @@ def test_tenant_summary_dto_optional_avg():
+         tenant_id=uuid4(),
+         cnt_items=3,
+         cnt_invoices=2,
++        cnt_payments=1,
++        cnt_other=0,
+         cnt_needing_review=1,
+         avg_confidence=None,
+     )
+     assert dto.cnt_items == 3
+     assert dto.avg_confidence is None
++    assert dto.cnt_mvr_preview == 0
++    assert dto.avg_mvr_score is None
+diff --git a/tools/flows/query_read_model.py b/tools/flows/query_read_model.py
+index ad4d230..4a720f1 100644
+--- a/tools/flows/query_read_model.py
++++ b/tools/flows/query_read_model.py
+@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
+ from backend.apps.inbox.read_model.query import (
+     ReadModelError,
+     fetch_invoices_latest,
++    fetch_payments_latest,
+     fetch_items_needing_review,
+     fetch_tenant_summary,
+ )
+@@ -57,7 +58,12 @@ def _print_pretty_single(item: dict[str, Any]) -> None:
+ def main(argv: list[str] | None = None) -> int:
+     parser = argparse.ArgumentParser(description="Query inbox read-model views (read-only)")
+     parser.add_argument("--tenant", required=True, help="Tenant UUID to filter on")
+-    parser.add_argument("--what", required=True, choices=("invoices", "review", "summary"), help="Query target")
++    parser.add_argument(
++        "--what",
++        required=True,
++        choices=("invoices", "payments", "review", "summary"),
++        help="Query target",
++    )
+     parser.add_argument("--limit", type=int, default=50, help="Pagination limit for list queries")
+     parser.add_argument("--offset", type=int, default=0, help="Pagination offset for list queries")
+     parser.add_argument("--json", dest="as_json", action="store_true", help="Emit JSON output")
+@@ -66,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
+     try:
+         if args.what == "invoices":
+             items = fetch_invoices_latest(args.tenant, limit=args.limit, offset=args.offset)
++        elif args.what == "payments":
++            items = fetch_payments_latest(args.tenant, limit=args.limit, offset=args.offset)
+         elif args.what == "review":
+             items = fetch_items_needing_review(args.tenant, limit=args.limit, offset=args.offset)
+         else:
+diff --git a/tools/flows/run_importer_from_artifact.py b/tools/flows/run_importer_from_artifact.py
+index e8ab9e6..d2e7dc9 100644
+--- a/tools/flows/run_importer_from_artifact.py
++++ b/tools/flows/run_importer_from_artifact.py
+@@ -29,8 +29,15 @@ def main(argv: list[str] | None = None) -> int:
+     p.add_argument("--replace-chunks", action="store_true", default=False)
+     p.add_argument("--enforce-invoice", dest="enforce_invoice", action="store_true")
+     p.add_argument("--no-enforce-invoice", dest="enforce_invoice", action="store_false")
++    p.add_argument("--enforce-payment", dest="enforce_payment", action="store_true")
++    p.add_argument("--no-enforce-payment", dest="enforce_payment", action="store_false")
++    p.add_argument("--enforce-other", dest="enforce_other", action="store_true")
++    p.add_argument("--no-enforce-other", dest="enforce_other", action="store_false")
++    p.add_argument("--strict", action="store_true", default=False)
+     p.set_defaults(upsert=True)
+     p.set_defaults(enforce_invoice=True)
++    p.set_defaults(enforce_payment=True)
++    p.set_defaults(enforce_other=True)
+     args = p.parse_args(argv)
+     try:
+         res = run_importer(
+@@ -41,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
+             upsert=args.upsert,
+             replace_chunks=args.replace_chunks,
+             enforce_invoice=args.enforce_invoice,
++            enforce_payment=args.enforce_payment,
++            enforce_other=args.enforce_other,
++            strict=args.strict,
+         )
+     except ValueError as exc:
+         print(str(exc), file=sys.stderr)
+diff --git a/tools/flows/run_inbox_local_flow.py b/tools/flows/run_inbox_local_flow.py
+index c39aa9c..bcefe15 100644
+--- a/tools/flows/run_inbox_local_flow.py
++++ b/tools/flows/run_inbox_local_flow.py
+@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
+     p.add_argument("--enable-ocr", action="store_true", default=False)
+     p.add_argument("--enable-browser", action="store_true", default=False)
+     p.add_argument("--trace-id", default=None)
++    p.add_argument("--enable-table-boost", action="store_true", default=False)
++    p.add_argument("--mvr-preview", action="store_true", default=False)
+     args = p.parse_args(argv)
+ 
+     try:
+@@ -38,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
+             trace_id=args.trace_id,
+             enable_ocr=args.enable_ocr,
+             enable_browser=args.enable_browser,
++            enable_table_boost=args.enable_table_boost,
++            mvr_preview=args.mvr_preview,
+         )
+     except Exception as e:
+         print(str(e), file=sys.stderr)

@@ -1,0 +1,114 @@
+{
+  "overdue_invoices": [
+    {
+      "invoice_id": "INV-001",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_number": "2024-001",
+      "due_date": "2024-01-15T00:00:00Z",
+      "amount_cents": 15000,
+      "customer_email": "customer1@example.com",
+      "customer_name": "Customer 1",
+      "customer_address": "Street 1, 12345 City",
+      "created_at": "2024-01-01T00:00:00Z",
+      "last_dunning_date": null,
+      "dunning_stage": null,
+      "metadata": {
+        "payment_terms": "30",
+        "currency": "EUR"
+      }
+    },
+    {
+      "invoice_id": "INV-002",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_number": "2024-002",
+      "due_date": "2024-01-10T00:00:00Z",
+      "amount_cents": 25000,
+      "customer_email": "customer2@example.com",
+      "customer_name": "Customer 2",
+      "customer_address": "Street 2, 12345 City",
+      "created_at": "2024-01-01T00:00:00Z",
+      "last_dunning_date": "2024-01-20T00:00:00Z",
+      "dunning_stage": 1,
+      "metadata": {
+        "payment_terms": "14",
+        "currency": "EUR"
+      }
+    },
+    {
+      "invoice_id": "INV-003",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_number": "2024-003",
+      "due_date": "2023-12-15T00:00:00Z",
+      "amount_cents": 35000,
+      "customer_email": "customer3@example.com",
+      "customer_name": "Customer 3",
+      "customer_address": "Street 3, 12345 City",
+      "created_at": "2023-12-01T00:00:00Z",
+      "last_dunning_date": "2024-01-10T00:00:00Z",
+      "dunning_stage": 2,
+      "metadata": {
+        "payment_terms": "30",
+        "currency": "EUR"
+      }
+    },
+    {
+      "invoice_id": "INV-004",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_number": "2024-004",
+      "due_date": "2023-11-15T00:00:00Z",
+      "amount_cents": 50000,
+      "customer_email": "customer4@example.com",
+      "customer_name": "Customer 4",
+      "customer_address": "Street 4, 12345 City",
+      "created_at": "2023-11-01T00:00:00Z",
+      "last_dunning_date": "2024-01-05T00:00:00Z",
+      "dunning_stage": 3,
+      "metadata": {
+        "payment_terms": "30",
+        "currency": "EUR"
+      }
+    },
+    {
+      "invoice_id": "INV-005",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_number": "2024-005",
+      "due_date": "2024-01-20T00:00:00Z",
+      "amount_cents": 5000,
+      "customer_email": "customer5@example.com",
+      "customer_name": "Customer 5",
+      "customer_address": "Street 5, 12345 City",
+      "created_at": "2024-01-01T00:00:00Z",
+      "last_dunning_date": null,
+      "dunning_stage": null,
+      "metadata": {
+        "payment_terms": "30",
+        "currency": "EUR"
+      }
+    }
+  ],
+  "test_scenarios": {
+    "stage_1_candidates": [
+      "INV-001"
+    ],
+    "stage_2_candidates": [
+      "INV-002"
+    ],
+    "stage_3_candidates": [
+      "INV-003"
+    ],
+    "max_stage_candidates": [
+      "INV-004"
+    ],
+    "below_minimum_candidates": [
+      "INV-005"
+    ]
+  },
+  "expected_results": {
+    "total_invoices": 5,
+    "eligible_for_dunning": 4,
+    "stage_1_count": 1,
+    "stage_2_count": 1,
+    "stage_3_count": 1,
+    "filtered_out": 1
+  }
+}

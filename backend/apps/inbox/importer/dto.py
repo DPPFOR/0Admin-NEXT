@@ -20,6 +20,9 @@ class ParsedItemDTO:
     quality_status: str = "needs_review"
     confidence: Decimal = Decimal("0")
     rules: List[Dict[str, str]] = field(default_factory=list)
+    flags: Dict[str, Any] = field(default_factory=dict)
+    mvr_preview: bool = False
+    mvr_score: Optional[Decimal] = None
 
 
 @dataclass
@@ -28,3 +31,10 @@ class ParsedItemChunkDTO:
     seq: int
     kind: str
     payload: Dict[str, Any]
+
+
+@dataclass
+class ProcessResult:
+    parsed_item_id: str
+    action: str
+    chunk_count: int

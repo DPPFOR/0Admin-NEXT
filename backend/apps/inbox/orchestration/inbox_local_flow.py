@@ -33,7 +33,7 @@ def _ext(path: str) -> str:
     return os.path.splitext(path)[1].lower()
 
 
-def _classify_tool_for_path(path: str, enable_ocr: bool) -> Tuple[str, List[str]]:
+def _classify_tool_for_path(path: str, *, enable_ocr: bool, enable_table_boost: bool) -> Tuple[str, List[str]]:
     e = _ext(path)
     pipeline: List[str] = []
     if e in {".zip", ".7z"}:
@@ -53,6 +53,8 @@ def _classify_tool_for_path(path: str, enable_ocr: bool) -> Tuple[str, List[str]
         pipeline.append("pdf.tables_extract")
     # downstream common steps
     pipeline.append("data_quality.tables.validate")
+    if enable_table_boost:
+        pipeline.append("data_quality.tables.boost")
     pipeline.append("security.pii.redact")
     return ("application/octet-stream", pipeline)
 
@@ -73,13 +75,15 @@ def run_inbox_local_flow(
     trace_id: Optional[str] = None,
     enable_ocr: bool = False,
     enable_browser: bool = False,
+    enable_table_boost: bool = False,
+    mvr_preview: bool = False,
 ) -> str:
     if not _valid_path(path):
         raise ValueError("VALIDATION: invalid path")
 
     # Detect MIME (stub)
     detect = _call_adapter("detect.mime", paths=[path], tenant_id=tenant_id, dry_run=True)
-    mime, pipeline = _classify_tool_for_path(path, enable_ocr=enable_ocr)
+    mime, pipeline = _classify_tool_for_path(path, enable_ocr=enable_ocr, enable_table_boost=enable_table_boost)
 
     executed: List[str] = ["detect.mime"]
     extracted: Dict[str, Any] = {}
@@ -126,6 +130,9 @@ def run_inbox_local_flow(
             pii = _call_adapter(step, paths=[path], tenant_id=tenant_id, dry_run=True)
             executed.append(step)
             pii_plan = pii.get("plan", {})
+        elif step == "data_quality.tables.boost":
+            executed.append(step)
+            extracted.setdefault("table_boost", {"planned": True})
         else:
             # unknown step
             continue
@@ -142,8 +149,16 @@ def run_inbox_local_flow(
         "pii": pii_plan if 'pii_plan' in locals() else {"steps": []},
         "fingerprints": {"content_hash": _sha256_hex(path)},
         "policy_fingerprint": _policy_fingerprint(),
-        "flags": {"enable_ocr": enable_ocr, "enable_browser": enable_browser},
+        "flags": {
+            "enable_ocr": enable_ocr,
+            "enable_browser": enable_browser,
+            "enable_table_boost": enable_table_boost,
+            "mvr_preview": mvr_preview,
+        },
     }
+
+    if mvr_preview:
+        flow_result.setdefault("metrics", {})["mvr_preview"] = {"planned": True}
 
     # Persist to artifacts
     out_dir = os.path.join("artifacts", "inbox_local")
@@ -153,4 +168,3 @@ def run_inbox_local_flow(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(flow_result, f, ensure_ascii=False, indent=2)
     return out_path
-

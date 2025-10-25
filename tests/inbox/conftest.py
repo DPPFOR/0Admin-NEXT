@@ -31,10 +31,17 @@ def block_egress(monkeypatch):
     import subprocess, os as _os, asyncio
     import urllib.request, http.client, ssl
 
+    _original_socket = socket.socket
+
+    def _guarded_socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None):
+        if family == socket.AF_UNIX:
+            return _original_socket(family, type, proto, fileno)
+        raise RuntimeError("egress blocked")
+
     def _blocked(*args, **kwargs):  # pragma: no cover - guard
         raise RuntimeError("egress blocked")
 
-    monkeypatch.setattr(socket, "socket", _blocked)
+    monkeypatch.setattr(socket, "socket", _guarded_socket)
     monkeypatch.setattr(socket, "create_connection", _blocked)
     for name in ("Popen", "call", "check_call", "check_output", "run"):
         monkeypatch.setattr(subprocess, name, _blocked)
@@ -44,4 +51,3 @@ def block_egress(monkeypatch):
     monkeypatch.setattr(http.client, "HTTPConnection", _blocked)
     monkeypatch.setattr(http.client, "HTTPSConnection", _blocked)
     monkeypatch.setattr(ssl, "create_default_context", _blocked)
-

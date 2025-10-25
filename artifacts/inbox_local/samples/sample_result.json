@@ -14,6 +14,11 @@
   },
   "quality": {"valid": true, "issues": []},
   "pii": {"steps": []},
-  "flags": {"enable_ocr": false, "enable_browser": false},
+  "flags": {
+    "enable_ocr": false,
+    "enable_browser": false,
+    "enable_table_boost": false,
+    "mvr_preview": false
+  },
   "fingerprints": {"content_hash": "0"}
 }
