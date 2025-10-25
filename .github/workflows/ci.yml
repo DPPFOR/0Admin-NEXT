@@ -35,32 +35,55 @@ jobs:
         run: |
           mkdir -p artifacts
           pytest -q --junitxml artifacts/ci-tests.xml --cov=backend/apps/inbox --cov=agents/inbox_worker --cov-report=xml:coverage.xml --cov-fail-under=80
-      - name: Upload artifacts
+      - name: Inspect artifacts (debug)
+        run: |
+          echo "Workspace:"; ls -la
+          echo "Artifacts dir:"; ls -la artifacts || true
+          for f in artifacts/ci-tests.xml coverage.xml artifacts/egress-violations.json; do
+            echo "---- $f ----"
+            [ -e "$f" ] && file "$f" && head -c 200 "$f" || echo "MISSING: $f"
+          done
+      
+      - name: Create artifact bundle
+        run: |
+          mkdir -p artifacts/archive
+          for f in artifacts/ci-tests.xml coverage.xml artifacts/egress-violations.json; do
+            if [ -f "$f" ]; then
+              mkdir -p artifacts/archive/$(dirname "$f")
+              cp --parents "$f" artifacts/archive/ 2>/dev/null || cp "$f" artifacts/archive/
+            fi
+          done
+          if [ -z "$(find artifacts/archive -type f -print -quit)" ]; then
+            echo "no-artifacts" > artifacts/archive/placeholder.txt
+          fi
+          tar -czf artifacts/ci-artifacts.tar.gz -C artifacts/archive .
+      
+      - name: Upload artifact bundle
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-artifacts
-          path: |
-            artifacts/ci-tests.xml
-            coverage.xml
-            artifacts/egress-violations.json
+          path: artifacts/ci-artifacts.tar.gz
 
   security_scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install gitleaks (release binary)
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/gitleaks-install
-          curl -sSL -o /tmp/gitleaks-install/gitleaks.tar.gz \
-            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz
-          tar -xzf /tmp/gitleaks-install/gitleaks.tar.gz -C /tmp/gitleaks-install
-          sudo mv /tmp/gitleaks-install/gitleaks /usr/local/bin/gitleaks
-          gitleaks version
       - name: Prepare artifacts dir
         run: mkdir -p artifacts
+      - name: Install gitleaks (release binary)
+        run: |
+          set -e
+          mkdir -p /tmp/gitleaks
+          curl -sSL -o /tmp/gitleaks/gitleaks.tar.gz \
+            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
+          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
       - name: Run gitleaks detect
-        run: gitleaks detect --source . --no-git -v --redact --report-format json --report-path artifacts/gitleaks.json
+        run: |
+          gitleaks detect --source . --no-git -v --redact \
+            --report-format json --report-path artifacts/gitleaks.json
       - name: Upload gitleaks report
         if: always()
         uses: actions/upload-artifact@v4

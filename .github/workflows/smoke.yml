@@ -44,18 +44,31 @@ jobs:
           if [ "${{ matrix.suite }}" = "mail_connectors" ]; then pytest -q tests/smoke/test_mail_connectors_integration.py -W error --junitxml artifacts/u10-mail-connectors-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "read_ops" ]; then pytest -q tests/smoke/test_read_ops_api_smoke.py -W error --junitxml artifacts/u5-r-read-ops-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/u6-outbox-publisher-smoke.xml; fi
-      - name: Upload artifacts
+      - name: Inspect artifacts (debug)
+        run: |
+          echo "Workspace:"; ls -la
+          echo "Artifacts dir:"; ls -la artifacts || true
+          for f in artifacts/u3-p1b-smoke.xml artifacts/u3-p1b-smoke.json artifacts/u3-p2-programmatic-smoke.xml artifacts/u3-p2-programmatic-smoke.json artifacts/u4-p1-worker-smoke.xml artifacts/u4-p1-worker-smoke.json artifacts/u5-m-mail-ingest-smoke.xml artifacts/u5-m-mail-ingest-smoke.json artifacts/u5-r-read-ops-smoke.xml artifacts/u6-outbox-publisher-smoke.xml; do
+            echo "---- $f ----"
+            [ -e "$f" ] && file "$f" && head -c 200 "$f" || echo "MISSING: $f"
+          done
+      
+      - name: Create artifact bundle
+        run: |
+          mkdir -p artifacts/archive
+          for f in artifacts/u3-p1b-smoke.xml artifacts/u3-p1b-smoke.json artifacts/u3-p2-programmatic-smoke.xml artifacts/u3-p2-programmatic-smoke.json artifacts/u4-p1-worker-smoke.xml artifacts/u4-p1-worker-smoke.json artifacts/u5-m-mail-ingest-smoke.xml artifacts/u5-m-mail-ingest-smoke.json artifacts/u5-r-read-ops-smoke.xml artifacts/u6-outbox-publisher-smoke.xml; do
+            if [ -f "$f" ]; then
+              cp "$f" artifacts/archive/
+            fi
+          done
+          if [ -z "$(find artifacts/archive -type f -print -quit)" ]; then
+            echo "no-artifacts" > artifacts/archive/placeholder.txt
+          fi
+          tar -czf artifacts/smoke-artifacts.tar.gz -C artifacts/archive .
+      
+      - name: Upload artifact bundle
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: u3-p1b-smoke-artifacts
-          path: |
-            artifacts/u3-p1b-smoke.xml
-            artifacts/u3-p1b-smoke.json
-            artifacts/u3-p2-programmatic-smoke.xml
-            artifacts/u3-p2-programmatic-smoke.json
-            artifacts/u4-p1-worker-smoke.xml
-            artifacts/u4-p1-worker-smoke.json
-            artifacts/u5-m-mail-ingest-smoke.xml
-            artifacts/u5-m-mail-ingest-smoke.json
-            artifacts/u5-r-read-ops-smoke.xml
-            artifacts/u6-outbox-publisher-smoke.xml
+          path: artifacts/smoke-artifacts.tar.gz
