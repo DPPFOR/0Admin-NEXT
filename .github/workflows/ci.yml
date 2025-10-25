@@ -49,8 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install gitleaks (OSS)
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
-          chmod +x /usr/local/bin/gitleaks
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
       - name: Run gitleaks detect
         run: |
           mkdir -p artifacts
