@@ -7,3 +7,5 @@ anyio>=3.7,<5
 starlette>=0.37,<0.41
 pydantic>=2.7,<3
 pydantic-core>=2.14,<3
+grpcio>=1.74.0,<2
+opentelemetry-exporter-jaeger-proto-grpc>=1.21.0,<2

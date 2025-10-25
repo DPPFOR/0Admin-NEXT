@@ -47,13 +47,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install gitleaks (OSS)
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh -s -- -b /usr/local/bin
-      - name: Run gitleaks detect
-        run: |
-          mkdir -p artifacts
-          gitleaks detect --source . --no-git -v --redact --report-format json --report-path artifacts/gitleaks.json
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts
+      - name: Run gitleaks (action)
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: --source . --no-git -v --redact --report-format json --report-path artifacts/gitleaks.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload gitleaks report
         if: always()
         uses: actions/upload-artifact@v4
