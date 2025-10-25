@@ -1,20 +1,24 @@
-anyio>=4.0,<5
+anyio==4.11.0
 grpcio==1.74.0
+importlib-metadata==6.8.0
+numpy==1.26.4
 opentelemetry-api==1.30.0
-opentelemetry-sdk==1.30.0
-opentelemetry-semantic-conventions==0.51b0
-# Jaeger/OTLP exakt pinnen, weil flock-core sie zieht:
 opentelemetry-exporter-jaeger==1.21.0
 opentelemetry-exporter-jaeger-proto-grpc==1.21.0
 opentelemetry-exporter-jaeger-thrift==1.21.0
-opentelemetry-exporter-otlp==1.30.0
-opentelemetry-exporter-otlp-proto-common==1.30.0
-opentelemetry-exporter-otlp-proto-grpc==1.30.0
-opentelemetry-exporter-otlp-proto-http==1.30.0
-opentelemetry-instrumentation-logging==0.51b0
-opentelemetry-proto==1.30.0
-typing-extensions>=4.8,<5
-wrapt>=1.16.0,<2
-# Falls Google-Stack erneut backtracked, NUR dann ergänzen:
-# googleapis-common-protos==1.59.0
-# protobuf==4.25.3
+opentelemetry-exporter-otlp==1.31.1
+opentelemetry-exporter-otlp-proto-common==1.31.1
+opentelemetry-exporter-otlp-proto-grpc==1.31.1
+opentelemetry-exporter-otlp-proto-http==1.31.1
+opentelemetry-instrumentation-logging==0.59b0
+opentelemetry-proto==1.31.1
+opentelemetry-sdk==1.30.0
+opentelemetry-semantic-conventions==0.51b0
+starlette==0.40.0
+typing-extensions==4.10.0
+wrapt>=1.16.0
+# Hinweise:
+# - sdk 1.30.0 verlangt semconv 0.51b0 → exakt pinnen.
+# - Die OTLP-* Kombo konsistent auf 1.31.1 setzen, damit pip nicht durch alle Minor-Versionen backtrackt.
+# - numpy hart auf 1.26.4, das nimmt dem Solver sehr viel Suchraum.
+# - importlib-metadata auf 6.8.0 begrenzen, um 7+ / 8+ Backtracking zu vermeiden.
