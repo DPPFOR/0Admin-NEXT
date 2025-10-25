@@ -228,3 +228,6 @@ __pycache__/
 *.pyc
 # frontend build
 frontend/dist/
+# frontend console specific
+frontend/console/node_modules/
+frontend/console/dist/
