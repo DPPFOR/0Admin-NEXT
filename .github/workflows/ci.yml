@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
@@ -47,14 +48,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install gitleaks (release binary)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/gitleaks-install
+          curl -sSL -o /tmp/gitleaks-install/gitleaks.tar.gz \
+            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz
+          tar -xzf /tmp/gitleaks-install/gitleaks.tar.gz -C /tmp/gitleaks-install
+          sudo mv /tmp/gitleaks-install/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
       - name: Prepare artifacts dir
         run: mkdir -p artifacts
-      - name: Run gitleaks (action)
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: --source . --no-git -v --redact --report-format json --report-path artifacts/gitleaks.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run gitleaks detect
+        run: gitleaks detect --source . --no-git -v --redact --report-format json --report-path artifacts/gitleaks.json
       - name: Upload gitleaks report
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,6 +76,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install pip-audit
         run: |
           python -m pip install --upgrade pip
@@ -93,6 +100,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
