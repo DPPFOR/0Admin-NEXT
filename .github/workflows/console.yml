@@ -8,9 +8,12 @@ on:
   pull_request:
     paths:
       - 'frontend/console/**'
+      - '.github/workflows/console.yml'
 
 jobs:
   console:
+    # Dieser Job ist deaktiviert, bis ein Lockfile in frontend/console/ vorhanden ist; aktiviert sich automatisch.
+    if: ${{ hashFiles('frontend/console/package-lock.json', 'frontend/console/pnpm-lock.yaml', 'frontend/console/yarn.lock') != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
       - name: Install
         working-directory: frontend/console
         run: npm ci
