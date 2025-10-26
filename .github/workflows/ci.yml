@@ -24,9 +24,11 @@ jobs:
       - name: Install deps (phase 1: core pins, no-deps)
         run: |
           python -m pip install --upgrade pip
-          # Kernkonflikte festziehen, ohne weitere Abhängigkeiten nachzuziehen
-          pip install --no-deps -r constraints/_floor.txt
-      - name: Install deps (phase 2: full, with existing constraints)
+          # Floor pins to avoid heavy backtracking; ignore if file missing
+          if [ -f constraints/_floor.txt ]; then
+            pip install --no-deps -r constraints/_floor.txt
+          fi
+      - name: Install deps (phase 2: full, constrained)
         run: |
           pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
       - name: Lint (ruff)
