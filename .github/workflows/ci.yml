@@ -28,9 +28,12 @@ jobs:
           if [ -f constraints/_floor.txt ]; then
             pip install --no-deps -r constraints/_floor.txt
           fi
-      - name: 'Install deps (unconstrained - temporary)'
+      - name: 'Install deps (force override wrapt conflict)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt
+          # Force install compatible wrapt first (fixes Python 3.12 issue)
+          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true
+          # Main installation with force flags to override conflicts
+          pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
       - name: Lint (ruff)
         run: ruff check .
       - name: Typecheck (mypy)
@@ -137,9 +140,12 @@ jobs:
           python -m pip install --upgrade pip
           # Kernkonflikte festziehen, ohne weitere Abhängigkeiten nachzuziehen
           pip install --no-deps -r constraints/_floor.txt
-      - name: 'Install deps (unconstrained - temporary)'
+      - name: 'Install deps (force override wrapt conflict)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt
+          # Force install compatible wrapt first (fixes Python 3.12 issue)
+          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true
+          # Main installation with force flags to override conflicts
+          pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
       - name: Alembic Roundtrip
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
