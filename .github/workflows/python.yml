@@ -57,25 +57,24 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - "name": "Install dependencies (constraints: wrapt>=1.16.0)"
         if: ${{ steps.detect.outputs.run_tests == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f "requirements.txt" ]]; then
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-          elif [[ -f "pyproject.toml" ]]; then
-            python -m pip install --upgrade pip
-            # leichte, generische Installation ohne Poetry/Conda
-            grep -q "\[project\]" pyproject.toml && pip install .
-            # Falls optional dev/test-deps nötig:
-            pip install pytest pytest-cov || true
+          python -m pip install --upgrade pip
+          # temporäres Constraints-File gegen alte wrapt-Versionen (Py3.12-kompatibel)
+          echo 'wrapt>=1.16.0' > /tmp/constraints-ci.txt
+          if [ -f "requirements.txt" ]; then
+            pip install -c /tmp/constraints-ci.txt -r requirements.txt
           fi
+          # Projekt NICHT installieren (kein 'pip install .'); wir testen mit PYTHONPATH=.
 
       - name: Run tests
         if: ${{ steps.detect.outputs.run_tests == 'true' }}
         shell: bash
+        env:
+          PYTHONPATH: .
         run: |
           set -e
           pytest -q --maxfail=1
