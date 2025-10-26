@@ -1,0 +1,64 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Python CI (Guarded)
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Python project & tests
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_proj="false"
+          has_tests="false"
+          if [[ -f "pyproject.toml" || -f "requirements.txt" ]]; then has_proj="true"; fi
+          if [[ -f "pytest.ini" || -d "tests" || grep -q "tool.pytest" pyproject.toml 2>/dev/null || grep -q "pytest" setup.cfg 2>/dev/null ]]; then has_tests="true"; fi
+          if [[ "$has_proj" == "true" && "$has_tests" == "true" ]]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            echo "Detected Python project with tests."
+          else
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "No runnable Python tests detected. Exiting gracefully."
+          fi
+
+      - name: Setup Python
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f "requirements.txt" ]]; then
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+          elif [[ -f "pyproject.toml" ]]; then
+            python -m pip install --upgrade pip
+            # leichte, generische Installation ohne Poetry/Conda
+            grep -q "\[project\]" pyproject.toml && pip install .
+            # Falls optional dev/test-deps nötig:
+            pip install pytest pytest-cov || true
+          fi
+
+      - name: Run tests
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        run: |
+          set -e
+          pytest -q --maxfail=1
+
+      - name: No tests – placeholder success
+        if: ${{ steps.detect.outputs.run_tests != 'true' }}
+        run: echo "No Python tests detected → CI success (guarded)."
