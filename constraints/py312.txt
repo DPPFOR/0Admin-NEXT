@@ -1,17 +1,6 @@
-# Minimal constraints to prevent major regressions while fixing Python 3.12 compatibility
-# Temporarily reduced from extensive pinning due to resolution-too-deep conflicts
-numpy==1.26.4
-wrapt>=1.17.0  # Fix Python 3.12 compatibility (formatargspec removed in Python 3.11+)
-
-# OpenTelemetry constraints to resolve version conflicts within the ecosystem
-opentelemetry-api>=1.30.0,<1.33.0
-opentelemetry-sdk>=1.30.0,<1.33.0
-opentelemetry-semantic-conventions>=0.53b0,<0.54.0
-
-# Additional lower bounds to reduce backtracking per pip documentation
-protobuf>=4.21.0  # Avoid ancient versions that cause conflicts
-grpcio>=1.60.0    # Newer stable version, avoids older compatibility issues
-opencv-python-headless>=4.8.0  # Avoid 4.7.x series that may have issues
+# Temporarily disabled ALL constraints due to persistent resolution-too-deep conflicts
+# Let pip resolve dependencies naturally without restrictive constraints
+# This is a temporary measure until better constraint management is established
 #######
 # Hinweise:
 # - sdk 1.30.0 verlangt semconv 0.51b0 → exakt pinnen.
