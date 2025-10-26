@@ -18,11 +18,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          has_proj="false"
-          has_tests="false"
-          if [[ -f "pyproject.toml" || -f "requirements.txt" ]]; then has_proj="true"; fi
-          if [[ -f "pytest.ini" || -d "tests" || grep -q "tool.pytest" pyproject.toml 2>/dev/null || grep -q "pytest" setup.cfg 2>/dev/null ]]; then has_tests="true"; fi
-          if [[ "$has_proj" == "true" && "$has_tests" == "true" ]]; then
+          has_proj=false
+          has_tests=false
+
+          # Projektindikatoren
+          if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            has_proj=true
+          fi
+
+          # Testindikatoren (Dateien/Ordner)
+          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
+            has_tests=true
+          else
+            # Optional: Konfigs durchsuchen (nur wenn vorhanden)
+            if [ -f "pyproject.toml" ]; then
+              if grep -qE '^\s*\[tool\.pytest' pyproject.toml; then
+                has_tests=true
+              fi
+            fi
+            if [ "$has_tests" = false ] && [ -f "setup.cfg" ]; then
+              if grep -qi 'pytest' setup.cfg; then
+                has_tests=true
+              fi
+            fi
+          fi
+
+          if [ "$has_proj" = true ] && [ "$has_tests" = true ]; then
             echo "run_tests=true" >> "$GITHUB_OUTPUT"
             echo "Detected Python project with tests."
           else
