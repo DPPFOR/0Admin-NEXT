@@ -1,11 +1,11 @@
-# CRITICAL pin to avoid Py3.12 crash in old wrapt
-# (1.16.0 bricht auf Python 3.12 wegen inspect.formatargspec)
+# CRITICAL: Py3.12-kompatibles wrapt
 wrapt>=1.17.0,<2
 
-# typing-extensions passend zu FastAPI/Pydantic
+# Floors, die Backtracking verhindern
 typing-extensions>=4.14.1,<5
+importlib-metadata>=6.8.0,<9
 
-# OpenTelemetry: konsistente Familie zur SDK 1.30 + semconv 0.51b0
+# OpenTelemetry konsistent zu SDK 1.30
 opentelemetry-api==1.30.0
 opentelemetry-sdk==1.30.0
 opentelemetry-semantic-conventions==0.51b0
@@ -15,18 +15,20 @@ opentelemetry-exporter-otlp-proto-http==1.30.0
 opentelemetry-exporter-otlp-proto-common==1.30.0
 opentelemetry-proto==1.30.0
 
-# GRPC + Protobuf + GAPIC eng fassen (passt zu google-api-core/<client>)
+# GRPC + Protobuf + GAPIC
 grpcio==1.74.0
 protobuf>=4.25.3,<5
 googleapis-common-protos>=1.56.2,<2
 
-# Numpy eng pinnen (vermeidet 2.x-Backtracking; kompatibel mit pandas 2.3, dspy>=1.26)
+# Numpy eng pinnen
 numpy==1.26.4
 
-# Enge Floor für importlib-metadata, um Backtracking zu reduzieren
-# (einige transitive Deps verlangen >=6.8; <9 hält die Suche klein)
-importlib-metadata>=6.8.0,<9
-
-# Optional: Starlette-Fenster passend zu FastAPI 0.119/0.120
-# (kein Muss, hilft dem Resolver aber)
+# Starlette passend zu FastAPI 0.119/0.120 (optional, hilft Resolver)
 starlette>=0.40.0,<0.49.0
+
+# >>> Neu: harte Pins zur Vermeidung des Backtracking-Sturms <<<
+# OpenCV aus camelot[cv] – wähle eine stabile, cp312-verfügbare Wheel-Version
+opencv-python-headless==4.11.0.86
+
+# onnxruntime aus magika/markitdown – enge, weit unterstützte Version
+onnxruntime==1.18.0
