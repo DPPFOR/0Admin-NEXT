@@ -234,3 +234,4 @@ frontend/console/dist/
 
 # Ops reports (never version control reports), references to dir cannot be $HOME because 0Admin-NExT is relative
 _ops_reports/
+.venv_tmp_ci/
