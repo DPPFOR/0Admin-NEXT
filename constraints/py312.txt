@@ -15,7 +15,7 @@ opentelemetry-proto==1.31.1
 opentelemetry-sdk==1.30.0
 opentelemetry-semantic-conventions==0.51b0
 starlette==0.40.0
-typing-extensions==4.10.0
+typing-extensions>=4.14.1
 wrapt>=1.16.0
 # Hinweise:
 # - sdk 1.30.0 verlangt semconv 0.51b0 → exakt pinnen.
