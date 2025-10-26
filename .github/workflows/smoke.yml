@@ -13,6 +13,9 @@ jobs:
       group: smoke-${{ github.ref }}
       cancel-in-progress: true
     env:
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SMOKE_TOKEN: ${{ secrets.SMOKE_TOKEN }}
       STORAGE_BACKEND: file
@@ -28,18 +31,10 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: 'Install deps (phase 1: core pins, no-deps)'
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f constraints/_floor.txt ]; then
-            pip install --no-deps -r constraints/_floor.txt
-          fi
-      - name: 'Install deps (force override wrapt conflict)'
-        run: |
-          # Force install compatible wrapt first (fixes Python 3.12 issue)
-          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true
-          # Main installation with force flags to override conflicts
-          pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Prepare storage dir
         run: mkdir -p /home/runner/work/_temp/uploads
       - name: Run smoke tests (matrix)

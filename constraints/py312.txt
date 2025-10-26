@@ -1,7 +1,26 @@
-# Minimal workable constraints - resolution-too-deep solved, wrapt fixed for Py3.12
+# CRITICAL pin to avoid Py3.12 "formatargspec" crash
+wrapt==1.16.0
+
+# typing-extensions passend zu FastAPI/Pydantic
+typing-extensions>=4.14.1,<5
+
+# OpenTelemetry: konsistente Familie zur SDK 1.30 + semconv 0.51b0
+opentelemetry-api==1.30.0
+opentelemetry-sdk==1.30.0
+opentelemetry-semantic-conventions==0.51b0
+opentelemetry-exporter-otlp==1.30.0
+opentelemetry-exporter-otlp-proto-grpc==1.30.0
+opentelemetry-exporter-otlp-proto-http==1.30.0
+opentelemetry-exporter-otlp-proto-common==1.30.0
+opentelemetry-proto==1.30.0
+
+# GRPC + Protobuf + GAPIC eng fassen (Passt zu google-api-core/<client>)
+grpcio==1.74.0
+protobuf>=4.25.3,<5
+googleapis-common-protos>=1.56.2,<2
+
+# Numpy eng pinnen (vermeidet 2.x-Backtracking; kompatibel mit pandas 2.3, dspy>=1.26)
 numpy==1.26.4
-wrapt>=1.17.0,<2.0.0  # Enforce Python 3.12 compatible wrapt version
-#######
 # Hinweise:
 # - sdk 1.30.0 verlangt semconv 0.51b0 → exakt pinnen.
 # - Die OTLP-* Kombo konsistent auf 1.31.1 setzen, damit pip nicht durch alle Minor-Versionen backtrackt.
