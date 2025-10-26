@@ -1,0 +1,9 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "notice_id": "NOTICE-TEST-001",
+  "action": "approve",
+  "comment": "Test approval for demo",
+  "user": "satinder",
+  "timestamp": "2025-10-25T08:32:28.346138+00:00",
+  "correlation_id": "330b5ad7-243f-4c19-9b1a-f2a4b7bc877d"
+}

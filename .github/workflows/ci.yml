@@ -1,0 +1,176 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Pre-pin critical wheels (no-deps)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-deps \
+            "wrapt>=1.17.0,<2" \
+            "typing-extensions==4.15.0" \
+            "importlib-metadata==8.1.0" \
+            "opencv-python-headless==4.11.0.86" \
+            "onnxruntime==1.18.0"
+      - name: Install deps (respect constraints)
+        run: |
+          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Typecheck (mypy)
+        run: mypy --config-file mypy.ini
+      - name: Tests + Coverage (domain/parsing)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p artifacts
+          pytest -q --junitxml artifacts/ci-tests.xml \
+            --cov=backend/apps/inbox --cov=agents/inbox_worker \
+            --cov-report=xml:coverage.xml --cov-fail-under=80
+      - name: Inspect artifacts (debug)
+        run: |
+          echo "Workspace:"; ls -la
+          echo "Artifacts dir:"; ls -la artifacts || true
+          for f in artifacts/ci-tests.xml coverage.xml artifacts/egress-violations.json; do
+            echo "---- $f ----"
+            [ -e "$f" ] && file "$f" && head -c 200 "$f" || echo "MISSING: $f"
+          done
+      - name: Create artifact bundle
+        run: |
+          mkdir -p artifacts/archive
+          for f in artifacts/ci-tests.xml coverage.xml artifacts/egress-violations.json; do
+            if [ -f "$f" ]; then
+              mkdir -p artifacts/archive/$(dirname "$f")
+              cp --parents "$f" artifacts/archive/ 2>/dev/null || cp "$f" artifacts/archive/
+            fi
+          done
+          if [ -z "$(find artifacts/archive -type f -print -quit)" ]; then
+            echo "no-artifacts" > artifacts/archive/placeholder.txt
+          fi
+          tar -czf artifacts/ci-artifacts.tar.gz -C artifacts/archive .
+      - name: Upload artifact bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-artifacts
+          path: artifacts/ci-artifacts.tar.gz
+
+  security_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts artifacts_pack/security
+      - name: Install gitleaks (release tarball)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/gitleaks
+          curl -sSLo /tmp/gitleaks/gitleaks.tar.gz \
+            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
+          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: (optional) Run gitleaks detect
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --no-git -v --redact \
+            --report-format json --report-path artifacts/gitleaks.json || true
+      - name: Package security scan artifacts (snapshot)
+        if: always()
+        run: |
+          set -e
+          cp -a artifacts/. artifacts_pack/security/ 2>/dev/null || true
+          [ -f artifacts_pack/security/gitleaks.json ] || echo "{}" > artifacts_pack/security/placeholder.json
+          tar -czf artifacts/security-artifacts.tar.gz -C artifacts_pack/security .
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts
+          path: artifacts/security-artifacts.tar.gz
+
+  pip_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+      - name: Run pip-audit (warn-only)
+        run: |
+          mkdir -p artifacts
+          pip-audit -r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json || true
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: artifacts/pip-audit.json
+
+  nightly-alembic:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Pre-pin critical wheels (no-deps)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-deps \
+            "wrapt>=1.17.0,<2" \
+            "typing-extensions==4.15.0" \
+            "importlib-metadata==8.1.0" \
+            "opencv-python-headless==4.11.0.86" \
+            "onnxruntime==1.18.0"
+      - name: Install deps (respect constraints)
+        run: |
+          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
+      - name: Alembic Roundtrip
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p artifacts
+          echo "-- downgrade base --" | tee artifacts/alembic-roundtrip.log
+          alembic downgrade base | tee -a artifacts/alembic-roundtrip.log
+          echo "-- upgrade head --" | tee -a artifacts/alembic-roundtrip.log
+          alembic upgrade head | tee -a artifacts/alembic-roundtrip.log
+      - name: Upload Roundtrip Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: alembic-roundtrip
+          path: artifacts/alembic-roundtrip.log

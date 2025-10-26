@@ -1,0 +1,40 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "trace_id": "trace-x",
+  "source_path": "artifacts/inbox/samples/pdf/sample.pdf",
+  "ts": "2025-01-01T00:00:00Z",
+  "mime": "application/octet-stream",
+  "pipeline": [
+    "detect.mime",
+    "pdf.text_extract",
+    "pdf.tables_extract",
+    "data_quality.tables.validate",
+    "security.pii.redact"
+  ],
+  "extracted": {
+    "text_bytes": 0,
+    "tables": []
+  },
+  "quality": {
+    "valid": true,
+    "issues": []
+  },
+  "pii": {
+    "steps": [
+      {
+        "op": "redact",
+        "targets": [
+          "artifacts/inbox/samples/pdf/sample.pdf"
+        ]
+      }
+    ]
+  },
+  "fingerprints": {
+    "content_hash": "debca6bae284be444467dca0cbecafe61425bb7eee6647b8dfcc5a52822597b8"
+  },
+  "policy_fingerprint": "808b6cb94b503ec67e843d51037ebc9cd9c204aa3af7908567a3630655029953",
+  "flags": {
+    "enable_ocr": false,
+    "enable_browser": false
+  }
+}

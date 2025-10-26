@@ -1,0 +1,6 @@
+# Example quotas (parse-only; no enforcement in local v1)
+tenants:
+  default:
+    rate_limit_per_minute: 60
+    burst: 10
+

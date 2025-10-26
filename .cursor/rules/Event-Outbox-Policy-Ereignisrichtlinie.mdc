@@ -1,0 +1,105 @@
+---
+description: Event / Outbox Policy – Ereignisrichtlinie für 0Admin-NEXT
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Event / Outbox Policy
+
+Diese Datei definiert die verbindlichen Regeln für das ereignisgesteuerte Backend von 0Admin-NEXT.  
+Sie gilt als **Single Source of Truth** für alle Coding- und Copilot-Agenten, die mit Events, Outbox-Mechanismen oder Retry-Logiken arbeiten.
+
+## Grundprinzipien
+- **Atomarität:** Jede Änderung im Domain-Kontext schreibt gleichzeitig ein Event in die Outbox.  
+- **Idempotenz:** Kein Event darf zweimal denselben fachlichen Zustand auslösen.  
+- **Nachvollziehbarkeit:** Jeder Event-Zustand ist persistent, versioniert und revisionssicher.  
+- **Transparenz:** Jeder Retry, jedes DLQ-Event und jede schema_version-Änderung ist mess- und protokollierbar.  
+
+---
+
+## Outbox-Schema (Referenz)
+### Tabellen
+#### event_outbox
+- Zweck: Speicherung aller noch nicht verarbeiteten Events (Status pending|processing|sent|failed).  
+- Primärschlüssel: id UUID DEFAULT gen_random_uuid().  
+- Felder:
+  - tenant_id UUID NOT NULL  
+  - event_type VARCHAR(128) NOT NULL  
+  - payload_json JSONB NOT NULL  
+  - idempotency_key VARCHAR(128) NOT NULL  
+  - schema_version VARCHAR(16) NOT NULL  
+  - status VARCHAR(32) DEFAULT 'pending' CHECK (status IN ('pending','processing','sent','failed','dlq'))  
+  - retry_count INT DEFAULT 0  
+  - last_error TEXT  
+  - created_at TIMESTAMPTZ DEFAULT timezone('utc', now())  
+  - updated_at TIMESTAMPTZ DEFAULT timezone('utc', now())  
+- Constraints:
+  - PRIMARY KEY (id)  
+  - UNIQUE (tenant_id, idempotency_key, event_type)  
+  - CHECK ck_event_outbox__status_valid  
+- Indizes:
+  - (tenant_id, created_at)  
+  - (tenant_id, status)
+
+#### processed_events
+- Zweck: Nachverfolgung verarbeiteter Events zur Sicherstellung der Idempotenz.  
+- Felder:
+  - tenant_id UUID NOT NULL  
+  - event_type VARCHAR(128) NOT NULL  
+  - idempotency_key VARCHAR(128) NOT NULL  
+  - processed_at TIMESTAMPTZ DEFAULT timezone('utc', now())  
+- Constraints:
+  - UNIQUE (tenant_id, event_type, idempotency_key)
+
+#### dead_letters
+- Zweck: Persistenz dauerhaft fehlgeschlagener Events nach allen Retries.  
+- Felder:
+  - tenant_id UUID NOT NULL  
+  - event_type VARCHAR(128) NOT NULL  
+  - idempotency_key VARCHAR(128)  
+  - payload_json JSONB  
+  - reason TEXT  
+  - failed_at TIMESTAMPTZ DEFAULT timezone('utc', now())  
+  - retry_count INT  
+- Constraints:
+  - PRIMARY KEY (tenant_id, event_type, failed_at)
+
+---
+
+## Event-Versionierung (schema_version-Pflicht)
+- Jedes Event trägt eine schema_version (SemVer: MAJOR.MINOR).  
+- **Producer-Pflicht:** Version erhöhen bei breaking changes; non-breaking → MINOR.  
+- **Consumer-Pflicht:** tolerant gegenüber unbekannten Feldern; Upcasting alter Versionen erlaubt.  
+- **Deprecation-Fenster:** ≥ 2 MINOR-Versionen rückwärts kompatibel halten.  
+- **Registrierung:** Schemas als JSON unter `docs/events/schemas/<event_type>/<version>.json`.  
+- **Akzeptanzkriterium:** Neue Events ohne schema_version werden abgelehnt (Contract-Test).  
+
+---
+
+## Retry- und Dead-Letter-Policy
+- Backoff-Stufen: 5 s → 30 s → 300 s, maximal 3 Versuche pro Event.  
+- Nach Überschreitung: Verschiebung in DLQ mit reason, last_error, failed_at.  
+- Idempotenz: Consumer persistiert (tenant_id, event_type, idempotency_key) vor Verarbeitung.  
+- Replay-Regel: Nur manuell nach Freigabe; Ursache muss dokumentiert sein.  
+- Metriken: publisher_lag, dlq_size, event_failures_total, retry_attempts_total.  
+- Statusübergänge: ausschließlich pending → processing → sent|failed|dlq.  
+
+---
+
+## Garantien & CI-Vorgaben
+- Contract-Tests prüfen:
+  - Vorhandensein der schema_version, Status-Transitions, und Idempotenz-Felder.  
+  - Roundtrip-Verhalten (`upgrade → event emit → consume → dlq`).  
+- Events dürfen nur über geprüfte Repositories oder Domain-Units erzeugt werden (kein Direkt-Write).  
+- Jede Änderung an dieser Policy erfordert:
+  - Aktualisierung der `.mdc`-Version (alwaysApply: true).  
+  - Anpassung der referenzierten Tests im CI-Cycle.  
+
+---
+
+## Definition of Done (Meta)
+- Tabellen (event_outbox, processed_events, dead_letters) textlich beschrieben.  
+- Status-Flow und Retry-Logik klar definiert.  
+- Idempotenzmechanismus (tenant_id + idempotency_key + event_type) beschrieben.  
+- CI-Anforderungen dokumentiert.  
+- `.mdc`-Header synchron mit Policy-Inhalt.  

@@ -1,0 +1,36 @@
+{
+  "tenant_id": "32d5c8e7-84df-42ac-a956-ac7533a2b86f",
+  "report_date": "2025-10-24",
+  "generated_at": "2025-10-24T10:21:44.300433+00:00",
+  "status": "error",
+  "summary": {
+    "total_overdue": 0,
+    "stage_1_count": 0,
+    "stage_2_count": 0,
+    "stage_3_count": 0,
+    "total_amount_cents": 0,
+    "unique_customers": 0,
+    "avg_amount": 0.0
+  },
+  "stages": {
+    "stage_1": {
+      "count": 0,
+      "amount_cents": 0,
+      "customers": []
+    },
+    "stage_2": {
+      "count": 0,
+      "amount_cents": 0,
+      "customers": []
+    },
+    "stage_3": {
+      "count": 0,
+      "amount_cents": 0,
+      "customers": []
+    }
+  },
+  "errors": [
+    "Failed to fetch data: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/invoices/overdue (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x77020260b8c0>: Failed to establish a new connection: [Errno 111] Connection refused'))"
+  ],
+  "warnings": []
+}

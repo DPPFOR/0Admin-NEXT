@@ -1,0 +1,26 @@
+Betreff: Letzte Mahnung - Rechnung {{ invoice_number }}
+
+Sehr geehrte/r {{ customer_name }},
+
+dies ist unsere letzte Mahnung bezüglich der Rechnung {{ invoice_number }} über {{ amount_str }} EUR.
+
+Fälligkeitsdatum: {{ due_date | datefmt("%d.%m.%Y") }}
+Betrag: {{ amount_str }} EUR
+{% if fee != "0.00" %}
+Mahngebühr: {{ fee }} EUR
+Gesamtbetrag: {{ total_str }} EUR
+{% endif %}
+
+Wir fordern Sie auf, den ausstehenden Betrag innerhalb von 7 Tagen zu begleichen. Andernfalls werden wir rechtliche Schritte einleiten und die Forderung an ein Inkassobüro weiterleiten.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{ company_name or tenant_name }}
+{{ config.company_address or "Test Street 123, 12345 Test City" }}
+
+---
+Mahnstufe: {{ stage.value }}
+Referenz: {{ notice_ref }}
+E-Mail: {{ notice.recipient_email }}
+Support: {{ config.support_email or "support@test.com" }}

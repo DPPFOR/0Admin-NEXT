@@ -1,0 +1,78 @@
+{
+  "$id": "urn:0admin:event:dunning_issued:v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dunning Issued Event",
+  "description": "Event published when a dunning notice is issued for an overdue invoice",
+  "type": "object",
+  "required": [
+    "event_id",
+    "tenant_id",
+    "invoice_id",
+    "stage",
+    "channel",
+    "notice_ref",
+    "due_date",
+    "amount",
+    "correlation_id"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this event"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Tenant identifier for multi-tenant isolation"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Identifier of the overdue invoice"
+    },
+    "stage": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "Dunning stage (1, 2, or 3)"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["email", "letter", "sms"],
+      "description": "Communication channel for the dunning notice"
+    },
+    "notice_ref": {
+      "type": "string",
+      "description": "Reference to the generated dunning notice"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Original due date of the invoice in RFC3339 format"
+    },
+    "amount": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d{2}$",
+      "description": "Invoice amount as string with 2 decimal places (e.g., '150.00')"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Correlation ID for tracing related events"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "event_id": "550e8400-e29b-41d4-a716-446655440000",
+      "tenant_id": "00000000-0000-0000-0000-000000000001",
+      "invoice_id": "INV-2024-001",
+      "stage": 1,
+      "channel": "email",
+      "notice_ref": "NOTICE-2024-001",
+      "due_date": "2024-01-15T00:00:00Z",
+      "amount": "150.00",
+      "correlation_id": "550e8400-e29b-41d4-a716-446655440001"
+    }
+  ]
+}

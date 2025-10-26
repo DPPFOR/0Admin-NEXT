@@ -1,0 +1,54 @@
+name: Console Build & Tests
+
+on:
+  push:
+    paths:
+      - 'frontend/console/**'
+      - '.github/workflows/console.yml'
+  pull_request:
+    paths:
+      - 'frontend/console/**'
+      - '.github/workflows/console.yml'
+  workflow_dispatch:
+
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check lockfile
+        id: lockfile
+        run: |
+          if [ -f frontend/console/package-lock.json ] || [ -f frontend/console/pnpm-lock.yaml ] || [ -f frontend/console/yarn.lock ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install
+        working-directory: frontend/console
+        run: npm ci
+        if: ${{ steps.lockfile.outputs.present == 'true' }}
+      - name: Lint
+        working-directory: frontend/console
+        run: npm run lint
+        if: ${{ steps.lockfile.outputs.present == 'true' }}
+      - name: Test
+        working-directory: frontend/console
+        run: npm test
+        if: ${{ steps.lockfile.outputs.present == 'true' }}
+      - name: Build
+        working-directory: frontend/console
+        env:
+          VITE_API_BASE: 'http://localhost:8000'
+        run: npm run build
+        if: ${{ steps.lockfile.outputs.present == 'true' }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-dist
+          path: frontend/console/dist

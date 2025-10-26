@@ -1,0 +1,27 @@
+{
+  "id": "oGTU1Nx-6Ng1vN-993912d1fa61047a",
+  "object": "text_completion",
+  "created": 1761304707,
+  "model": "Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
+  "choices": [
+    {
+      "index": 0,
+      "text": " OK\n",
+      "logprobs": null,
+      "finish_reason": "length",
+      "matched_stop": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 13,
+    "total_tokens": 15,
+    "completion_tokens": 2,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+  },
+  "metadata": {
+    "weight_version": "default"
+  },
+  "prompt": []
+}
+HTTP:200

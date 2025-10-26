@@ -1,0 +1,7 @@
+{
+  "tenant_id": "00000000-0000-0000-0000-000000000001",
+  "trace_id": "offline-smoke-trace",
+  "source_path": "/home/satinder/dev/0Admin-NEXT/artifacts/tests/mcp/sample_invoice.pdf",
+  "tables": [],
+  "artifact_path": ""
+}

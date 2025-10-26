@@ -1,0 +1,337 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Mahnwesen: Dry-Run (Flock)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--dry-run",
+        "--limit",
+        "25"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Mahnwesen: DB-Smoke (Flock, RLS-ON)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_flow_smoke_localdb.py"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "RUN_DB_TESTS": "1"
+        }
+      }
+    },
+    {
+      "label": "Mahnwesen: Dry-Run (Go-Live)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "00000000-0000-0000-0000-000000000001",
+        "--dry-run",
+        "--limit",
+        "50",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "DB: Migrate",
+      "type": "shell",
+      "command": "alembic",
+      "args": [
+        "-c",
+        "alembic.ini",
+        "upgrade",
+        "head"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Inbox: Smoke (offline)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/inbox",
+        "-k",
+        "smoke or idempotent or views or audit or logger"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Inbox: Views check",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-c",
+        "import os; from sqlalchemy import create_engine, text; e = create_engine(os.environ['DATABASE_URL'], future=True); print('Views check:'); with e.begin() as c: v1 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_inbox_by_tenant')).scalar(); v2 = c.execute(text('SELECT COUNT(*) FROM inbox_parsed.v_invoices_latest')).scalar(); print(f'v_inbox_by_tenant: {v1} rows'); print(f'v_invoices_latest: {v2} rows')"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "MVR: Dry-Run (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-c",
+        "from agents.mahnwesen.playbooks import DunningPlaybook, DunningContext; from agents.mahnwesen.config import DunningConfig; config = DunningConfig.from_tenant('00000000-0000-0000-0000-000000000001'); context = DunningContext(tenant_id='00000000-0000-0000-0000-000000000001', correlation_id='test-dry-run', dry_run=True, config=config); playbook = DunningPlaybook(config); result = playbook.run_once(context); print(f'Dry-run result: {result.notices_created} notices, {result.events_dispatched} events')"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Templates Validate",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_templates_*",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Dispatch Dry-Run (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "-m",
+        "pytest",
+        "-q",
+        "tests/agents_mahnwesen/test_dispatch_*",
+        "-v"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: MVR Preview (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--preview",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Approve (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--approve",
+        "${input:noticeId}",
+        "--comment",
+        "${input:approvalComment}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Live Send (Tenant)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--tenant",
+        "${input:tenantId}",
+        "--live",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Daily KPIs (All Tenants)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "tools/flock/playbook_mahnwesen.py",
+        "--report-daily",
+        "--verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "tenantId",
+      "type": "promptString",
+      "description": "Tenant ID (UUID)",
+      "default": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "noticeId",
+      "type": "promptString",
+      "description": "Notice ID"
+    },
+    {
+      "id": "approvalComment",
+      "type": "promptString",
+      "description": "Approval/Rejection Comment (required)"
+    }
+  ]
+}

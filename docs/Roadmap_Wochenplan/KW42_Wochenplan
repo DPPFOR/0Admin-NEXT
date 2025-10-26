@@ -1,0 +1,62 @@
+Perfekt, das reicht. Hier ist dein **7-Tage-Plan (Samstag–Freitag)**, abgestimmt auf deinen **One-Man-Schedule mit Cursor am Tag & Copilot nachts** und auf Basis der 4-Meilenstein-Roadmap von 0Admin-NEXT.
+
+---
+
+## 🗓️ Wochenziel
+
+**Ziel:** Meilenstein 1 (Inbox & Dateneingang) + Grundstruktur für Meilenstein 2 fertig, sodass ab kommender Woche die Event-Driven-Agenten gebaut werden können.
+**Fokus:** Architektur festigen, Datenfluss lauffähig, Dokumentation vorbereiten.
+
+---
+
+## 📆 Wochenübersicht
+
+**Samstag – Fundament aufsetzen (6–8 h)**
+  a. Repository finalisieren (Ordnerstruktur, Requirements, Policies).
+  b. Backend-Skeleton (domain / application / infrastructure) + Alembic init.
+  c. README + docs/roadmap.md + Coding-Agent-Policy aktualisieren.
+  d. Abends: 3 Issues für Copilot vorbereiten (z. B. BaseModels, Config-Loader, Logging-Contract).
+
+**Sonntag – Inbox & Parsing-Flow (5–6 h)**
+  a. Inbox-Pipelines konzipieren (Mail, Upload, API).
+  b. Parsing-/Chunking-Flow entwerfen, Tabellen (inbox_items, parsed_items).
+  c. Beispiel-Datensatz + Seed-Skript in /data hinzufügen.
+  d. Abends: Copilot-Issues (Parser-Test, DB-Schema, Alembic Upgrade).
+
+**Montag – PostgreSQL & Outbox-Basis (2 h)**
+  a. PostgreSQL-Schema prüfen, Alembic-Migration validieren.
+  b. Outbox-Table + Modelle definieren (noch ohne Worker).
+  c. Abends: Copilot-Issues (Outbox-Insert, Event-Drafts, Retry-Policy).
+
+**Dienstag – Event-Driven Core & Logging (2 h)**
+  a. Event-Contracts + Trace-ID-Handling festlegen.
+  b. Logging-Konvention (JSON-Format, Context-Keys).
+  c. Abends: Copilot-Issues (Event-Emitter, JSON-Logger).
+
+**Mittwoch – Flock-Integration (2 h)**
+  a. Agenten-Rollenplan (Planer, Versand, Payment) textlich festlegen.
+  b. Registry-Stub anlegen, Routing-Logik dokumentieren.
+  c. Abends: Copilot-Issues (Flock-Registry-Code, Beispiel-Workflow).
+
+**Donnerstag – Monitoring & Tests (2 h)**
+  a. Teststruktur (pytest 8.3.*, Marker, Fixtures) anlegen.
+  b. Logging-/Outbox-Health-Checks als Textplan dokumentieren.
+  c. Abends: Copilot-Issues (Unit-Test Parser, Smoke-Test Alembic).
+
+**Freitag – Review & Stabilisierung (2 h)**
+  a. Roadmap + Docs aktualisieren, offene Punkte kennzeichnen.
+  b. CI-Skeleton vorbereiten (pytest + lint).
+  c. Abends: Copilot-Batch Run mit allen Week-Issues.
+
+---
+
+## 🧭 Tagesrhythmus
+
+* **Tagsüber:** Arbeiten mit Cursor (Analyse, Planung, kurze Commits).
+* **Abends/Nacht:** 2–5 Issues in GitHub für Copilot Coding-Agent; Fokus auf isolierte Tasks.
+* **Freitagabend:** Wochen-Review + Roadmap-Update (nur additive Änderungen).
+
+---
+
+**Experten-Empfehlung:**
+Behalte diesen Zyklus bei – 1 Wochenziel = 1 Meilenstein. So erreichst du bei 10–12 Arbeitsstunden / Woche ein voll funktionsfähiges, agentenfähiges Backend in 4–5 Wochen.
