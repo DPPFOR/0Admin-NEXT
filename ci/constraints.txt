@@ -1,0 +1,12 @@
+# CI constraints: keep resolver shallow & Py3.12-safe
+# OpenTelemetry: konsistente Paarung (API/SDK gleiches 1.x; SemConv passender 0.xx)
+opentelemetry-api==1.31.1
+opentelemetry-sdk==1.31.1
+opentelemetry-semantic-conventions==0.52b1
+opentelemetry-instrumentation==0.52b1
+# Python 3.11+/3.12 fix: wrapt mindestens 1.14 (Formatargspec-Entfernung)
+wrapt>=1.14.0
+# Sanity (Build-Tools)
+pip>=24.0
+setuptools>=70
+wheel>=0.43
