@@ -18,13 +18,13 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Install deps (phase 1: core pins, no-deps)
+      - name: 'Install deps (phase 1: core pins, no-deps)'
         run: |
           python -m pip install --upgrade pip
           if [ -f constraints/_floor.txt ]; then
             pip install --no-deps -r constraints/_floor.txt
           fi
-      - name: Install deps (phase 2: full, with existing constraints)
+      - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
           pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
       - name: Preflight checks (alembic/current, pgcrypto, search_path)
@@ -119,13 +119,13 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Install deps (phase 1: core pins, no-deps)
+      - name: 'Install deps (phase 1: core pins, no-deps)'
         run: |
           python -m pip install --upgrade pip
           if [ -f constraints/_floor.txt ]; then
             pip install --no-deps -r constraints/_floor.txt
           fi
-      - name: Install deps (phase 2: full, with existing constraints)
+      - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
           pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
       - name: Prepare storage
@@ -162,13 +162,13 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Install deps (phase 1: core pins, no-deps)
+      - name: 'Install deps (phase 1: core pins, no-deps)'
         run: |
           python -m pip install --upgrade pip
           if [ -f constraints/_floor.txt ]; then
             pip install --no-deps -r constraints/_floor.txt
           fi
-      - name: Install deps (phase 2: full, with existing constraints)
+      - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
           pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
       - name: Roundtrip Offline SQL
