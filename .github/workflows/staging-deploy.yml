@@ -12,22 +12,24 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-      PIP_CONSTRAINT: constraints/py312.txt
-      PIP_DISABLE_PIP_VERSION_CHECK: '1'
-      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
-      - name: Install deps
+      - name: Pre-pin critical wheels (no-deps)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-
+          pip install --no-deps \
+            "wrapt>=1.17.0,<2" \
+            "typing-extensions==4.15.0" \
+            "importlib-metadata==8.1.0" \
+            "opencv-python-headless==4.11.0.86" \
+            "onnxruntime==1.18.0"
+      - name: Install deps (respect constraints)
+        run: |
+          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
       - name: Preflight checks (alembic/current, pgcrypto, search_path)
         run: |
           mkdir -p artifacts
@@ -88,7 +90,6 @@ jobs:
               print('Preflight failed; see artifacts/staging-preflight.json')
               sys.exit(1)
           PY
-
       - name: Upload preflight artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,28 +117,26 @@ jobs:
       AUTH_SERVICE_TOKENS: ${{ secrets.STAGING_SERVICE_TOKENS }}
       ADMIN_TOKENS: ${{ secrets.STAGING_ADMIN_TOKENS }}
       CURSOR_HMAC_KEY: ${{ secrets.STAGING_CURSOR_HMAC_KEY }}
-      PIP_CONSTRAINT: constraints/py312.txt
-      PIP_DISABLE_PIP_VERSION_CHECK: '1'
-      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
-      - name: Install deps
+      - name: Pre-pin critical wheels (no-deps)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-
+          pip install --no-deps \
+            "wrapt>=1.17.0,<2" \
+            "typing-extensions==4.15.0" \
+            "importlib-metadata==8.1.0" \
+            "opencv-python-headless==4.11.0.86" \
+            "onnxruntime==1.18.0"
+      - name: Install deps (respect constraints)
+        run: |
+          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
       - name: Prepare storage
-        run: mkdir -p /home/runner/work/_temp/uploads
-
-      - name: Prepare artifacts
-        run: mkdir -p artifacts
-
+        run: mkdir -p /home/runner/work/_temp/uploads artifacts
       - name: Run smoke
         run: |
           if [ "${{ matrix.suite }}" = "upload" ]; then pytest -q tests/smoke/test_upload_api_smoke.py -W error --junitxml artifacts/staging-upload.xml; fi
@@ -148,10 +147,9 @@ jobs:
           if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/staging-publisher.xml; fi
           if [ -f artifacts/egress-violations.json ]; then
             if [ "$(cat artifacts/egress-violations.json | wc -c)" -gt 2 ] && [ "$(cat artifacts/egress-violations.json)" != "[]" ]; then
-              echo "Egress sentinel violations detected" && cat artifacts/egress-violations.json && exit 1
+              echo "Egress sentinel violations detected" && cat artifacts/egress-violations.json && exit 1;
             fi
           fi
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -164,29 +162,29 @@ jobs:
     if: inputs.confirm == 'YES'
     runs-on: ubuntu-latest
     needs: smoke-matrix
-    env:
-      PIP_CONSTRAINT: constraints/py312.txt
-      PIP_DISABLE_PIP_VERSION_CHECK: '1'
-      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
-      - name: Install deps
+      - name: Pre-pin critical wheels (no-deps)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-
+          pip install --no-deps \
+            "wrapt>=1.17.0,<2" \
+            "typing-extensions==4.15.0" \
+            "importlib-metadata==8.1.0" \
+            "opencv-python-headless==4.11.0.86" \
+            "onnxruntime==1.18.0"
+      - name: Install deps (respect constraints)
+        run: |
+          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
       - name: Roundtrip Offline SQL
         run: |
           mkdir -p artifacts
           alembic downgrade base --sql > artifacts/alembic-downgrade.sql
           alembic upgrade head --sql > artifacts/alembic-upgrade.sql
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -199,26 +197,39 @@ jobs:
     needs: alembic-offline
     steps:
       - uses: actions/checkout@v4
-
       - name: Prepare artifacts dir
-        run: mkdir -p artifacts
-
-      - name: Run gitleaks (docker)
+        run: mkdir -p artifacts artifacts_pack/security
+      - name: Install gitleaks (release tarball)
         run: |
-          docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest \
-            detect --no-git --redact \
+          set -euo pipefail
+          mkdir -p /tmp/gitleaks
+          curl -sSLo /tmp/gitleaks/gitleaks.tar.gz \
+            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
+          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks detect
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --no-git -v --redact \
             --report-format json --report-path artifacts/gitleaks.json || true
-
       - name: pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
         with:
           inputs: "-r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json"
-
+      - name: Package security artifacts (snapshot)
+        if: always()
+        run: |
+          set -e
+          cp -a artifacts/. artifacts_pack/security/ 2>/dev/null || true
+          [ -f artifacts_pack/security/gitleaks.json ] || echo "{}" > artifacts_pack/security/placeholder.json
+          [ -f artifacts_pack/security/pip-audit.json ] || echo "{}" > artifacts_pack/security/pip-audit.json
+          tar -czf artifacts/security-artifacts.tar.gz -C artifacts_pack/security .
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: staging-security
-          path: artifacts/*.json
+          path: artifacts/security-artifacts.tar.gz
 
   greenlight:
     if: inputs.confirm == 'YES'
@@ -230,31 +241,26 @@ jobs:
       STAGING_ADMIN_TOKEN: ${{ secrets.STAGING_ADMIN_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts_dl
-
       - name: Build greenlight report
         run: |
           python - <<'PY'
           import os, json, time, pathlib
           from sqlalchemy import create_engine, text
           import sys
-          # Aggregate artifacts
           preflight = None
           dlq_ok = None
           outbox = {}
           base = pathlib.Path('artifacts_dl')
           for p in base.rglob('staging-preflight.json'):
               preflight = json.loads(p.read_text())
-          # DB checks
           db = os.environ.get('DATABASE_URL')
           try:
               eng = create_engine(db, future=True)
@@ -263,9 +269,8 @@ jobs:
                   out = dict(conn.execute(text('SELECT COALESCE(status,\'null\') as s, COUNT(*)::int FROM event_outbox GROUP BY s')).fetchall())
                   dlq_ok = (dlq == 0)
                   outbox = out
-          except Exception:
+          except Exception as e:
               dlq_ok = False
-          # Egress sentinel
           egress_ok = True
           for p in base.rglob('egress-violations.json'):
               try:
@@ -274,7 +279,6 @@ jobs:
                       egress_ok = False
               except Exception:
                   egress_ok = False
-          # Optional metrics snapshot via Ops API
           metrics = None
           api = os.environ.get('STAGING_API_BASE')
           token = os.environ.get('STAGING_ADMIN_TOKEN')
@@ -296,7 +300,6 @@ jobs:
           }
           pathlib.Path('artifacts').mkdir(exist_ok=True)
           pathlib.Path('artifacts/staging-inbox-greenlight.json').write_text(json.dumps(report, indent=2))
-          # Fail if any gate violated
           ok = True
           if not preflight or not preflight.get('alembic_ok') or not preflight.get('pgcrypto') or not preflight.get('search_path_ok'):
               ok = False
@@ -308,7 +311,6 @@ jobs:
               print('Greenlight failed; see artifacts/staging-inbox-greenlight.json')
               sys.exit(1)
           PY
-
       - name: Upload greenlight artifact
         uses: actions/upload-artifact@v4
         with:
