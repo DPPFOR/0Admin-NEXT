@@ -28,9 +28,9 @@ jobs:
           if [ -f constraints/_floor.txt ]; then
             pip install --no-deps -r constraints/_floor.txt
           fi
-      - name: 'Install deps (phase 2: full, constrained)'
+      - name: 'Install deps (unconstrained - temporary)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Lint (ruff)
         run: ruff check .
       - name: Typecheck (mypy)
@@ -137,9 +137,9 @@ jobs:
           python -m pip install --upgrade pip
           # Kernkonflikte festziehen, ohne weitere Abhängigkeiten nachzuziehen
           pip install --no-deps -r constraints/_floor.txt
-      - name: 'Install deps (phase 2: full, with existing constraints)'
+      - name: 'Install deps (unconstrained - temporary)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Alembic Roundtrip
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

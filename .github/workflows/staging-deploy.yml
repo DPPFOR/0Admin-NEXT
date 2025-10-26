@@ -26,7 +26,7 @@ jobs:
           fi
       - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Preflight checks (alembic/current, pgcrypto, search_path)
         run: |
           mkdir -p artifacts
@@ -127,7 +127,7 @@ jobs:
           fi
       - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Prepare storage
         run: mkdir -p /home/runner/work/_temp/uploads
       - name: Run smoke
@@ -170,7 +170,7 @@ jobs:
           fi
       - name: 'Install deps (phase 2: full, with existing constraints)'
         run: |
-          pip install -r requirements.txt -r requirements-dev.txt -c constraints/py312.txt
+          pip install -r requirements.txt -r requirements-dev.txt
       - name: Roundtrip Offline SQL
         run: |
           mkdir -p artifacts
