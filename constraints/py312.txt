@@ -1,6 +1,6 @@
-# Temporarily disabled ALL constraints due to persistent resolution-too-deep conflicts
-# Let pip resolve dependencies naturally without restrictive constraints
-# This is a temporary measure until better constraint management is established
+# Minimal workable constraints - resolution-too-deep solved, wrapt fixed for Py3.12
+numpy==1.26.4
+wrapt>=1.17.0,<2.0.0  # Enforce Python 3.12 compatible wrapt version
 #######
 # Hinweise:
 # - sdk 1.30.0 verlangt semconv 0.51b0 → exakt pinnen.
