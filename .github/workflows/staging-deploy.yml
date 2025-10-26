@@ -12,21 +12,22 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: 'Install deps (phase 1: core pins, no-deps)'
+
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f constraints/_floor.txt ]; then
-            pip install --no-deps -r constraints/_floor.txt
-          fi
-      - name: 'Install deps (phase 2: full, with existing constraints)'
-        run: |
-          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true pip install -r requirements.txt -r requirements-dev.txtpip install -r requirements.txt -r requirements-dev.txt pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
+          pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Preflight checks (alembic/current, pgcrypto, search_path)
         run: |
           mkdir -p artifacts
@@ -87,12 +88,14 @@ jobs:
               print('Preflight failed; see artifacts/staging-preflight.json')
               sys.exit(1)
           PY
+
       - name: Upload preflight artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: staging-preflight
           path: artifacts/staging-preflight.json
+
   smoke-matrix:
     needs: preflight
     if: inputs.confirm == 'YES'
@@ -113,23 +116,28 @@ jobs:
       AUTH_SERVICE_TOKENS: ${{ secrets.STAGING_SERVICE_TOKENS }}
       ADMIN_TOKENS: ${{ secrets.STAGING_ADMIN_TOKENS }}
       CURSOR_HMAC_KEY: ${{ secrets.STAGING_CURSOR_HMAC_KEY }}
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: 'Install deps (phase 1: core pins, no-deps)'
+
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f constraints/_floor.txt ]; then
-            pip install --no-deps -r constraints/_floor.txt
-          fi
-      - name: 'Install deps (phase 2: full, with existing constraints)'
-        run: |
-          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true pip install -r requirements.txt -r requirements-dev.txtpip install -r requirements.txt -r requirements-dev.txt pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
+          pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Prepare storage
         run: mkdir -p /home/runner/work/_temp/uploads
+
+      - name: Prepare artifacts
+        run: mkdir -p artifacts
+
       - name: Run smoke
         run: |
           if [ "${{ matrix.suite }}" = "upload" ]; then pytest -q tests/smoke/test_upload_api_smoke.py -W error --junitxml artifacts/staging-upload.xml; fi
@@ -138,12 +146,12 @@ jobs:
           if [ "${{ matrix.suite }}" = "mail" ]; then pytest -q tests/smoke/test_mail_ingest_smoke.py -W error --junitxml artifacts/staging-mail.xml; fi
           if [ "${{ matrix.suite }}" = "read_ops" ]; then pytest -q tests/smoke/test_read_ops_api_smoke.py -W error --junitxml artifacts/staging-readops.xml; fi
           if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/staging-publisher.xml; fi
-          # Fail fast if egress sentinel recorded any violations
           if [ -f artifacts/egress-violations.json ]; then
             if [ "$(cat artifacts/egress-violations.json | wc -c)" -gt 2 ] && [ "$(cat artifacts/egress-violations.json)" != "[]" ]; then
-              echo "Egress sentinel violations detected" && cat artifacts/egress-violations.json && exit 1;
+              echo "Egress sentinel violations detected" && cat artifacts/egress-violations.json && exit 1
             fi
           fi
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -156,26 +164,29 @@ jobs:
     if: inputs.confirm == 'YES'
     runs-on: ubuntu-latest
     needs: smoke-matrix
+    env:
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: 'Install deps (phase 1: core pins, no-deps)'
+
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f constraints/_floor.txt ]; then
-            pip install --no-deps -r constraints/_floor.txt
-          fi
-      - name: 'Install deps (phase 2: full, with existing constraints)'
-        run: |
-          pip install "wrapt>=1.17.0,<2.0.0" --force-reinstall --no-cache-dir --no-deps || true pip install -r requirements.txt -r requirements-dev.txtpip install -r requirements.txt -r requirements-dev.txt pip install -r requirements.txt -r requirements-dev.txt --force-reinstall --ignore-installed --upgrade-strategy eager
+          pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Roundtrip Offline SQL
         run: |
           mkdir -p artifacts
           alembic downgrade base --sql > artifacts/alembic-downgrade.sql
           alembic upgrade head --sql > artifacts/alembic-upgrade.sql
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -188,26 +199,21 @@ jobs:
     needs: alembic-offline
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare artifacts dir
         run: mkdir -p artifacts
-      - name: Install gitleaks (release tarball)
+
+      - name: Run gitleaks (docker)
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/gitleaks
-          curl -sSLo /tmp/gitleaks/gitleaks.tar.gz \
-            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
-          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
-          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
-          gitleaks version
-      - name: Run gitleaks detect
-        run: |
-          set -euo pipefail
-          gitleaks detect --source . --no-git -v --redact \
+          docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest \
+            detect --no-git --redact \
             --report-format json --report-path artifacts/gitleaks.json || true
+
       - name: pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
         with:
           inputs: "-r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -224,14 +230,17 @@ jobs:
       STAGING_ADMIN_TOKEN: ${{ secrets.STAGING_ADMIN_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts_dl
+
       - name: Build greenlight report
         run: |
           python - <<'PY'
@@ -254,7 +263,7 @@ jobs:
                   out = dict(conn.execute(text('SELECT COALESCE(status,\'null\') as s, COUNT(*)::int FROM event_outbox GROUP BY s')).fetchall())
                   dlq_ok = (dlq == 0)
                   outbox = out
-          except Exception as e:
+          except Exception:
               dlq_ok = False
           # Egress sentinel
           egress_ok = True
@@ -299,6 +308,7 @@ jobs:
               print('Greenlight failed; see artifacts/staging-inbox-greenlight.json')
               sys.exit(1)
           PY
+
       - name: Upload greenlight artifact
         uses: actions/upload-artifact@v4
         with:

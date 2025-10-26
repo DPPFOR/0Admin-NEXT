@@ -20,25 +20,35 @@ jobs:
       PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Lint (ruff)
         run: ruff check .
+
       - name: Typecheck (mypy)
         run: mypy --config-file mypy.ini
+
       - name: Tests + Coverage (domain/parsing)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           mkdir -p artifacts
-          pytest -q --junitxml artifacts/ci-tests.xml --cov=backend/apps/inbox --cov=agents/inbox_worker --cov-report=xml:coverage.xml --cov-fail-under=80
+          pytest -q \
+            --junitxml artifacts/ci-tests.xml \
+            --cov=backend/apps/inbox --cov=agents/inbox_worker \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=80
+
       - name: Inspect artifacts (debug)
         run: |
           echo "Workspace:"; ls -la
@@ -47,7 +57,7 @@ jobs:
             echo "---- $f ----"
             [ -e "$f" ] && file "$f" && head -c 200 "$f" || echo "MISSING: $f"
           done
-      
+
       - name: Create artifact bundle
         run: |
           mkdir -p artifacts/archive
@@ -61,7 +71,7 @@ jobs:
             echo "no-artifacts" > artifacts/archive/placeholder.txt
           fi
           tar -czf artifacts/ci-artifacts.tar.gz -C artifacts/archive .
-      
+
       - name: Upload artifact bundle
         if: always()
         uses: actions/upload-artifact@v4
@@ -73,30 +83,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare artifacts dir
         run: mkdir -p artifacts
-      - name: Install gitleaks (release tarball)
+
+      # Nutzt Docker-Image statt Tarball-Download (robust & lizenzfrei)
+      - name: Run gitleaks (docker)
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/gitleaks
-          curl -sSLo /tmp/gitleaks/gitleaks.tar.gz \
-            https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
-          tar -xzf /tmp/gitleaks/gitleaks.tar.gz -C /tmp/gitleaks
-          sudo mv /tmp/gitleaks/gitleaks /usr/local/bin/gitleaks
-          gitleaks version
+          docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest \
+            detect --no-git --redact \
+            --report-format json --report-path artifacts/gitleaks.json || true
+
       - name: Package security scan artifacts
         if: always()
         run: |
-          set -e
           [ -d artifacts ] || mkdir -p artifacts
-          found=0
-          for f in artifacts/gitleaks.json artifacts/pip-audit.json; do
-            [ -f "$f" ] && found=1 || true
-          done
-          if [ "$found" = "0" ]; then
-            echo "{}" > artifacts/placeholder.json
-          fi
+          [ -s artifacts/gitleaks.json ] || echo "{}" > artifacts/gitleaks.json
           tar -czf artifacts/security-artifacts.tar.gz -C artifacts .
+
       - name: Upload security artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,21 +110,29 @@ jobs:
 
   pip_audit:
     runs-on: ubuntu-latest
+    env:
+      PIP_CONSTRAINT: constraints/py312.txt
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
+
       - name: Install pip-audit
         run: |
           python -m pip install --upgrade pip
           pip install pip-audit
+
       - name: Run pip-audit (warn-only)
         run: |
           mkdir -p artifacts
           pip-audit -r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json || true
+
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
         with:
@@ -136,24 +148,30 @@ jobs:
       PIP_NO_INPUT: '1'
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Alembic Roundtrip
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           mkdir -p artifacts
-          echo "-- downgrade base --" | tee artifacts/alembic-roundtrip.log
-          alembic downgrade base | tee -a artifacts/alembic-roundtrip.log
-          echo "-- upgrade head --" | tee -a artifacts/alembic-roundtrip.log
-          alembic upgrade head | tee -a artifacts/alembic-roundtrip.log
+          {
+            echo "-- downgrade base --"
+            alembic downgrade base
+            echo "-- upgrade head --"
+            alembic upgrade head
+          } | tee artifacts/alembic-roundtrip.log
+
       - name: Upload Roundtrip Log
         uses: actions/upload-artifact@v4
         with:

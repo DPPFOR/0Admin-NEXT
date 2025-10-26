@@ -26,20 +26,26 @@ jobs:
         suite: [upload, programmatic, worker, mail, mail_connectors, read_ops, publisher]
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
+
       - name: Prepare storage dir
         run: mkdir -p /home/runner/work/_temp/uploads
+
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts
+
       - name: Run smoke tests (matrix)
         run: |
-          mkdir -p artifacts
           if [ "${{ matrix.suite }}" = "upload" ]; then pytest -q tests/smoke/test_upload_api_smoke.py -W error --junitxml artifacts/u3-p1b-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "programmatic" ]; then pytest -q tests/smoke/test_programmatic_ingest_smoke.py -W error --junitxml artifacts/u3-p2-programmatic-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "worker" ]; then pytest -q tests/smoke/test_worker_inbox_smoke.py -W error --junitxml artifacts/u4-p1-worker-smoke.xml; fi
@@ -47,6 +53,7 @@ jobs:
           if [ "${{ matrix.suite }}" = "mail_connectors" ]; then pytest -q tests/smoke/test_mail_connectors_integration.py -W error --junitxml artifacts/u10-mail-connectors-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "read_ops" ]; then pytest -q tests/smoke/test_read_ops_api_smoke.py -W error --junitxml artifacts/u5-r-read-ops-smoke.xml; fi
           if [ "${{ matrix.suite }}" = "publisher" ]; then pytest -q tests/smoke/test_outbox_publisher_smoke.py -W error --junitxml artifacts/u6-outbox-publisher-smoke.xml; fi
+
       - name: Inspect artifacts (debug)
         run: |
           echo "Workspace:"; ls -la
@@ -55,20 +62,18 @@ jobs:
             echo "---- $f ----"
             [ -e "$f" ] && file "$f" && head -c 200 "$f" || echo "MISSING: $f"
           done
-      
+
       - name: Create artifact bundle
         run: |
           mkdir -p artifacts/archive
           for f in artifacts/u3-p1b-smoke.xml artifacts/u3-p1b-smoke.json artifacts/u3-p2-programmatic-smoke.xml artifacts/u3-p2-programmatic-smoke.json artifacts/u4-p1-worker-smoke.xml artifacts/u4-p1-worker-smoke.json artifacts/u5-m-mail-ingest-smoke.xml artifacts/u5-m-mail-ingest-smoke.json artifacts/u5-r-read-ops-smoke.xml artifacts/u6-outbox-publisher-smoke.xml; do
-            if [ -f "$f" ]; then
-              cp "$f" artifacts/archive/
-            fi
+            [ -f "$f" ] && cp "$f" artifacts/archive/ || true
           done
           if [ -z "$(find artifacts/archive -type f -print -quit)" ]; then
             echo "no-artifacts" > artifacts/archive/placeholder.txt
           fi
           tar -czf artifacts/smoke-artifacts.tar.gz -C artifacts/archive .
-      
+
       - name: Upload artifact bundle
         if: always()
         uses: actions/upload-artifact@v4
