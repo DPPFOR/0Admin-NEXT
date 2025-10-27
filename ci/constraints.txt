@@ -1,16 +1,17 @@
-# Py3.12-stabile Constraints gegen resolution-too-deep
-# OpenTelemetry (1.31.1) + Instrumentation/SemConv passend (0.52b1)
+# Konsistente OTLP-only Constraints (protobuf >=5)
+protobuf==5.28.3
+grpcio==1.67.1
+googleapis-common-protos==1.65.0
 opentelemetry-api==1.31.1
 opentelemetry-sdk==1.31.1
-opentelemetry-instrumentation==0.52b1
+opentelemetry-proto==1.31.1
+opentelemetry-exporter-otlp==1.31.1
+opentelemetry-exporter-otlp-proto-grpc==1.31.1
+opentelemetry-exporter-otlp-proto-http==1.31.1
 opentelemetry-semantic-conventions==0.52b1
-# gRPC/Protobuf kompatibel für Py3.12
-grpcio>=1.63,<1.66
-protobuf>=4.25,<5
-googleapis-common-protos>=1.63
-# wrapt: fix für entfernte inspect.formatargspec ab Py3.11+
-wrapt>=1.14
-# Build-Basis
-pip>=24.0
-setuptools>=70
-wheel>=0.43
+opentelemetry-instrumentation==0.52b1
+wrapt==1.16.0
+typing_extensions==4.12.2
+pip==24.3.1
+setuptools==70.0.0
+wheel==0.44.0

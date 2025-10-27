@@ -65,7 +65,14 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -U -r requirements.txt
+          tmp_req="$(mktemp)"
+          grep -v '^flock-core' requirements.txt > "$tmp_req"
+          flock_pkg="$(grep '^flock-core' requirements.txt || true)"
+          if [ -n "$flock_pkg" ]; then
+            pip install --no-deps "$flock_pkg"
+          fi
+          pip install -U -r "$tmp_req" -r requirements-dev.txt
+          rm -f "$tmp_req"
           # Projekt NICHT installieren (kein 'pip install .'); wir testen via PYTHONPATH
 
       - name: Verify resolved versions
@@ -74,16 +81,18 @@ jobs:
         run: |
           python - <<'PY'
           import importlib, sys
-          def v(pkg):
+          def v(name):
               try:
-                  m=importlib.import_module(pkg); print(pkg, getattr(m,'__version__','unknown'))
-              except Exception as e:
-                  print(pkg, 'NOT IMPORTABLE:', e)
-          print('Python', sys.version.split()[0])
-          for pkg in ['wrapt','opentelemetry','opentelemetry.sdk','opentelemetry.semconv']:
-              v(pkg)
+                  mod = importlib.import_module(name)
+                  print(f"{name}: {getattr(mod, '__version__', 'unknown')}")
+              except Exception as exc:
+                  print(f"{name}: IMPORT_ERROR {exc}")
+                  sys.exit(2)
+          print("Python:", sys.version.split()[0])
+          for name in ["wrapt", "grpc", "google.protobuf", "opentelemetry", "opentelemetry.sdk", "flock"]:
+              v(name)
           PY
-          pip freeze | grep -E 'wrapt|opentelemetry' || true
+          pip freeze | grep -E 'wrapt|grpcio|protobuf|opentelemetry|flock-core' || true
 
       - name: Run tests
         if: ${{ steps.detect.outputs.run_tests == 'true' }}
