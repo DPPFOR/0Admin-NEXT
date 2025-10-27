@@ -10,6 +10,15 @@ from sqlalchemy import create_engine, text
 from backend.core.config import settings
 from agents.inbox_worker.runner import run_once
 
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+pytestmark = pytest.mark.skipif(
+    not RUN_DB_TESTS,
+    reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL",
+)
+
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
+
 
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
