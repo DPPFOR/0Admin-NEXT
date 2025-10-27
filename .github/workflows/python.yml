@@ -1,0 +1,99 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Python CI (Guarded)
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Python project & tests
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_proj=false
+          has_tests=false
+
+          # Projektindikatoren
+          if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            has_proj=true
+          fi
+
+          # Testindikatoren (Dateien/Ordner)
+          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
+            has_tests=true
+          else
+            # Optional: Konfigs durchsuchen (nur wenn vorhanden)
+            if [ -f "pyproject.toml" ]; then
+              if grep -qE '^\s*\[tool\.pytest' pyproject.toml; then
+                has_tests=true
+              fi
+            fi
+            if [ "$has_tests" = false ] && [ -f "setup.cfg" ]; then
+              if grep -qi 'pytest' setup.cfg; then
+                has_tests=true
+              fi
+            fi
+          fi
+
+          if [ "$has_proj" = true ] && [ "$has_tests" = true ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            echo "Detected Python project with tests."
+          else
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "No runnable Python tests detected. Exiting gracefully."
+          fi
+
+      - name: Setup Python
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies (with constraints)
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        env:
+          PIP_CONSTRAINT: ci/constraints.txt
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -U -r requirements.txt
+          # Projekt NICHT installieren (kein 'pip install .'); wir testen via PYTHONPATH
+
+      - name: Verify resolved versions
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import importlib, sys
+          def v(pkg):
+              try:
+                  m=importlib.import_module(pkg); print(pkg, getattr(m,'__version__','unknown'))
+              except Exception as e:
+                  print(pkg, 'NOT IMPORTABLE:', e)
+          print('Python', sys.version.split()[0])
+          for pkg in ['wrapt','opentelemetry','opentelemetry.sdk','opentelemetry.semconv']:
+              v(pkg)
+          PY
+          pip freeze | grep -E 'wrapt|opentelemetry' || true
+
+      - name: Run tests
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        env:
+          PYTHONPATH: .
+        run: |
+          set -e
+          pytest -q --maxfail=1
+
+      - name: No tests – placeholder success
+        if: ${{ steps.detect.outputs.run_tests != 'true' }}
+        run: echo "No Python tests detected → CI success (guarded)."
