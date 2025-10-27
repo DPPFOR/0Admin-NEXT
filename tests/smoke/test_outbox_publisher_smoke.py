@@ -7,8 +7,20 @@ import pytest
 from sqlalchemy import create_engine, text
 
 from backend.core.config import settings
-from agents.outbox_publisher import runner as pub_runner
-from agents.outbox_publisher import transports as pub_transports
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+try:
+    from agents.outbox_publisher import runner as pub_runner
+    from agents.outbox_publisher import transports as pub_transports
+except ModuleNotFoundError as exc:
+    if not os.getenv("RUN_AGENTS_TESTS"):
+        pytest.skip(f"requires RUN_AGENTS_TESTS=1 and agents package ({exc})", allow_module_level=True)
+    raise
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 
 
 ARTIFACTS_DIR = "artifacts"
