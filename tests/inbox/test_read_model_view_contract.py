@@ -1,9 +1,18 @@
-"""Contract tests for inbox read model database views.
-
-Ensures that database views have expected columns to catch schema mismatches early.
-"""
+"""Contract tests für Inbox Read-Model-Views."""
 import pytest
-import psycopg2
+
+try:
+    import psycopg  # bevorzugter Treiber (psycopg v3)
+
+    def _connect(dsn: str):
+        return psycopg.connect(dsn)
+
+except ImportError:  # Fallback für Umgebungen mit psycopg2
+    import psycopg2 as psycopg
+
+    def _connect(dsn: str):
+        return psycopg.connect(dsn)
+
 from backend.core.config import settings
 
 
@@ -18,7 +27,11 @@ def test_v_inbox_by_tenant_columns():
         "avg_confidence",
     }
     
-    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = _connect(
+        settings.database_url.replace("postgresql+psycopg2://", "postgresql://").replace(
+            "postgresql+psycopg://", "postgresql://"
+        )
+    )
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -50,7 +63,11 @@ def test_v_invoices_latest_columns():
         "invoice_no",
     }
     
-    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = _connect(
+        settings.database_url.replace("postgresql+psycopg2://", "postgresql://").replace(
+            "postgresql+psycopg://", "postgresql://"
+        )
+    )
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -69,4 +86,3 @@ def test_v_invoices_latest_columns():
         
     finally:
         conn.close()
-
