@@ -3,14 +3,13 @@ from __future__ import annotations
 import os
 from decimal import Decimal
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from .dto import InvoiceRowDTO, NeedsReviewRowDTO, TenantSummaryDTO, PaymentRowDTO
-
+from .dto import InvoiceRowDTO, NeedsReviewRowDTO, PaymentRowDTO, TenantSummaryDTO
 
 VALID_STATUSES = {"accepted", "needs_review", "rejected"}
 
@@ -38,7 +37,7 @@ def _validate_pagination(limit: int, offset: int) -> None:
         raise ValueError("offset must be non-negative")
 
 
-def _to_decimal(value) -> Optional[Decimal]:
+def _to_decimal(value) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, Decimal):
@@ -54,7 +53,7 @@ def _to_float(value) -> float:
     return float(value)
 
 
-def _validate_filters(min_conf: Optional[float]) -> Optional[float]:
+def _validate_filters(min_conf: float | None) -> float | None:
     if min_conf is None:
         return None
     if isinstance(min_conf, (int, float)):
@@ -67,12 +66,12 @@ def _validate_filters(min_conf: Optional[float]) -> Optional[float]:
 
 
 def _filter_clause(
-    base_conditions: List[str],
+    base_conditions: list[str],
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> Tuple[str, Dict[str, Any]]:
-    params: Dict[str, Any] = {}
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> tuple[str, dict[str, Any]]:
+    params: dict[str, Any] = {}
     if min_conf is not None:
         params["min_conf"] = _validate_filters(min_conf)
         base_conditions.append("confidence >= :min_conf")
@@ -91,9 +90,9 @@ def fetch_invoices_latest(
     limit: int = 50,
     offset: int = 0,
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> List[InvoiceRowDTO]:
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> list[InvoiceRowDTO]:
     _validate_pagination(limit, offset)
     conditions = ["tenant_id = :tenant_id"]
     where, dynamic_params = _filter_clause(conditions, min_conf=min_conf, status=status)
@@ -151,9 +150,9 @@ def fetch_payments_latest(
     limit: int = 50,
     offset: int = 0,
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> List[PaymentRowDTO]:
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> list[PaymentRowDTO]:
     _validate_pagination(limit, offset)
     conditions = ["tenant_id = :tenant_id"]
     where, dynamic_params = _filter_clause(conditions, min_conf=min_conf, status=status)
@@ -213,9 +212,9 @@ def fetch_items_needing_review(
     limit: int = 50,
     offset: int = 0,
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> List[NeedsReviewRowDTO]:
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> list[NeedsReviewRowDTO]:
     _validate_pagination(limit, offset)
     conditions = ["tenant_id = :tenant_id"]
     where, dynamic_params = _filter_clause(conditions, min_conf=min_conf, status=status)
@@ -264,7 +263,7 @@ def fetch_items_needing_review(
         ]
 
 
-def fetch_tenant_summary(tenant_id: str) -> Optional[TenantSummaryDTO]:
+def fetch_tenant_summary(tenant_id: str) -> TenantSummaryDTO | None:
     stmt = text(
         """
         SELECT tenant_id,
@@ -303,9 +302,9 @@ def query_payments(
     limit: int = 50,
     offset: int = 0,
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> List[PaymentRowDTO]:
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> list[PaymentRowDTO]:
     return fetch_payments_latest(
         tenant_id,
         limit=limit,
@@ -320,9 +319,9 @@ def query_review(
     limit: int = 50,
     offset: int = 0,
     *,
-    min_conf: Optional[float] = None,
-    status: Optional[str] = None,
-) -> List[NeedsReviewRowDTO]:
+    min_conf: float | None = None,
+    status: str | None = None,
+) -> list[NeedsReviewRowDTO]:
     return fetch_items_needing_review(
         tenant_id,
         limit=limit,

@@ -1,23 +1,33 @@
-import json
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, status, Depends
+from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import MetaData, Table, Column, String, Text, DateTime, Integer, select, insert, delete, update, create_engine, func
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    delete,
+    func,
+    insert,
+    select,
+)
 
 from backend.core.config import settings
-from backend.core.observability.logging import logger, set_tenant_id, hash_actor_token
+from backend.core.observability.logging import hash_actor_token, logger
 from backend.core.observability.metrics import (
-    record_ops_duration,
+    get_metrics,
     increment_ops_replay_attempts,
     increment_ops_replay_committed,
+    record_ops_duration,
 )
-from backend.core.observability.metrics import get_metrics
 from backend.core.tenant.validator import loader
-from backend.core.tenant.context import require_tenant
-
 
 router = APIRouter(prefix="/api/v1/ops")
 
@@ -26,17 +36,21 @@ def _error(status_code: int, code: str, detail: str):
     raise HTTPException(status_code=status_code, detail={"error": code, "detail": detail})
 
 
-def _auth_admin(authorization: Optional[str]) -> Tuple[str, str]:
+def _auth_admin(authorization: str | None) -> tuple[str, str]:
     if not authorization or not authorization.lower().startswith("bearer "):
-        _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header")
-    token = authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+        _error(
+            status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header"
+        )
+    token = (
+        authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+    )
     allowed = [t.strip() for t in settings.ADMIN_TOKENS.split(",") if t.strip()]
     if not allowed or token not in allowed:
         _error(status.HTTP_403_FORBIDDEN, "forbidden", "Admin token required")
     return token, hash_actor_token(token)
 
 
-def _tables(metadata: MetaData) -> Tuple[Table, Table, Table]:
+def _tables(metadata: MetaData) -> tuple[Table, Table, Table]:
     event_outbox = Table(
         "event_outbox",
         metadata,
@@ -76,11 +90,11 @@ def _tables(metadata: MetaData) -> Tuple[Table, Table, Table]:
     return event_outbox, dead_letters, processed_events
 
 
-@router.get("/outbox", response_model=Dict[str, Any])
+@router.get("/outbox", response_model=dict[str, Any])
 def get_outbox_status(
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    tenant_header: Optional[str] = Header(None, alias="X-Tenant"),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    tenant_header: str | None = Header(None, alias="X-Tenant"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
     token, token_hash = _auth_admin(authorization)
@@ -92,22 +106,37 @@ def get_outbox_status(
     with engine.begin() as conn:
         if tenant_id and tenant_id != "*":
             rows = conn.execute(
-                select(event_outbox.c.status, func.count().label("cnt")).where(event_outbox.c.tenant_id == tenant_id).group_by(event_outbox.c.status)
+                select(event_outbox.c.status, func.count().label("cnt"))
+                .where(event_outbox.c.tenant_id == tenant_id)
+                .group_by(event_outbox.c.status)
             ).fetchall()
         else:
-            rows = conn.execute(select(event_outbox.c.status, func.count().label("cnt")).group_by(event_outbox.c.status)).fetchall()
+            rows = conn.execute(
+                select(event_outbox.c.status, func.count().label("cnt")).group_by(
+                    event_outbox.c.status
+                )
+            ).fetchall()
     result = {r.status or "null": int(r.cnt) for r in rows}
     record_ops_duration((time.time() - start) * 1000.0)
-    logger.info("ops_outbox_status", extra={"actor_role": "admin", "actor_token_hash": token_hash, "tenant_id": tenant_id, "trace_id": trace_id, "duration_ms": (time.time() - start) * 1000.0})
+    logger.info(
+        "ops_outbox_status",
+        extra={
+            "actor_role": "admin",
+            "actor_token_hash": token_hash,
+            "tenant_id": tenant_id,
+            "trace_id": trace_id,
+            "duration_ms": (time.time() - start) * 1000.0,
+        },
+    )
     return {"outbox": result}
 
 
-@router.get("/dlq", response_model=Dict[str, Any])
+@router.get("/dlq", response_model=dict[str, Any])
 def list_dlq(
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    tenant_header: Optional[str] = Header(None, alias="X-Tenant"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    tenant_header: str | None = Header(None, alias="X-Tenant"),
     limit: int = 50,
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
     token, token_hash = _auth_admin(authorization)
@@ -126,7 +155,10 @@ def list_dlq(
                 dead_letters.c.event_type,
                 dead_letters.c.reason,
                 dead_letters.c.created_at,
-            ).where(*where).order_by(dead_letters.c.created_at.desc()).limit(limit)
+            )
+            .where(*where)
+            .order_by(dead_letters.c.created_at.desc())
+            .limit(limit)
         ).fetchall()
     items = [
         {
@@ -139,22 +171,32 @@ def list_dlq(
         for r in rows
     ]
     record_ops_duration((time.time() - start) * 1000.0)
-    logger.info("ops_dlq_list", extra={"actor_role": "admin", "actor_token_hash": token_hash, "tenant_id": tenant_header or "*", "trace_id": trace_id, "duration_ms": (time.time() - start) * 1000.0, "result_count": len(items)})
+    logger.info(
+        "ops_dlq_list",
+        extra={
+            "actor_role": "admin",
+            "actor_token_hash": token_hash,
+            "tenant_id": tenant_header or "*",
+            "trace_id": trace_id,
+            "duration_ms": (time.time() - start) * 1000.0,
+            "result_count": len(items),
+        },
+    )
     return {"items": items}
 
 
 class ReplayRequest(BaseModel):
-    ids: Optional[List[str]] = None
-    dry_run: Optional[bool] = True
-    limit: Optional[int] = 50
+    ids: list[str] | None = None
+    dry_run: bool | None = True
+    limit: int | None = 50
 
 
-@router.post("/dlq/replay", response_model=Dict[str, Any])
+@router.post("/dlq/replay", response_model=dict[str, Any])
 def replay_dlq(
     body: ReplayRequest,
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    tenant_header: Optional[str] = Header(None, alias="X-Tenant"),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    tenant_header: str | None = Header(None, alias="X-Tenant"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
     token, token_hash = _auth_admin(authorization)
@@ -176,13 +218,28 @@ def replay_dlq(
                 dead_letters.c.tenant_id,
                 dead_letters.c.event_type,
                 dead_letters.c.payload_json,
-            ).where(*where).order_by(dead_letters.c.created_at).limit(limit)
+            )
+            .where(*where)
+            .order_by(dead_letters.c.created_at)
+            .limit(limit)
         ).fetchall()
 
     increment_ops_replay_attempts(len(rows))
     if body.dry_run:
         record_ops_duration((time.time() - start) * 1000.0)
-        logger.info("ops_dlq_replay", extra={"actor_role": "admin", "actor_token_hash": token_hash, "tenant_id": tenant_header or "*", "trace_id": trace_id, "selected": len(rows), "committed": 0, "dry_run": True, "duration_ms": (time.time() - start) * 1000.0})
+        logger.info(
+            "ops_dlq_replay",
+            extra={
+                "actor_role": "admin",
+                "actor_token_hash": token_hash,
+                "tenant_id": tenant_header or "*",
+                "trace_id": trace_id,
+                "selected": len(rows),
+                "committed": 0,
+                "dry_run": True,
+                "duration_ms": (time.time() - start) * 1000.0,
+            },
+        )
         return {"selected": len(rows), "committed": 0}
 
     committed = 0
@@ -209,25 +266,52 @@ def replay_dlq(
 
     increment_ops_replay_committed(committed)
     record_ops_duration((time.time() - start) * 1000.0)
-    logger.info("ops_dlq_replay", extra={"actor_role": "admin", "actor_token_hash": token_hash, "tenant_id": tenant_header or "*", "trace_id": trace_id, "selected": len(rows), "committed": committed, "duration_ms": (time.time() - start) * 1000.0})
+    logger.info(
+        "ops_dlq_replay",
+        extra={
+            "actor_role": "admin",
+            "actor_token_hash": token_hash,
+            "tenant_id": tenant_header or "*",
+            "trace_id": trace_id,
+            "selected": len(rows),
+            "committed": committed,
+            "duration_ms": (time.time() - start) * 1000.0,
+        },
+    )
     return {"selected": len(rows), "committed": committed}
 
 
-@router.get("/metrics", response_model=Dict[str, Any])
-def get_metrics_admin(authorization: Optional[str] = Header(None, alias="Authorization"), trace_header: Optional[str] = Header(None, alias="X-Trace-ID")):
+@router.get("/metrics", response_model=dict[str, Any])
+def get_metrics_admin(
+    authorization: str | None = Header(None, alias="Authorization"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
+):
     token, token_hash = _auth_admin(authorization)
     trace_id = trace_header or str(uuid.uuid4())
-    logger.info("ops_metrics", extra={"actor_role": "admin", "actor_token_hash": token_hash, "trace_id": trace_id})
+    logger.info(
+        "ops_metrics",
+        extra={"actor_role": "admin", "actor_token_hash": token_hash, "trace_id": trace_id},
+    )
     return get_metrics()
 
 
-@router.get("/tenants", response_model=Dict[str, Any])
+@router.get("/tenants", response_model=dict[str, Any])
 def list_tenants(
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     token, token_hash = _auth_admin(authorization)
     trace_id = trace_header or str(uuid.uuid4())
     source, version, count, allow = loader.info()
-    logger.info("ops_tenants", extra={"actor_role": "admin", "actor_token_hash": token_hash, "trace_id": trace_id, "count": count, "source": source, "version": version})
+    logger.info(
+        "ops_tenants",
+        extra={
+            "actor_role": "admin",
+            "actor_token_hash": token_hash,
+            "trace_id": trace_id,
+            "count": count,
+            "source": source,
+            "version": version,
+        },
+    )
     return {"source": source, "version": version, "count": count, "tenants": sorted(list(allow))}

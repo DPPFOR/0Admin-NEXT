@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import datetime as _datetime
 import os
 import sys
-import datetime as _datetime
 
 import pytest
-
 
 # Ensure project root on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -27,9 +26,13 @@ def freeze_datetime(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def block_egress(monkeypatch):
+    import asyncio
+    import http.client
+    import os as _os
     import socket
-    import subprocess, os as _os, asyncio
-    import urllib.request, http.client, ssl
+    import ssl
+    import subprocess
+    import urllib.request
 
     _original_socket = socket.socket
 

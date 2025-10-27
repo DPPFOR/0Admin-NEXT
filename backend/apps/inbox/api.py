@@ -1,31 +1,29 @@
 import json
 import time
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status, Depends
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.exc import IntegrityError
 
+from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
 from backend.core.config import settings
 from backend.core.observability.logging import logger, set_tenant_id
 from backend.core.observability.metrics import (
+    increment_dedupe_hits,
     increment_inbox_received,
     increment_inbox_validated,
-    increment_dedupe_hits,
     observe_duration,
     record_fetch_duration,
 )
-
-from .utils import sha256_hex, detect_mime, extension_for_mime
-from .storage import put_bytes, StorageError
-from .repository import InboxItem, get_tables, insert_inbox_item, get_inbox_item_by_hash
-from .ingest import fetch_remote, ensure_url_allowed, IngestError
 from backend.core.tenant.context import require_tenant
-from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
 from backend.mcp.server.observability import get_logger as get_mcp_logger
 
+from .ingest import IngestError, ensure_url_allowed, fetch_remote
+from .repository import InboxItem, get_inbox_item_by_hash, get_tables, insert_inbox_item
+from .storage import StorageError, put_bytes
+from .utils import detect_mime, extension_for_mime, sha256_hex
 
 router = APIRouter(prefix="/api/v1/inbox/items")
 
@@ -36,9 +34,9 @@ class UploadResponse(BaseModel):
     tenant_id: str
     content_hash: str
     uri: str
-    source: Optional[str] = None
-    filename: Optional[str] = None
-    mime: Optional[str] = None
+    source: str | None = None
+    filename: str | None = None
+    mime: str | None = None
     duplicate: bool = False
 
 
@@ -49,21 +47,25 @@ def _error(status_code: int, code: str, detail: str):
 @router.post("/upload", response_model=UploadResponse)
 async def upload_item(
     file: UploadFile = File(...),
-    source: Optional[str] = Form(None),
-    filename: Optional[str] = Form(None),
-    meta_json: Optional[str] = Form(None),
-    authorization: Optional[str] = Header(None, alias="Authorization"),
+    source: str | None = Form(None),
+    filename: str | None = Form(None),
+    meta_json: str | None = Form(None),
+    authorization: str | None = Header(None, alias="Authorization"),
     tenant_id: str = Depends(require_tenant),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
 
     # AuthN/AuthZ: Authorization header present, X-Tenant must be valid UUID
     if not authorization or not authorization.lower().startswith("bearer "):
-        _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header")
+        _error(
+            status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header"
+        )
     # Minimal service-token validation: if whitelist configured, token must match
-    token = authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+    token = (
+        authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+    )
     allowed = [t.strip() for t in settings.AUTH_SERVICE_TOKENS.split(",") if t.strip()]
     if allowed and token not in allowed:
         _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Invalid service token")
@@ -79,11 +81,14 @@ async def upload_item(
     trace_id = trace_header or str(uuid.uuid4())
 
     # Avoid PII: do not log original filename or raw content
-    logger.info("upload_start", extra={
-        "trace_id": trace_id,
-        "size": size_bytes,
-        "idempotency_key": idempotency_key or "",
-    })
+    logger.info(
+        "upload_start",
+        extra={
+            "trace_id": trace_id,
+            "size": size_bytes,
+            "idempotency_key": idempotency_key or "",
+        },
+    )
 
     # Size validation
     max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
@@ -112,7 +117,9 @@ async def upload_item(
     except StorageError as e:
         logger.error("storage_error", extra={"trace_id": trace_id, "error": str(e)})
         observe_duration(start, "ingest_duration_ms")
-        _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Failed to persist file to storage")
+        _error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Failed to persist file to storage"
+        )
 
     # Prepare DB access
     engine = create_engine(settings.database_url, future=True)
@@ -125,7 +132,11 @@ async def upload_item(
         increment_dedupe_hits()
         logger.info(
             "dedupe_hit",
-            extra={"trace_id": trace_id, "inbox_item_id": existing.id, "content_hash": content_hash},
+            extra={
+                "trace_id": trace_id,
+                "inbox_item_id": existing.id,
+                "content_hash": content_hash,
+            },
         )
         observe_duration(start, "ingest_duration_ms")
         return UploadResponse(
@@ -159,7 +170,10 @@ async def upload_item(
         increment_dedupe_hits()
         existing = get_inbox_item_by_hash(engine, inbox_items, tenant_uuid, content_hash)
         if existing is None:
-            logger.error("dedupe_resolution_failed", extra={"trace_id": trace_id, "content_hash": content_hash})
+            logger.error(
+                "dedupe_resolution_failed",
+                extra={"trace_id": trace_id, "content_hash": content_hash},
+            )
             observe_duration(start, "ingest_duration_ms")
             _error(status.HTTP_409_CONFLICT, "hash_duplicate", "Duplicate content detected")
         observe_duration(start, "ingest_duration_ms")
@@ -177,7 +191,11 @@ async def upload_item(
     except Exception as e:
         logger.error("db_error", extra={"trace_id": trace_id, "error": str(e)})
         observe_duration(start, "ingest_duration_ms")
-        _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Database error while persisting inbox item")
+        _error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "io_error",
+            "Database error while persisting inbox item",
+        )
 
     # Outbox event: InboxItemValidated (idempotent via UNIQUE (tenant_id, idempotency_key, event_type))
     payload = {
@@ -268,7 +286,14 @@ async def upload_item(
                             payload_json=json.dumps(payload2),
                         )
                     )
-                mcp_logger.info("mcp_analysis_event_emitted", extra={"trace_id": trace_id, "tenant_id": tenant_uuid, "inbox_item_id": persisted.id})
+                mcp_logger.info(
+                    "mcp_analysis_event_emitted",
+                    extra={
+                        "trace_id": trace_id,
+                        "tenant_id": tenant_uuid,
+                        "inbox_item_id": persisted.id,
+                    },
+                )
             except Exception:
                 # Non-fatal; shadow analysis remains local-only
                 pass
@@ -291,24 +316,28 @@ async def upload_item(
 
 class ProgrammaticIngestRequest(BaseModel):
     remote_url: str
-    source: Optional[str] = "api"
-    meta_json: Optional[str] = None
+    source: str | None = "api"
+    meta_json: str | None = None
 
 
 @router.post("")
 async def ingest_item(
     body: ProgrammaticIngestRequest,
-    authorization: Optional[str] = Header(None, alias="Authorization"),
+    authorization: str | None = Header(None, alias="Authorization"),
     tenant_id: str = Depends(require_tenant),
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
 
     # Auth
     if not authorization or not authorization.lower().startswith("bearer "):
-        _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header")
-    token = authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+        _error(
+            status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing or invalid Authorization header"
+        )
+    token = (
+        authorization.split(" ", 1)[1].strip() if " " in authorization else authorization.strip()
+    )
     allowed = [t.strip() for t in settings.AUTH_SERVICE_TOKENS.split(",") if t.strip()]
     if allowed and token not in allowed:
         _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Invalid service token")
@@ -317,11 +346,14 @@ async def ingest_item(
 
     increment_inbox_received()
     trace_id = trace_header or str(uuid.uuid4())
-    logger.info("programmatic_ingest_start", extra={
-        "trace_id": trace_id,
-        "ingest_source": "remote_url",
-        "idempotency_key": idempotency_key or "",
-    })
+    logger.info(
+        "programmatic_ingest_start",
+        extra={
+            "trace_id": trace_id,
+            "ingest_source": "remote_url",
+            "idempotency_key": idempotency_key or "",
+        },
+    )
 
     # URL allow/deny and scheme checks before network
     try:
@@ -334,7 +366,9 @@ async def ingest_item(
     try:
         content, filename_guess, detected_mime, fetch_ms = fetch_remote(body.remote_url)
     except IngestError as e:
-        logger.warning("programmatic_ingest_fetch_error", extra={"trace_id": trace_id, "code": e.code})
+        logger.warning(
+            "programmatic_ingest_fetch_error", extra={"trace_id": trace_id, "code": e.code}
+        )
         observe_duration(start, "ingest_duration_ms")
         _error(e.http_status, e.code, str(e))
     except Exception as e:
@@ -373,7 +407,9 @@ async def ingest_item(
     except StorageError as e:
         logger.error("storage_error", extra={"trace_id": trace_id, "error": str(e)})
         observe_duration(start, "ingest_duration_ms")
-        _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Failed to persist file to storage")
+        _error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Failed to persist file to storage"
+        )
 
     # DB setup
     engine = create_engine(settings.database_url, future=True)
@@ -384,7 +420,14 @@ async def ingest_item(
     existing = get_inbox_item_by_hash(engine, inbox_items, tenant_uuid, content_hash)
     if existing:
         increment_dedupe_hits()
-        logger.info("dedupe_hit", extra={"trace_id": trace_id, "inbox_item_id": existing.id, "content_hash": content_hash})
+        logger.info(
+            "dedupe_hit",
+            extra={
+                "trace_id": trace_id,
+                "inbox_item_id": existing.id,
+                "content_hash": content_hash,
+            },
+        )
         observe_duration(start, "ingest_duration_ms")
         return UploadResponse(
             id=existing.id,
@@ -415,7 +458,10 @@ async def ingest_item(
         increment_dedupe_hits()
         existing = get_inbox_item_by_hash(engine, inbox_items, tenant_uuid, content_hash)
         if existing is None:
-            logger.error("dedupe_resolution_failed", extra={"trace_id": trace_id, "content_hash": content_hash})
+            logger.error(
+                "dedupe_resolution_failed",
+                extra={"trace_id": trace_id, "content_hash": content_hash},
+            )
             observe_duration(start, "ingest_duration_ms")
             _error(status.HTTP_409_CONFLICT, "hash_duplicate", "Duplicate content detected")
         observe_duration(start, "ingest_duration_ms")
@@ -433,7 +479,11 @@ async def ingest_item(
     except Exception as e:
         logger.error("db_error", extra={"trace_id": trace_id, "error": str(e)})
         observe_duration(start, "ingest_duration_ms")
-        _error(status.HTTP_500_INTERNAL_SERVER_ERROR, "io_error", "Database error while persisting inbox item")
+        _error(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "io_error",
+            "Database error while persisting inbox item",
+        )
 
     # Outbox event
     payload = {
@@ -457,21 +507,27 @@ async def ingest_item(
                     payload_json=json.dumps(payload),
                 )
             )
-        logger.info("event_emit", extra={
-            "trace_id": trace_id,
-            "event_type": "InboxItemValidated",
-            "inbox_item_id": persisted.id,
-            "idempotency_key": idempotency_key or "",
-            "ingest_source": "remote_url",
-            "fetch_duration_ms": fetch_ms,
-        })
+        logger.info(
+            "event_emit",
+            extra={
+                "trace_id": trace_id,
+                "event_type": "InboxItemValidated",
+                "inbox_item_id": persisted.id,
+                "idempotency_key": idempotency_key or "",
+                "ingest_source": "remote_url",
+                "fetch_duration_ms": fetch_ms,
+            },
+        )
     except IntegrityError:
-        logger.info("event_emit_duplicate_guard", extra={
-            "trace_id": trace_id,
-            "event_type": "InboxItemValidated",
-            "inbox_item_id": persisted.id,
-            "idempotency_key": idempotency_key or "",
-        })
+        logger.info(
+            "event_emit_duplicate_guard",
+            extra={
+                "trace_id": trace_id,
+                "event_type": "InboxItemValidated",
+                "inbox_item_id": persisted.id,
+                "idempotency_key": idempotency_key or "",
+            },
+        )
     except Exception as e:
         logger.warning("event_emit_failed", extra={"trace_id": trace_id, "error": str(e)})
 

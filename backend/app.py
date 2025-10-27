@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 
+from backend.apps.inbox.api import router as upload_router
+from backend.apps.inbox.api_ops import router as ops_router
+from backend.apps.inbox.api_read import router as read_router
+from backend.apps.inbox.api_read_model import router as read_model_router
 from backend.core.config import settings
 from backend.core.observability import init_observability
 from backend.core.observability.health import router as health_router
-from backend.apps.inbox.api import router as upload_router
-from backend.apps.inbox.api_read import router as read_router
-from backend.apps.inbox.api_ops import router as ops_router
-from backend.apps.inbox.api_read_model import router as read_model_router
 
 
 def create_app() -> FastAPI:

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import socket
+from collections.abc import Iterable
 from dataclasses import dataclass
 from http.client import HTTPConnection, HTTPSConnection
 from pathlib import Path
-from typing import Iterable, List
 
 import yaml
 
@@ -17,7 +17,7 @@ class Policy:
 
     workspace_root: Path
     allow_unix_socket: bool
-    filesystem_allowlist: List[Path]
+    filesystem_allowlist: list[Path]
 
 
 def _read_policy(path: Path) -> dict:
@@ -39,7 +39,7 @@ def load_policy(policy_path: Path, *, workspace_root: Path) -> Policy:
     allow_unix_socket = bool(egress.get("allow_unix_socket", False))
 
     allow_entries: Iterable[str] = egress.get("filesystem_allowlist", []) or []
-    normalised: List[Path] = []
+    normalised: list[Path] = []
     for entry in allow_entries:
         try:
             p = Path(entry)
@@ -127,7 +127,9 @@ class EgressGuard:
 
 def ensure_path_allowed(*, path: Path, policy: Policy) -> Path:
     """Validate that a path stays inside the workspace and allowed directories."""
-    resolved = (policy.workspace_root / path).resolve() if not path.is_absolute() else path.resolve()
+    resolved = (
+        (policy.workspace_root / path).resolve() if not path.is_absolute() else path.resolve()
+    )
     if not resolved.is_relative_to(policy.workspace_root):
         raise PermissionError("Path escapes workspace boundaries")
 

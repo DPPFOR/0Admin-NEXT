@@ -5,16 +5,15 @@ Revises: 20251019_invoice_quality_fields
 Create Date: 2025-10-20 09:00:00
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "20251020_read_model_views"
-down_revision: Union[str, None] = "20251019_invoice_quality_fields"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20251019_invoice_quality_fields"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 SCHEMA = "inbox_parsed"

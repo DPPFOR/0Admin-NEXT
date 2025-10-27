@@ -3,13 +3,14 @@
 Provides JSON logging, health/readiness endpoints, and in-process metrics
 for go-live readiness without external dependencies.
 """
+
 import os
 import uuid
 from typing import Optional
 
+from . import health, metrics
 from . import logging as logging_module
-from . import health
-from . import metrics
+
 
 # Global trace_id generator for worker/CLI contexts
 def generate_trace_id() -> str:
@@ -17,7 +18,7 @@ def generate_trace_id() -> str:
     return str(uuid.uuid4())
 
 
-def set_trace_id(trace_id: Optional[str] = None) -> str:
+def set_trace_id(trace_id: str | None = None) -> str:
     """Set or generate trace ID for current context."""
     if not trace_id:
         trace_id = generate_trace_id()
@@ -25,7 +26,7 @@ def set_trace_id(trace_id: Optional[str] = None) -> str:
     return trace_id
 
 
-def set_tenant_id(tenant_id: Optional[str] = None) -> str:
+def set_tenant_id(tenant_id: str | None = None) -> str:
     """Set tenant ID for current context (default 'unknown')."""
     return tenant_id or "unknown"
 

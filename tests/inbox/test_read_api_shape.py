@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Tuple
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,12 +14,11 @@ from tests.inbox.test_read_model_db import (
     _seed_data,
 )
 
-
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
 
 
-def _setup_database() -> Tuple[Dict[str, str], TestClient]:
+def _setup_database() -> tuple[dict[str, str], TestClient]:
     if not RUN_DB_TESTS or not DB_URL:
         pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL")
     engine = create_engine(DB_URL, future=True)

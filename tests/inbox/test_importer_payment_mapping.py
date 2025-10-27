@@ -11,7 +11,7 @@ TENANT = "00000000-0000-0000-0000-000000000001"
 
 
 def _load_sample(name: str) -> dict:
-    with open(SAMPLES_DIR / name, "r", encoding="utf-8") as fh:
+    with open(SAMPLES_DIR / name, encoding="utf-8") as fh:
         data = json.load(fh)
     assert data["tenant_id"] == TENANT
     return data

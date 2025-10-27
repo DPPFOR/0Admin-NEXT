@@ -4,11 +4,11 @@ import json
 import time
 import uuid
 from hashlib import sha256
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, status, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import MetaData, Table, Column, String, Text, DateTime, select, create_engine
+from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, create_engine, select
 
 from backend.core.config import settings
 from backend.core.observability.logging import logger, set_tenant_id
@@ -19,7 +19,6 @@ from backend.core.observability.metrics import (
 )
 from backend.core.tenant.context import require_tenant
 
-
 router = APIRouter(prefix="/api/v1")
 
 
@@ -27,13 +26,13 @@ def _error(status_code: int, code: str, detail: str):
     raise HTTPException(status_code=status_code, detail={"error": code, "detail": detail})
 
 
-def _hmac_sign(data: Dict[str, Any]) -> str:
+def _hmac_sign(data: dict[str, Any]) -> str:
     payload = json.dumps(data, separators=(",", ":")).encode()
     sig = hmac.new(settings.CURSOR_HMAC_KEY.encode(), payload, sha256).digest()
     return base64.urlsafe_b64encode(payload + b"." + sig).decode()
 
 
-def _hmac_verify(cursor: str) -> Dict[str, Any]:
+def _hmac_verify(cursor: str) -> dict[str, Any]:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode())
         payload, sig = raw.rsplit(b".", 1)
@@ -46,7 +45,7 @@ def _hmac_verify(cursor: str) -> Dict[str, Any]:
         _error(status.HTTP_400_BAD_REQUEST, "invalid_cursor", "Cursor malformed")
 
 
-def _tables(metadata: MetaData) -> Tuple[Table, Table]:
+def _tables(metadata: MetaData) -> tuple[Table, Table]:
     inbox_items = Table(
         "inbox_items",
         metadata,
@@ -77,23 +76,23 @@ class InboxItemOut(BaseModel):
     status: str
     tenant_id: str
     content_hash: str
-    mime: Optional[str] = None
-    source: Optional[str] = None
-    created_at: Optional[str] = None
+    mime: str | None = None
+    source: str | None = None
+    created_at: str | None = None
 
 
 class ParsedItemOut(BaseModel):
     id: str
     tenant_id: str
     inbox_item_id: str
-    created_at: Optional[str] = None
-    doc_type: Optional[str] = None
-    invoice_no: Optional[str] = None
-    amount: Optional[str] = None
-    due_date: Optional[str] = None
+    created_at: str | None = None
+    doc_type: str | None = None
+    invoice_no: str | None = None
+    amount: str | None = None
+    due_date: str | None = None
 
 
-def _auth_tenant(tenant_header: Optional[str]) -> str:
+def _auth_tenant(tenant_header: str | None) -> str:
     if not tenant_header:
         _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Missing X-Tenant header")
     try:
@@ -104,12 +103,12 @@ def _auth_tenant(tenant_header: Optional[str]) -> str:
         _error(status.HTTP_401_UNAUTHORIZED, "unauthorized", "Invalid X-Tenant header")
 
 
-@router.get("/inbox/items", response_model=Dict[str, Any])
+@router.get("/inbox/items", response_model=dict[str, Any])
 def list_inbox_items(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(50, ge=1, le=1000),
-    cursor: Optional[str] = Query(None),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    cursor: str | None = Query(None),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
     # tenant_id validated by dependency
@@ -159,12 +158,26 @@ def list_inbox_items(
     increment_inbox_read()
     record_read_duration((time.time() - start) * 1000.0)
     trace_id = trace_header or str(uuid.uuid4())
-    logger.info("read_inbox_items", extra={"tenant_id": tenant_id, "actor_role": "user", "trace_id": trace_id, "endpoint": "/inbox/items", "result_count": len(items), "duration_ms": (time.time() - start) * 1000.0})
+    logger.info(
+        "read_inbox_items",
+        extra={
+            "tenant_id": tenant_id,
+            "actor_role": "user",
+            "trace_id": trace_id,
+            "endpoint": "/inbox/items",
+            "result_count": len(items),
+            "duration_ms": (time.time() - start) * 1000.0,
+        },
+    )
     return {"items": items, "next": next_cursor}
 
 
 @router.get("/inbox/items/{item_id}", response_model=InboxItemOut)
-def get_inbox_item(item_id: str, tenant_id: str = Depends(require_tenant), trace_header: Optional[str] = Header(None, alias="X-Trace-ID")):
+def get_inbox_item(
+    item_id: str,
+    tenant_id: str = Depends(require_tenant),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
+):
     start = time.time()
     # validated
     engine = create_engine(settings.database_url, future=True)
@@ -180,7 +193,9 @@ def get_inbox_item(item_id: str, tenant_id: str = Depends(require_tenant), trace
                 inbox_items.c.mime,
                 inbox_items.c.source,
                 inbox_items.c.created_at,
-            ).where(inbox_items.c.id == item_id).where(inbox_items.c.tenant_id == tenant_id)
+            )
+            .where(inbox_items.c.id == item_id)
+            .where(inbox_items.c.tenant_id == tenant_id)
         ).fetchone()
     if not r:
         _error(status.HTTP_404_NOT_FOUND, "not_found", "Item not found")
@@ -198,12 +213,12 @@ def get_inbox_item(item_id: str, tenant_id: str = Depends(require_tenant), trace
     )
 
 
-@router.get("/parsed/items", response_model=Dict[str, Any])
+@router.get("/parsed/items", response_model=dict[str, Any])
 def list_parsed_items(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(50, ge=1, le=1000),
-    cursor: Optional[str] = Query(None),
-    trace_header: Optional[str] = Header(None, alias="X-Trace-ID"),
+    cursor: str | None = Query(None),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
 ):
     start = time.time()
     # validated
@@ -231,7 +246,7 @@ def list_parsed_items(
             .limit(limit)
         ).fetchall()
 
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for r in rows:
         payload = {}
         try:
@@ -256,12 +271,26 @@ def list_parsed_items(
     increment_parsed_read()
     record_read_duration((time.time() - start) * 1000.0)
     trace_id = trace_header or str(uuid.uuid4())
-    logger.info("read_parsed_items", extra={"tenant_id": tenant_id, "actor_role": "user", "trace_id": trace_id, "endpoint": "/parsed/items", "result_count": len(items), "duration_ms": (time.time() - start) * 1000.0})
+    logger.info(
+        "read_parsed_items",
+        extra={
+            "tenant_id": tenant_id,
+            "actor_role": "user",
+            "trace_id": trace_id,
+            "endpoint": "/parsed/items",
+            "result_count": len(items),
+            "duration_ms": (time.time() - start) * 1000.0,
+        },
+    )
     return {"items": items, "next": next_cursor}
 
 
 @router.get("/parsed/items/{parsed_id}", response_model=ParsedItemOut)
-def get_parsed_item(parsed_id: str, tenant_id: str = Depends(require_tenant), trace_header: Optional[str] = Header(None, alias="X-Trace-ID")):
+def get_parsed_item(
+    parsed_id: str,
+    tenant_id: str = Depends(require_tenant),
+    trace_header: str | None = Header(None, alias="X-Trace-ID"),
+):
     start = time.time()
     # validated
     engine = create_engine(settings.database_url, future=True)
@@ -275,7 +304,9 @@ def get_parsed_item(parsed_id: str, tenant_id: str = Depends(require_tenant), tr
                 parsed_items.c.inbox_item_id,
                 parsed_items.c.payload_json,
                 parsed_items.c.created_at,
-            ).where(parsed_items.c.id == parsed_id).where(parsed_items.c.tenant_id == tenant_id)
+            )
+            .where(parsed_items.c.id == parsed_id)
+            .where(parsed_items.c.tenant_id == tenant_id)
         ).fetchone()
     if not r:
         _error(status.HTTP_404_NOT_FOUND, "not_found", "Parsed item not found")

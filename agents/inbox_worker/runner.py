@@ -1,29 +1,38 @@
 import json
-import os
-import time
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
-from uuid import uuid4
-
 import signal
 import threading
+import time
 import time as _time
-from sqlalchemy import Table, Column, String, Text, DateTime, Integer, select, update, insert
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    insert,
+    select,
+    update,
+)
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine, MetaData
 
+from agents.inbox_worker.pipeline import maybe_chunk, parse_content, route_mime_to_doc_type
 from backend.core.config import settings
 from backend.core.observability.logging import logger
 from backend.core.observability.metrics import (
-    increment_parsed_total,
-    increment_parse_failures,
     add_chunk_bytes,
+    increment_parse_failures,
+    increment_parsed_total,
+    increment_tenant_unknown_dropped,
     record_parse_duration,
 )
-from agents.inbox_worker.pipeline import parse_content, maybe_chunk, route_mime_to_doc_type
 from backend.core.tenant.validator import validate_tenant
-from backend.core.observability.metrics import increment_tenant_unknown_dropped
 
 
 def tables(metadata):
@@ -50,7 +59,7 @@ def tables(metadata):
         Column("tenant_id", String, primary_key=True),
         Column("event_type", String, primary_key=True),
         Column("idempotency_key", String(128), primary_key=True),
-        Column("created_at", DateTime(timezone=True), default=datetime.now(timezone.utc)),
+        Column("created_at", DateTime(timezone=True), default=datetime.now(UTC)),
         extend_existing=True,
     )
 
@@ -76,7 +85,7 @@ def tables(metadata):
         Column("tenant_id", String, nullable=False),
         Column("inbox_item_id", String, nullable=False),
         Column("payload_json", Text, nullable=False),
-        Column("created_at", DateTime(timezone=True), default=datetime.now(timezone.utc)),
+        Column("created_at", DateTime(timezone=True), default=datetime.now(UTC)),
         extend_existing=True,
     )
 
@@ -90,7 +99,7 @@ def tables(metadata):
         Column("seq_no", Integer, nullable=False),
         Column("text", Text, nullable=False),
         Column("token_count", Integer, nullable=True),
-        Column("created_at", DateTime(timezone=True), default=datetime.now(timezone.utc)),
+        Column("created_at", DateTime(timezone=True), default=datetime.now(UTC)),
         extend_existing=True,
     )
 
@@ -102,7 +111,7 @@ def tables(metadata):
         Column("event_type", String, nullable=False),
         Column("reason", String, nullable=False),
         Column("payload_json", Text, nullable=False),
-        Column("created_at", DateTime(timezone=True), default=datetime.now(timezone.utc)),
+        Column("created_at", DateTime(timezone=True), default=datetime.now(UTC)),
         extend_existing=True,
     )
 
@@ -111,8 +120,8 @@ def tables(metadata):
 
 def _read_file_from_uri(uri: str) -> bytes:
     if not uri.startswith("file://"):
-        raise IOError("Unsupported storage URI for worker")
-    path = uri[len("file://"):]
+        raise OSError("Unsupported storage URI for worker")
+    path = uri[len("file://") :]
     with open(path, "rb") as f:
         return f.read()
 
@@ -123,16 +132,18 @@ def _backoff_seconds(attempt: int) -> int:
     return steps[idx] if steps else 30
 
 
-def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) -> int:
+def run_once(engine: Engine | None = None, batch_size: int | None = None) -> int:
     """Process up to batch_size pending InboxItemValidated events.
 
     Returns number of processed events (success or dedup/skip)."""
     engine = engine or create_engine(settings.database_url, future=True)
     metadata = MetaData()
-    event_outbox, processed_events, inbox_items, parsed_items, chunks, dead_letters = tables(metadata)
+    event_outbox, processed_events, inbox_items, parsed_items, chunks, dead_letters = tables(
+        metadata
+    )
 
     limit = batch_size or settings.WORKER_BATCH_SIZE
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     processed = 0
     with engine.begin() as conn:
@@ -149,7 +160,9 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
             )
             .where(event_outbox.c.event_type == "InboxItemValidated")
             .where((event_outbox.c.status == "pending") | (event_outbox.c.status.is_(None)))
-            .where((event_outbox.c.next_attempt_at.is_(None)) | (event_outbox.c.next_attempt_at <= now))
+            .where(
+                (event_outbox.c.next_attempt_at.is_(None)) | (event_outbox.c.next_attempt_at <= now)
+            )
             .order_by(event_outbox.c.created_at)
             .limit(limit)
         ).fetchall()
@@ -183,7 +196,11 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                             created_at=now,
                         )
                     )
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="failed")
+                    )
                     try:
                         increment_tenant_unknown_dropped()
                     except Exception:
@@ -207,16 +224,20 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                     )
                 except IntegrityError:
                     # already processed; mark sent and continue
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="sent"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="sent")
+                    )
                     processed += 1
                     continue
 
                 # Read file
                 data = _read_file_from_uri(uri)
                 # MIME allowlist enforcement for parsing stage
-                allow = [m.strip() for m in settings.MIME_ALLOWLIST.split(',')]
+                allow = [m.strip() for m in settings.MIME_ALLOWLIST.split(",")]
                 if not mime or mime not in allow:
-                    raise ValueError('unsupported_mime')
+                    raise ValueError("unsupported_mime")
 
                 t0 = time.time()
                 try:
@@ -261,13 +282,17 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                             )
                             seq += 1
                         try:
-                            total_bytes = sum(len(v.encode('utf-8')) for v in chunks_map.values())
+                            total_bytes = sum(len(v.encode("utf-8")) for v in chunks_map.values())
                             add_chunk_bytes(total_bytes)
                         except Exception:
                             pass
 
                     # Update inbox status
-                    conn.execute(update(inbox_items).where(inbox_items.c.id == inbox_item_id).values(status="parsed", updated_at=now))
+                    conn.execute(
+                        update(inbox_items)
+                        .where(inbox_items.c.id == inbox_item_id)
+                        .values(status="parsed", updated_at=now)
+                    )
 
                     # Emit Parsed event
                     parsed_payload = {
@@ -275,7 +300,11 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                         "parsed_item_id": parsed_id,
                         "doc_type": route_mime_to_doc_type(mime or ""),
                         "has_chunks": bool(has_chunks),
-                        "summary_fields": {k: v for k, v in parsed.items() if k in ("invoice_no", "amount", "due_date", "doc_type")},
+                        "summary_fields": {
+                            k: v
+                            for k, v in parsed.items()
+                            if k in ("invoice_no", "amount", "due_date", "doc_type")
+                        },
                     }
                     try:
                         conn.execute(
@@ -296,17 +325,35 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                         pass
 
                     # Mark source event sent
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="sent"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="sent")
+                    )
                     try:
                         increment_parsed_total()
                     except Exception:
                         pass
-                    logger.info("parsed", extra={"trace_id": row.trace_id or "", "tenant_id": tenant_id, "inbox_item_id": inbox_item_id, "doc_type": route_mime_to_doc_type(mime or ""), "parse_ms": parse_ms, "status": "parsed"})
+                    logger.info(
+                        "parsed",
+                        extra={
+                            "trace_id": row.trace_id or "",
+                            "tenant_id": tenant_id,
+                            "inbox_item_id": inbox_item_id,
+                            "doc_type": route_mime_to_doc_type(mime or ""),
+                            "parse_ms": parse_ms,
+                            "status": "parsed",
+                        },
+                    )
                     processed += 1
                 except ValueError as ve:
                     # validation_error, unsupported_mime, parse_error map to non-retriable
                     reason = str(ve)
-                    conn.execute(update(inbox_items).where(inbox_items.c.id == inbox_item_id).values(status="error", updated_at=now))
+                    conn.execute(
+                        update(inbox_items)
+                        .where(inbox_items.c.id == inbox_item_id)
+                        .values(status="error", updated_at=now)
+                    )
                     fail_payload = {
                         "inbox_item_id": inbox_item_id,
                         "reason": reason.split(":")[0],
@@ -329,14 +376,28 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                         )
                     except IntegrityError:
                         pass
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="failed")
+                    )
                     try:
                         increment_parse_failures()
                     except Exception:
                         pass
-                    logger.info("parse_failed", extra={"trace_id": row.trace_id or "", "tenant_id": tenant_id, "inbox_item_id": inbox_item_id, "doc_type": route_mime_to_doc_type(mime or ""), "status": "error", "reason": reason.split(':')[0]})
+                    logger.info(
+                        "parse_failed",
+                        extra={
+                            "trace_id": row.trace_id or "",
+                            "tenant_id": tenant_id,
+                            "inbox_item_id": inbox_item_id,
+                            "doc_type": route_mime_to_doc_type(mime or ""),
+                            "status": "error",
+                            "reason": reason.split(":")[0],
+                        },
+                    )
                     processed += 1
-                except Exception as e:
+                except Exception:
                     # retriable io_error
                     attempts = (row.attempt_count or 0) + 1
                     next_at = now + timedelta(seconds=_backoff_seconds(attempts))
@@ -361,7 +422,11 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                                 created_at=now,
                             )
                         )
-                        conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                        conn.execute(
+                            update(event_outbox)
+                            .where(event_outbox.c.id == row.id)
+                            .values(status="failed")
+                        )
                     continue
         except Exception:
             # move on to next event

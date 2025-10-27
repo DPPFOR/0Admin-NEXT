@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Mapping, Optional, TypedDict, Literal
-
+from typing import Any, Literal, TypedDict
 
 _AMOUNT_RE = re.compile(r"^\d+(?:\.\d{1,2})?$")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -24,14 +24,14 @@ class Rule(TypedDict):
     message: str
 
 
-RuleList = List[Rule]
+RuleList = list[Rule]
 
 
 def _rule(code: str, message: str, *, level: RuleLevel = "error") -> Rule:
     return {"code": code, "level": level, "message": message}
 
 
-def non_empty_str(value: Any) -> Optional[str]:
+def non_empty_str(value: Any) -> str | None:
     if isinstance(value, str):
         candidate = value.strip()
         if candidate:
@@ -47,12 +47,12 @@ def validate_iso_date(s: str) -> bool:
     return bool(_DATE_RE.match(s))
 
 
-def validate_tables_shape(tables: Any) -> List[Dict[str, Any]]:
+def validate_tables_shape(tables: Any) -> list[dict[str, Any]]:
     if tables is None:
         return []
     if not isinstance(tables, list):
         raise ValueError("invalid tables: must be list")
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for t in tables:
         if not isinstance(t, dict):
             raise ValueError("invalid table: must be object")
@@ -71,7 +71,7 @@ def validate_tables_shape(tables: Any) -> List[Dict[str, Any]]:
     return out
 
 
-def validate_invoice_amount(value: Optional[Decimal]) -> RuleList:
+def validate_invoice_amount(value: Decimal | None) -> RuleList:
     rules: RuleList = []
     if value is None:
         rules.append(_rule("invoice.amount.missing", "Invoice amount is required"))
@@ -82,7 +82,7 @@ def validate_invoice_amount(value: Optional[Decimal]) -> RuleList:
     return rules
 
 
-def validate_invoice_due_date(value: Optional[date]) -> RuleList:
+def validate_invoice_due_date(value: date | None) -> RuleList:
     rules: RuleList = []
     if value is None:
         rules.append(_rule("invoice.due_date.missing", "Invoice due date is required"))
@@ -100,7 +100,7 @@ def validate_invoice_due_date(value: Optional[date]) -> RuleList:
     return rules
 
 
-def validate_invoice_no(value: Optional[str]) -> RuleList:
+def validate_invoice_no(value: str | None) -> RuleList:
     rules: RuleList = []
     if value in (None, ""):
         rules.append(_rule("invoice.number.missing", "Invoice number is required"))
@@ -115,7 +115,7 @@ def validate_invoice_no(value: Optional[str]) -> RuleList:
     return rules
 
 
-def validate_table_shape(table: Dict[str, Any]) -> RuleList:
+def validate_table_shape(table: dict[str, Any]) -> RuleList:
     if not isinstance(table, dict):
         raise ValueError("invalid table: must be object")
 
@@ -129,10 +129,14 @@ def validate_table_shape(table: Dict[str, Any]) -> RuleList:
     rules: RuleList = []
 
     if len(headers) < 2:
-        rules.append(_rule("invoice.table.columns_missing", "Invoice table must have at least two columns"))
+        rules.append(
+            _rule("invoice.table.columns_missing", "Invoice table must have at least two columns")
+        )
 
     if any((not isinstance(h, str)) or (not h.strip()) for h in headers):
-        rules.append(_rule("invoice.table.header_blank", "Invoice table headers must be non-empty strings"))
+        rules.append(
+            _rule("invoice.table.header_blank", "Invoice table headers must be non-empty strings")
+        )
 
     if len(headers) > _MAX_COLUMNS:
         rules.append(
@@ -158,7 +162,7 @@ def validate_table_shape(table: Dict[str, Any]) -> RuleList:
     return rules
 
 
-def table_shape_ok(table: Dict[str, Any]) -> bool:
+def table_shape_ok(table: dict[str, Any]) -> bool:
     if not isinstance(table, dict):
         return False
     headers = table.get("headers")
@@ -168,8 +172,7 @@ def table_shape_ok(table: Dict[str, Any]) -> bool:
     if not isinstance(rows, list) or not rows:
         return False
     return any(
-        isinstance(row, list) and any(non_empty_str(str(cell)) for cell in row)
-        for row in rows
+        isinstance(row, list) and any(non_empty_str(str(cell)) for cell in row) for row in rows
     )
 
 
@@ -187,7 +190,9 @@ def compute_confidence(ctx: Mapping[str, Any]) -> int:
     return max(0, min(100, int(score)))
 
 
-def decide_quality_status(required_ok: bool, confidence: int) -> Literal["accepted", "needs_review", "rejected"]:
+def decide_quality_status(
+    required_ok: bool, confidence: int
+) -> Literal["accepted", "needs_review", "rejected"]:
     if required_ok and confidence >= 70:
         return "accepted"
     if required_ok or confidence >= 50:
@@ -195,7 +200,7 @@ def decide_quality_status(required_ok: bool, confidence: int) -> Literal["accept
     return "rejected"
 
 
-def validate_artifact_minimum(flow: Dict[str, Any], tenant_id: str) -> None:
+def validate_artifact_minimum(flow: dict[str, Any], tenant_id: str) -> None:
     if not isinstance(flow, dict):
         raise ValueError("invalid artifact: not an object")
     if flow.get("tenant_id") != tenant_id:
@@ -209,7 +214,7 @@ def validate_artifact_minimum(flow: Dict[str, Any], tenant_id: str) -> None:
         raise ValueError("invalid artifact: missing extracted")
 
 
-def parse_amount(value: Optional[str]) -> Optional[Decimal]:
+def parse_amount(value: str | None) -> Decimal | None:
     if value in (None, ""):
         return None
     if not isinstance(value, str) or not validate_currency_amount(value):
@@ -220,7 +225,7 @@ def parse_amount(value: Optional[str]) -> Optional[Decimal]:
         raise ValueError("invalid amount format") from exc
 
 
-def parse_iso_date(value: Optional[str]) -> Optional[date]:
+def parse_iso_date(value: str | None) -> date | None:
     if value in (None, ""):
         return None
     if isinstance(value, date):
@@ -235,10 +240,10 @@ def parse_iso_date(value: Optional[str]) -> Optional[date]:
 
 def payment_DoD(
     *,
-    amount: Optional[Decimal],
-    currency: Optional[str],
-    payment_date: Optional[date],
-    counterparty: Optional[str],
+    amount: Decimal | None,
+    currency: str | None,
+    payment_date: date | None,
+    counterparty: str | None,
 ) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
     rules: RuleList = []
     score = 70
@@ -248,11 +253,15 @@ def payment_DoD(
         rules.append(_rule("payment.amount.invalid", "Payment amount must be greater than zero"))
 
     currency_norm = non_empty_str(currency)
-    currency_valid = currency_norm is not None and currency_norm.upper() in _ALLOWED_PAYMENT_CURRENCIES
+    currency_valid = (
+        currency_norm is not None and currency_norm.upper() in _ALLOWED_PAYMENT_CURRENCIES
+    )
     if currency_valid:
         score += 10
     else:
-        rules.append(_rule("payment.currency.unsupported", "Payment currency must be one of EUR/USD/GBP"))
+        rules.append(
+            _rule("payment.currency.unsupported", "Payment currency must be one of EUR/USD/GBP")
+        )
 
     date_valid = payment_date is not None
     if date_valid:
@@ -285,8 +294,8 @@ def payment_DoD(
 
 def other_DoD(
     *,
-    kv_entries: Optional[List[Mapping[str, Any]]],
-    tables: Optional[List[Mapping[str, Any]]],
+    kv_entries: list[Mapping[str, Any]] | None,
+    tables: list[Mapping[str, Any]] | None,
 ) -> tuple[Decimal, RuleList, Literal["accepted", "needs_review", "rejected"]]:
     rules: RuleList = []
     kv_entries = kv_entries or []
@@ -315,9 +324,13 @@ def other_DoD(
     kv_ok = non_empty_fields > 0
 
     if not kv_ok:
-        rules.append(_rule("other.fields.missing", "No extracted key/value entries found", level="warning"))
+        rules.append(
+            _rule("other.fields.missing", "No extracted key/value entries found", level="warning")
+        )
     if not table_ok:
-        rules.append(_rule("other.tables.missing", "No structured tables detected", level="warning"))
+        rules.append(
+            _rule("other.tables.missing", "No structured tables detected", level="warning")
+        )
 
     structured = kv_ok or table_ok
     if not structured:

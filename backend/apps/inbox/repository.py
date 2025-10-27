@@ -1,10 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
-from uuid import UUID
 
-from sqlalchemy import Table, Column, String, Text, DateTime, insert, update, select
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import Column, DateTime, String, Table, Text, insert, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import func
 
@@ -16,12 +12,12 @@ class InboxItem:
     status: str
     content_hash: str
     uri: str
-    source: Optional[str]
-    filename: Optional[str]
-    mime: Optional[str]
+    source: str | None
+    filename: str | None
+    mime: str | None
 
 
-def get_tables(metadata) -> Tuple[Table, Table]:
+def get_tables(metadata) -> tuple[Table, Table]:
     """Return lightweight Table objects for inbox_items and event_outbox.
 
     Assumes tables exist in the target database.
@@ -38,7 +34,9 @@ def get_tables(metadata) -> Tuple[Table, Table]:
         Column("filename", Text),
         Column("mime", String(128)),
         Column("created_at", DateTime(timezone=True), server_default=func.now()),
-        Column("updated_at", DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
+        Column(
+            "updated_at", DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
         extend_existing=True,
     )
 
@@ -81,9 +79,7 @@ def insert_inbox_item(engine: Engine, inbox_items: Table, item: InboxItem) -> In
         )
         # Update to validated
         conn.execute(
-            update(inbox_items)
-            .where(inbox_items.c.id == item.id)
-            .values(status="validated")
+            update(inbox_items).where(inbox_items.c.id == item.id).values(status="validated")
         )
 
     # Return the item marked validated
@@ -99,7 +95,9 @@ def insert_inbox_item(engine: Engine, inbox_items: Table, item: InboxItem) -> In
     )
 
 
-def get_inbox_item_by_hash(engine: Engine, inbox_items: Table, tenant_id: str, content_hash: str) -> Optional[InboxItem]:
+def get_inbox_item_by_hash(
+    engine: Engine, inbox_items: Table, tenant_id: str, content_hash: str
+) -> InboxItem | None:
     with engine.begin() as conn:
         row = conn.execute(
             select(
@@ -127,5 +125,3 @@ def get_inbox_item_by_hash(engine: Engine, inbox_items: Table, tenant_id: str, c
         filename=row.filename,
         mime=row.mime,
     )
-
-

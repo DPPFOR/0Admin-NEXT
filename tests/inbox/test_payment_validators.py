@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from backend.apps.inbox.importer.validators import payment_DoD, other_DoD
+from backend.apps.inbox.importer.validators import other_DoD, payment_DoD
 
 
 def test_payment_dod_accepts_complete_payload():

@@ -7,19 +7,21 @@ Graph, and must not leak PII (addresses/subjects/bodies) into logs.
 
 No network access is performed here; this is interface and documentation only.
 """
+
 from __future__ import annotations
 
+import base64
+import email
+import imaplib
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Protocol, runtime_checkable
-from dataclasses import dataclass
-import imaplib
-import email
-import base64
+from typing import Protocol, runtime_checkable
 from urllib.parse import urlencode
+
 import httpx
+
 from backend.core.config import settings
-from abc import ABC, abstractmethod
 
 
 @runtime_checkable
@@ -33,7 +35,7 @@ class MailAttachment(Protocol):
     - content: Raw bytes of the attachment
     """
 
-    filename: Optional[str]
+    filename: str | None
     mime: str
     size: int
     content: bytes
@@ -51,7 +53,7 @@ class MailMessage(Protocol):
 
     id: str
     received_at: datetime
-    attachments: List[MailAttachment]
+    attachments: list[MailAttachment]
 
 
 class MailConnector(Protocol):
@@ -65,7 +67,7 @@ class MailConnector(Protocol):
     - Perform paging/throttling per provider limits
     """
 
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:
+    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> list[MailMessage]:
         """Fetch up to 'limit' messages with attachments from 'mailbox' since the given time.
 
         Must return messages with attachment metadata and content bytes.
@@ -86,7 +88,9 @@ class ImapConnector(MailConnector, ABC):
     """
 
     @abstractmethod
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:  # pragma: no cover - interface only
+    def fetch_messages(
+        self, mailbox: str, since: datetime, limit: int
+    ) -> list[MailMessage]:  # pragma: no cover - interface only
         raise NotImplementedError
 
 
@@ -100,7 +104,9 @@ class GraphConnector(MailConnector, ABC):
     """
 
     @abstractmethod
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:  # pragma: no cover - interface only
+    def fetch_messages(
+        self, mailbox: str, since: datetime, limit: int
+    ) -> list[MailMessage]:  # pragma: no cover - interface only
         raise NotImplementedError
 
 
@@ -115,9 +121,10 @@ __all__ = [
 
 # Concrete implementations (prod-capable; network usage happens only when invoked)
 
+
 @dataclass
 class AttachmentImpl:
-    filename: Optional[str]
+    filename: str | None
     mime: str
     size: int
     content: bytes
@@ -127,7 +134,7 @@ class AttachmentImpl:
 class MailMessageImpl:
     id: str
     received_at: datetime
-    attachments: List[MailAttachment]
+    attachments: list[MailAttachment]
 
 
 class ImapConnectorImpl(ImapConnector):
@@ -141,14 +148,20 @@ class ImapConnectorImpl(ImapConnector):
     - Network connections are created lazily in fetch_messages.
     """
 
-    def __init__(self, host: Optional[str] = None, port: Optional[int] = None, username: Optional[str] = None, password: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        host: str | None = None,
+        port: int | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
         self.host = host or settings.IMAP_HOST
         self.port = port or settings.IMAP_PORT
         self.username = username or settings.IMAP_USERNAME
         self.password = password or settings.IMAP_PASSWORD
 
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:
-        msgs: List[MailMessage] = []
+    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> list[MailMessage]:
+        msgs: list[MailMessage] = []
         if not self.host or not self.username or not self.password:
             return msgs
         # Connect lazily; exceptions bubble up for caller to count as failure
@@ -170,7 +183,7 @@ class ImapConnectorImpl(ImapConnector):
                 mid = em.get("Message-ID") or num.decode()
                 # Received date fallback
                 received = since
-                atts: List[MailAttachment] = []
+                atts: list[MailAttachment] = []
                 for part in em.walk():
                     cd = (part.get("Content-Disposition") or "").lower()
                     if not cd or "attachment" not in cd:
@@ -178,7 +191,9 @@ class ImapConnectorImpl(ImapConnector):
                     payload = part.get_payload(decode=True) or b""
                     mime = part.get_content_type() or "application/octet-stream"
                     fn = part.get_filename()
-                    atts.append(AttachmentImpl(filename=fn, mime=mime, size=len(payload), content=payload))
+                    atts.append(
+                        AttachmentImpl(filename=fn, mime=mime, size=len(payload), content=payload)
+                    )
                 if atts:
                     msgs.append(MailMessageImpl(id=mid, received_at=received, attachments=atts))
         return msgs
@@ -194,13 +209,19 @@ class GraphConnectorImpl(GraphConnector):
     - No PII logging; only opaque ids and attachment bytes/metadata are returned.
     """
 
-    def __init__(self, tenant_id: Optional[str] = None, client_id: Optional[str] = None, client_secret: Optional[str] = None, user_id: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        tenant_id: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        user_id: str | None = None,
+    ) -> None:
         self.tenant_id = tenant_id or settings.GRAPH_TENANT_ID
         self.client_id = client_id or settings.GRAPH_CLIENT_ID
         self.client_secret = client_secret or settings.GRAPH_CLIENT_SECRET
         self.user_id = user_id or settings.GRAPH_USER_ID
 
-    def _get_token(self) -> Optional[str]:
+    def _get_token(self) -> str | None:
         if not (self.tenant_id and self.client_id and self.client_secret):
             return None
         url = f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
@@ -216,8 +237,8 @@ class GraphConnectorImpl(GraphConnector):
                 return None
             return r.json().get("access_token")
 
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:
-        out: List[MailMessage] = []
+    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> list[MailMessage]:
+        out: list[MailMessage] = []
         token = self._get_token()
         if not token or not self.user_id:
             return out
@@ -238,10 +259,12 @@ class GraphConnectorImpl(GraphConnector):
                     continue
                 mid = m["id"]
                 rec = m.get("receivedDateTime") or since.isoformat()
-                rr = c.get(f"{base}/users/{self.user_id}/messages/{mid}/attachments?$select=id,name,contentType,contentBytes,@odata.type")
+                rr = c.get(
+                    f"{base}/users/{self.user_id}/messages/{mid}/attachments?$select=id,name,contentType,contentBytes,@odata.type"
+                )
                 if rr.status_code != 200:
                     continue
-                atts: List[MailAttachment] = []
+                atts: list[MailAttachment] = []
                 for a in rr.json().get("value", []):
                     if a.get("@odata.type") != "#microsoft.graph.fileAttachment":
                         continue
@@ -252,7 +275,9 @@ class GraphConnectorImpl(GraphConnector):
                         content = b""
                     mime = a.get("contentType") or "application/octet-stream"
                     name = a.get("name")
-                    atts.append(AttachmentImpl(filename=name, mime=mime, size=len(content), content=content))
+                    atts.append(
+                        AttachmentImpl(filename=name, mime=mime, size=len(content), content=content)
+                    )
                 if atts:
                     out.append(MailMessageImpl(id=mid, received_at=since, attachments=atts))
         return out

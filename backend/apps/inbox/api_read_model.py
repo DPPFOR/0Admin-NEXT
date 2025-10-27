@@ -4,7 +4,7 @@ import logging
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
@@ -13,11 +13,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from backend.apps.inbox.read_model.query import (
     ReadModelError,
     fetch_invoices_latest,
-    fetch_payments_latest,
     fetch_items_needing_review,
+    fetch_payments_latest,
     fetch_tenant_summary,
 )
-
 
 logger = logging.getLogger("inbox.read_model.api")
 
@@ -27,7 +26,9 @@ DEFAULT_LIMIT = 50
 MAX_LIMIT = 100
 
 
-def require_tenant(tenant: str = Header(..., alias="X-Tenant-ID", convert_underscores=False)) -> str:
+def require_tenant(
+    tenant: str = Header(..., alias="X-Tenant-ID", convert_underscores=False)
+) -> str:
     """Extract and validate tenant ID from X-Tenant-ID header."""
     try:
         return str(UUID(str(tenant)))
@@ -53,7 +54,7 @@ def _serialize(obj: Any) -> Any:
     return _serialize_value(obj)
 
 
-def _log(event: str, *, tenant_id: str, count: int, trace_id: Optional[str]) -> None:
+def _log(event: str, *, tenant_id: str, count: int, trace_id: str | None) -> None:
     logger.info(
         event,
         extra={
@@ -70,7 +71,7 @@ def _build_list_payload(
     *,
     limit: int,
     offset: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     serialized = _serialize(items)
     total = len(serialized)
     response.headers["X-Total-Count"] = str(total)
@@ -88,10 +89,10 @@ def list_invoices(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    min_conf: Optional[int] = Query(None, ge=0, le=100),
-    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
-    trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> Dict[str, Any]:
+    min_conf: int | None = Query(None, ge=0, le=100),
+    status: str | None = Query(None, regex="^(accepted|needs_review|rejected)$"),
+    trace_id: str | None = Header(None, alias="X-Trace-ID"),
+) -> dict[str, Any]:
     try:
         items = fetch_invoices_latest(
             tenant_id,
@@ -114,10 +115,10 @@ def list_payments(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    min_conf: Optional[int] = Query(None, ge=0, le=100),
-    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
-    trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> Dict[str, Any]:
+    min_conf: int | None = Query(None, ge=0, le=100),
+    status: str | None = Query(None, regex="^(accepted|needs_review|rejected)$"),
+    trace_id: str | None = Header(None, alias="X-Trace-ID"),
+) -> dict[str, Any]:
     try:
         items = fetch_payments_latest(
             tenant_id,
@@ -140,10 +141,10 @@ def list_items_needing_review(
     tenant_id: str = Depends(require_tenant),
     limit: int = Query(DEFAULT_LIMIT, ge=0, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    min_conf: Optional[int] = Query(None, ge=0, le=100),
-    status: Optional[str] = Query(None, regex="^(accepted|needs_review|rejected)$"),
-    trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> Dict[str, Any]:
+    min_conf: int | None = Query(None, ge=0, le=100),
+    status: str | None = Query(None, regex="^(accepted|needs_review|rejected)$"),
+    trace_id: str | None = Header(None, alias="X-Trace-ID"),
+) -> dict[str, Any]:
     try:
         items = fetch_items_needing_review(
             tenant_id,
@@ -163,8 +164,8 @@ def list_items_needing_review(
 @router.get("/summary")
 def get_summary(
     tenant_id: str = Depends(require_tenant),
-    trace_id: Optional[str] = Header(None, alias="X-Trace-ID"),
-) -> Dict[str, Any]:
+    trace_id: str | None = Header(None, alias="X-Trace-ID"),
+) -> dict[str, Any]:
     try:
         summary = fetch_tenant_summary(tenant_id)
     except ReadModelError as exc:

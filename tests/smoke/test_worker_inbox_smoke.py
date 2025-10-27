@@ -1,14 +1,13 @@
 import json
 import os
 import uuid
-from datetime import datetime
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
 
-from backend.core.config import settings
 from agents.inbox_worker.runner import run_once
+from backend.core.config import settings
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 pytestmark = pytest.mark.skipif(
@@ -54,6 +53,7 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     monkeypatch.setenv("TENANT_ALLOWLIST", tenant_id)
     content = b"%PDF-1.4\nInvoice No.: INV-12345\nAmount: 123,45\nDue Date: 2025-12-31\n"
     import hashlib
+
     h = hashlib.sha256(content).hexdigest()
     hh = h[:2]
     dirp = Path(base) / tenant_id / hh
@@ -73,7 +73,16 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
         {"id": inbox_id, "t": tenant_id, "ch": h, "uri": uri},
     )
     trace_id = str(uuid.uuid4())
-    payload = json.dumps({"inbox_item_id": inbox_id, "content_hash": h, "uri": uri, "source": "api", "filename": "doc.pdf", "mime": "application/pdf"})
+    payload = json.dumps(
+        {
+            "inbox_item_id": inbox_id,
+            "content_hash": h,
+            "uri": uri,
+            "source": "api",
+            "filename": "doc.pdf",
+            "mime": "application/pdf",
+        }
+    )
     _db_exec(
         """
         INSERT INTO event_outbox (id, tenant_id, event_type, schema_version, idempotency_key, trace_id, payload_json, status, created_at)
@@ -86,8 +95,20 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     run_once(batch_size=10)
 
     # Assertions
-    assert _db_count("SELECT COUNT(*) FROM parsed_items WHERE tenant_id=:t AND inbox_item_id=:i", {"t": tenant_id, "i": inbox_id}) == 1
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParsed'", {"t": tenant_id}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM parsed_items WHERE tenant_id=:t AND inbox_item_id=:i",
+            {"t": tenant_id, "i": inbox_id},
+        )
+        == 1
+    )
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParsed'",
+            {"t": tenant_id},
+        )
+        >= 1
+    )
     report["tests"].append({"name": "T-W1 Happy", "status": "passed"})
 
     # Unsupported MIME path
@@ -100,7 +121,16 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
         """,
         {"id": inbox2, "t": tenant_id, "ch": h, "uri": uri},
     )
-    payload2 = json.dumps({"inbox_item_id": inbox2, "content_hash": h, "uri": uri, "source": "api", "filename": "doc.bin", "mime": "application/octet-stream"})
+    payload2 = json.dumps(
+        {
+            "inbox_item_id": inbox2,
+            "content_hash": h,
+            "uri": uri,
+            "source": "api",
+            "filename": "doc.bin",
+            "mime": "application/octet-stream",
+        }
+    )
     _db_exec(
         """
         INSERT INTO event_outbox (id, tenant_id, event_type, schema_version, idempotency_key, trace_id, payload_json, status, created_at)
@@ -110,7 +140,13 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     )
     run_once(batch_size=10)
     # Should create ParseFailed event and mark inbox error
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParseFailed'", {"t": tenant_id}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParseFailed'",
+            {"t": tenant_id},
+        )
+        >= 1
+    )
     report["tests"].append({"name": "T-W2 Unsupported MIME", "status": "passed"})
 
     # T-W3 Idempotency: same idempotency_key second event is skipped (no-op)
@@ -125,14 +161,28 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     )
     run_once(batch_size=10)
     # Ensure no new parsed_items and the second event marked sent
-    assert _db_count("SELECT COUNT(*) FROM parsed_items WHERE tenant_id=:t AND inbox_item_id=:i", {"t": tenant_id, "i": inbox_id}) == 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM parsed_items WHERE tenant_id=:t AND inbox_item_id=:i",
+            {"t": tenant_id, "i": inbox_id},
+        )
+        == 1
+    )
     # processed_events should have an entry for (tenant_id, event_type, idempotency_key)
-    assert _db_count(
-        "SELECT COUNT(*) FROM processed_events WHERE tenant_id=:t AND event_type='InboxItemValidated' AND idempotency_key=:k",
-        {"t": tenant_id, "k": h},
-    ) == 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM processed_events WHERE tenant_id=:t AND event_type='InboxItemValidated' AND idempotency_key=:k",
+            {"t": tenant_id, "k": h},
+        )
+        == 1
+    )
     # second outbox row becomes sent
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE id=:id AND status='sent'", {"id": ev2_id}) == 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE id=:id AND status='sent'", {"id": ev2_id}
+        )
+        == 1
+    )
     report["tests"].append({"name": "T-W3 Idempotency", "status": "passed"})
 
     # T-W4 Chunking path: force low threshold
@@ -148,7 +198,16 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
             """,
             {"id": inbox4, "t": tenant_id, "ch": h, "uri": uri},
         )
-        payload4 = json.dumps({"inbox_item_id": inbox4, "content_hash": h, "uri": uri, "source": "api", "filename": "doc.pdf", "mime": "application/pdf"})
+        payload4 = json.dumps(
+            {
+                "inbox_item_id": inbox4,
+                "content_hash": h,
+                "uri": uri,
+                "source": "api",
+                "filename": "doc.pdf",
+                "mime": "application/pdf",
+            }
+        )
         _db_exec(
             """
             INSERT INTO event_outbox (id, tenant_id, event_type, schema_version, idempotency_key, trace_id, payload_json, status, created_at)
@@ -158,7 +217,13 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
         )
         run_once(batch_size=10)
         # Expect chunks > 0
-        assert _db_count("SELECT COUNT(*) FROM chunks WHERE tenant_id=:t AND inbox_item_id=:i", {"t": tenant_id, "i": inbox4}) > 0
+        assert (
+            _db_count(
+                "SELECT COUNT(*) FROM chunks WHERE tenant_id=:t AND inbox_item_id=:i",
+                {"t": tenant_id, "i": inbox4},
+            )
+            > 0
+        )
         report["tests"].append({"name": "T-W4 Chunking", "status": "passed"})
     finally:
         settings.PARSER_CHUNK_THRESHOLD_BYTES = old_thr
@@ -179,7 +244,16 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
             """,
             {"id": inbox5, "t": tenant_id, "ch": h, "uri": sb_uri},
         )
-        payload5 = json.dumps({"inbox_item_id": inbox5, "content_hash": h, "uri": sb_uri, "source": "api", "filename": "doc.pdf", "mime": "application/pdf"})
+        payload5 = json.dumps(
+            {
+                "inbox_item_id": inbox5,
+                "content_hash": h,
+                "uri": sb_uri,
+                "source": "api",
+                "filename": "doc.pdf",
+                "mime": "application/pdf",
+            }
+        )
         ev5 = str(uuid.uuid4())
         _db_exec(
             """
@@ -192,10 +266,27 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
         run_once(batch_size=10)
         run_once(batch_size=10)
         # After retries exhausted, expect dead_letters and source event failed
-        assert _db_count("SELECT COUNT(*) FROM dead_letters WHERE tenant_id=:t AND event_type='InboxItemValidated'", {"t": tenant_id}) >= 1
-        assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE id=:id AND status='failed'", {"id": ev5}) == 1
+        assert (
+            _db_count(
+                "SELECT COUNT(*) FROM dead_letters WHERE tenant_id=:t AND event_type='InboxItemValidated'",
+                {"t": tenant_id},
+            )
+            >= 1
+        )
+        assert (
+            _db_count(
+                "SELECT COUNT(*) FROM event_outbox WHERE id=:id AND status='failed'", {"id": ev5}
+            )
+            == 1
+        )
         # No parsed event for this inbox
-        assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParsed' AND payload_json::json->>'inbox_item_id'=:i", {"t": tenant_id, "i": inbox5}) == 0
+        assert (
+            _db_count(
+                "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemParsed' AND payload_json::json->>'inbox_item_id'=:i",
+                {"t": tenant_id, "i": inbox5},
+            )
+            == 0
+        )
         report["tests"].append({"name": "T-W5 Retry→DLQ", "status": "passed"})
     finally:
         settings.PARSER_BACKOFF_STEPS = old_steps

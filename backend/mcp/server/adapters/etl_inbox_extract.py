@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 
 class ETLInboxExtractAdapter:
@@ -11,11 +11,10 @@ class ETLInboxExtractAdapter:
         return "ETL inbox extract adapter returning a static plan."
 
     @staticmethod
-    def plan(tenant_id: str, remote_url: str, dry_run: bool = True) -> Dict[str, Any]:
-        steps: List[Dict[str, Any]] = [
+    def plan(tenant_id: str, remote_url: str, dry_run: bool = True) -> dict[str, Any]:
+        steps: list[dict[str, Any]] = [
             {"name": "validate_inputs"},
             {"name": "list_inbox"},
             {"name": "prepare_manifest"},
         ]
         return {"plan": {"steps": steps}}
-

@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
-from sqlalchemy.engine import Engine
 from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 from backend.apps.inbox.importer.worker import run_importer
-from backend.apps.inbox.read_model.query import fetch_payments_latest, fetch_items_needing_review, fetch_tenant_summary
+from backend.apps.inbox.read_model.query import (
+    fetch_items_needing_review,
+    fetch_payments_latest,
+    fetch_tenant_summary,
+)
 from backend.core.config import settings
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
@@ -65,16 +69,20 @@ def _sample(name: str) -> str:
 
 def _fetch_item(engine: Engine, content_hash: str) -> dict:
     with engine.begin() as conn:
-        row = conn.execute(
-            text(
-                """
+        row = (
+            conn.execute(
+                text(
+                    """
                 SELECT id, doctype, quality_status, confidence, payload, flags, mvr_preview, mvr_score
                 FROM inbox_parsed.parsed_items
                 WHERE tenant_id = :tenant AND content_hash = :content_hash
                 """
-            ),
-            {"tenant": TENANT, "content_hash": content_hash},
-        ).mappings().first()
+                ),
+                {"tenant": TENANT, "content_hash": content_hash},
+            )
+            .mappings()
+            .first()
+        )
         assert row, f"parsed item missing for {content_hash}"
         return dict(row)
 
@@ -144,7 +152,10 @@ def test_payment_import_and_read_model(engine: Engine) -> None:
     assert bad_row["flags"].get("mvr_preview") is False
 
     payments_after = fetch_payments_latest(TENANT, limit=10, offset=0)
-    assert any(p.content_hash == "payment-bad-0001" and p.quality_status == "rejected" for p in payments_after)
+    assert any(
+        p.content_hash == "payment-bad-0001" and p.quality_status == "rejected"
+        for p in payments_after
+    )
 
     review_after = fetch_items_needing_review(TENANT, limit=10, offset=0)
     assert any(item.content_hash == "payment-bad-0001" for item in review_after)

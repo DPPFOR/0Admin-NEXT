@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
-from typing import Iterator
+from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -60,17 +60,21 @@ def _fetch_event(engine: Engine, event_id: str) -> dict:
     metadata = sa.MetaData()
     events = publisher.get_outbox_events_table(metadata)
     with engine.begin() as conn:
-        row = conn.execute(
-            sa.select(
-                events.c.id,
-                events.c.topic,
-                events.c.status,
-                events.c.attempt_count,
-                events.c.next_attempt_at,
-                events.c.created_at,
-                events.c.payload,
-            ).where(events.c.id == event_id)
-        ).mappings().first()
+        row = (
+            conn.execute(
+                sa.select(
+                    events.c.id,
+                    events.c.topic,
+                    events.c.status,
+                    events.c.attempt_count,
+                    events.c.next_attempt_at,
+                    events.c.created_at,
+                    events.c.payload,
+                ).where(events.c.id == event_id)
+            )
+            .mappings()
+            .first()
+        )
         if not row:
             raise AssertionError(f"Event {event_id} not found")
         return dict(row)
@@ -84,7 +88,7 @@ def test_enqueue_event_persists_row(engine: Engine) -> None:
     assert row["attempt_count"] == 0
     assert isinstance(row["created_at"], datetime)
     assert row["created_at"].tzinfo is not None
-    assert row["next_attempt_at"] <= datetime.now(timezone.utc)
+    assert row["next_attempt_at"] <= datetime.now(UTC)
 
 
 def test_consumer_processes_once(engine: Engine) -> None:

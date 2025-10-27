@@ -1,20 +1,12 @@
-import json
-import os
-import time
-from typing import Dict, Tuple
-
 from backend.core.config import settings
-from backend.core.observability.metrics import (
-    increment_counter,
-    record_histogram,
-)
+
 from .parsers import (
-    parse_pdf,
-    parse_image,
     parse_csv,
+    parse_image,
     parse_json_doc,
-    parse_xml,
+    parse_pdf,
     parse_text_like,
+    parse_xml,
 )
 
 
@@ -31,7 +23,7 @@ def route_mime_to_doc_type(mime: str) -> str:
     return mapping.get(mime, "unknown")
 
 
-def parse_content(mime: str, data: bytes) -> Dict:
+def parse_content(mime: str, data: bytes) -> dict:
     if len(data) > settings.PARSER_MAX_BYTES:
         raise ValueError("validation_error: parser max bytes exceeded")
     doc = route_mime_to_doc_type(mime)
@@ -51,17 +43,16 @@ def parse_content(mime: str, data: bytes) -> Dict:
     return res
 
 
-def maybe_chunk(text: str) -> Tuple[bool, Dict[int, str]]:
+def maybe_chunk(text: str) -> tuple[bool, dict[int, str]]:
     threshold = settings.PARSER_CHUNK_THRESHOLD_BYTES
     if not text or len(text.encode("utf-8")) <= threshold:
         return False, {}
     # simple fixed-size chunking by bytes
     encoded = text.encode("utf-8")
-    chunks: Dict[int, str] = {}
+    chunks: dict[int, str] = {}
     seq = 1
     for i in range(0, len(encoded), threshold):
-        chunk = encoded[i:i + threshold]
+        chunk = encoded[i : i + threshold]
         chunks[seq] = chunk.decode("utf-8", errors="ignore")
         seq += 1
     return True, chunks
-

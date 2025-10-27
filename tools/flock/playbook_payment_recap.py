@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from backend.clients.flock_reader.client import (
@@ -61,7 +61,7 @@ def _extract_total(payload: Any, fallback: list) -> int:
     return len(fallback)
 
 
-def run_playbook(tenant: str, base_url: Optional[str] = None) -> int:
+def run_playbook(tenant: str, base_url: str | None = None) -> int:
     tenant_id = _validate_tenant(tenant)
     client = FlockReadClient(base_url=base_url)
 
@@ -73,7 +73,7 @@ def run_playbook(tenant: str, base_url: Optional[str] = None) -> int:
         return 2
 
     payments = _extract_items(payments_payload)
-    totals: Dict[str, float] = {}
+    totals: dict[str, float] = {}
     for payment in payments:
         payment_date = payment.get("payment_date")
         if not payment_date:
@@ -98,7 +98,7 @@ def run_playbook(tenant: str, base_url: Optional[str] = None) -> int:
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

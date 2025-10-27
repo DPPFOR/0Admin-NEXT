@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ValidationError(Exception):
@@ -18,7 +18,7 @@ DOC_TYPES = {"invoice", "payment", "unknown"}
 @dataclass
 class ExtractedTable:
     name: str
-    columns: List[str]
+    columns: list[str]
 
 
 @dataclass
@@ -26,12 +26,12 @@ class InboxLocalFlowResultDTO:
     tenant_id: str
     content_hash: str
     doc_type: str
-    extracted_tables: List[ExtractedTable] = field(default_factory=list)
-    amount: Optional[str] = None
-    invoice_no: Optional[str] = None
-    due_date: Optional[str] = None
-    quality_flags: List[str] = field(default_factory=list)
-    pii_summary: Dict[str, Any] = field(default_factory=dict)
+    extracted_tables: list[ExtractedTable] = field(default_factory=list)
+    amount: str | None = None
+    invoice_no: str | None = None
+    due_date: str | None = None
+    quality_flags: list[str] = field(default_factory=list)
+    pii_summary: dict[str, Any] = field(default_factory=dict)
 
     def validate(self) -> None:
         if not isinstance(self.tenant_id, str) or not self.tenant_id:
@@ -45,4 +45,3 @@ class InboxLocalFlowResultDTO:
         for t in self.extracted_tables:
             if not isinstance(t.name, str) or not isinstance(t.columns, list):
                 raise ValidationError("invalid ExtractedTable")
-

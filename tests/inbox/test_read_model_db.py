@@ -13,11 +13,10 @@ from sqlalchemy import create_engine, text
 
 from backend.apps.inbox.read_model.query import (
     fetch_invoices_latest,
-    fetch_payments_latest,
     fetch_items_needing_review,
+    fetch_payments_latest,
     fetch_tenant_summary,
 )
-
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
@@ -326,7 +325,9 @@ def _seed_data(engine):
     }
 
 
-@pytest.mark.skipif(not RUN_DB_TESTS or not DB_URL, reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL")
+@pytest.mark.skipif(
+    not RUN_DB_TESTS or not DB_URL, reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL"
+)
 def test_read_model_queries():
     engine = create_engine(DB_URL, future=True)
     _ensure_database_ready(engine)

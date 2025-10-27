@@ -16,7 +16,6 @@ from backend.apps.inbox.orchestration.inbox_local_flow import run_inbox_local_fl
 from backend.apps.inbox.read_model.query import fetch_tenant_summary
 from backend.core.config import settings
 
-
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
 TENANT = "00000000-0000-0000-0000-000000000001"
@@ -60,7 +59,7 @@ def test_flow_flags_roundtrip():
         mvr_preview=True,
     )
 
-    with open(out_path, "r", encoding="utf-8") as fh:
+    with open(out_path, encoding="utf-8") as fh:
         artifact = json.load(fh)
 
     assert artifact["flags"]["enable_ocr"] is True
@@ -78,16 +77,20 @@ def test_flow_flags_roundtrip():
     )
 
     with engine.begin() as conn:
-        row = conn.execute(
-            text(
-                """
+        row = (
+            conn.execute(
+                text(
+                    """
                 SELECT content_hash, flags, mvr_preview, mvr_score
                 FROM inbox_parsed.parsed_items
                 WHERE id = :id
                 """
-            ),
-            {"id": parsed_id},
-        ).mappings().first()
+                ),
+                {"id": parsed_id},
+            )
+            .mappings()
+            .first()
+        )
 
     assert row is not None
     assert row["flags"].get("enable_table_boost") is True

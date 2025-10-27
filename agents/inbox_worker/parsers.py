@@ -1,12 +1,16 @@
 import json
 import re
-from typing import Dict, Optional, Tuple
-
 
 InvoicePatterns = {
-    "invoice_no": re.compile(r"\b(Rechnungsnummer|Invoice(?:\s*No\.)?)[:\s]*([A-Z0-9\-/]{4,})", re.I),
-    "amount": re.compile(r"\b(Betrag|Amount)[:\s]*([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)\b"),
-    "due_date": re.compile(r"\b(Fälligkeit|Due\s*Date)[:\s]*([0-9]{2,4}[./-][0-9]{1,2}[./-][0-9]{2,4})\b", re.I),
+    "invoice_no": re.compile(
+        r"\b(Rechnungsnummer|Invoice(?:\s*No\.)?)[:\s]*([A-Z0-9\-/]{4,})", re.I
+    ),
+    "amount": re.compile(
+        r"\b(Betrag|Amount)[:\s]*([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)\b"
+    ),
+    "due_date": re.compile(
+        r"\b(Fälligkeit|Due\s*Date)[:\s]*([0-9]{2,4}[./-][0-9]{1,2}[./-][0-9]{2,4})\b", re.I
+    ),
 }
 
 
@@ -17,7 +21,7 @@ def _decode_text(data: bytes) -> str:
         return ""
 
 
-def parse_text_like(data: bytes) -> Dict:
+def parse_text_like(data: bytes) -> dict:
     text = _decode_text(data)
     result = {"doc_type": "unknown"}
 
@@ -34,7 +38,7 @@ def parse_text_like(data: bytes) -> Dict:
     return result
 
 
-def parse_pdf(data: bytes) -> Dict:
+def parse_pdf(data: bytes) -> dict:
     # naive text extraction: many PDFs include text as ASCII; otherwise unknown
     result = parse_text_like(data)
     result.setdefault("doc_type", "pdf")
@@ -42,12 +46,12 @@ def parse_pdf(data: bytes) -> Dict:
     return result
 
 
-def parse_image(data: bytes, kind: str) -> Dict:
+def parse_image(data: bytes, kind: str) -> dict:
     # No OCR in v1; fallback unknown fields
     return {"doc_type": kind}
 
 
-def parse_csv(data: bytes) -> Dict:
+def parse_csv(data: bytes) -> dict:
     text = _decode_text(data)
     lines = text.splitlines()
     header = lines[0].split(",") if lines else []
@@ -58,7 +62,7 @@ def parse_csv(data: bytes) -> Dict:
     return result
 
 
-def parse_json_doc(data: bytes) -> Dict:
+def parse_json_doc(data: bytes) -> dict:
     try:
         obj = json.loads(data.decode("utf-8", errors="ignore"))
     except Exception:
@@ -79,9 +83,10 @@ def parse_json_doc(data: bytes) -> Dict:
     return res
 
 
-def parse_xml(data: bytes) -> Dict:
+def parse_xml(data: bytes) -> dict:
     try:
         import xml.etree.ElementTree as ET
+
         root = ET.fromstring(data)
     except Exception:
         return {"doc_type": "xml"}
@@ -104,4 +109,3 @@ def parse_xml(data: bytes) -> Dict:
             res["due_date"] = el.text.strip()
             break
     return res
-

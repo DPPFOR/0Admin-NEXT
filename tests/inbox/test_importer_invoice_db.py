@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import importlib.util as _iu
 import json
 import os
-import importlib.util as _iu
+from collections.abc import Callable
+from decimal import Decimal
 
 import pytest
-from decimal import Decimal
 from sqlalchemy import create_engine, text
-from typing import Callable
-
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
@@ -76,7 +75,7 @@ def _prepare_artifact(path: str, data: dict) -> Callable[[], None]:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     original = None
     if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             original = fh.read()
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))

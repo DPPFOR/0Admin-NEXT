@@ -5,27 +5,28 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import anyio
+from mcp import types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp import types
 
 from .config import ServerConfig
 from .logging import configure_logging
 from .policy import EgressGuard, load_policy
 from .registry import execute_tool, list_tools
 
-
 SERVER_NAME = "0admin-local"
 SERVER_VERSION = "1.0.0"
 INSTRUCTIONS = "0Admin local MCP tools (read-only)."
 
 
-def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="0Admin MCP stdio server")
-    parser.add_argument("--config", help="Optional path to mcp.config.yaml", default="mcp.config.yaml")
+    parser.add_argument(
+        "--config", help="Optional path to mcp.config.yaml", default="mcp.config.yaml"
+    )
     parser.add_argument("--version", action="store_true", help="Print server version and exit")
     return parser.parse_args(argv)
 
@@ -50,8 +51,9 @@ async def _run_server(config: ServerConfig) -> None:
         return types.ListToolsResult(tools=tools_cache)
 
     @server.call_tool()
-    async def _handle_call_tool(tool_name: str, arguments: Dict[str, Any]):
+    async def _handle_call_tool(tool_name: str, arguments: dict[str, Any]):
         from functools import partial
+
         try:
             func = partial(execute_tool, tool_name, arguments, config=config, policy=policy)
             result = await anyio.to_thread.run_sync(func)
@@ -69,7 +71,7 @@ async def _run_server(config: ServerConfig) -> None:
         )
 
 
-def main(argv: Optional[list[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     if args.version:
         print(f"{SERVER_NAME} {SERVER_VERSION}")

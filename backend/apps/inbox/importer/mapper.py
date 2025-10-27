@@ -2,28 +2,29 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 
 try:
-    from .dto import ParsedItemDTO, ParsedItemChunkDTO  # type: ignore
+    from .dto import ParsedItemChunkDTO, ParsedItemDTO  # type: ignore
     from .validators import (  # type: ignore
+        Rule,
+        RuleList,
+        compute_confidence,
+        decide_quality_status,
+        non_empty_str,
+        other_DoD,
         parse_amount,
         parse_iso_date,
+        payment_DoD,
+        table_shape_ok,
         validate_invoice_amount,
         validate_invoice_due_date,
         validate_invoice_no,
         validate_table_shape,
-        compute_confidence,
-        decide_quality_status,
-        Rule,
-        RuleList,
-        payment_DoD,
-        other_DoD,
-        non_empty_str,
-        table_shape_ok,
     )
 except Exception:
-    import importlib.util as _iu, os as _os
+    import importlib.util as _iu
+    import os as _os
     import sys as _sys
 
     base_dir = _os.path.dirname(__file__)
@@ -60,9 +61,9 @@ def _make_rule(code: str, message: str, *, level: str = "error") -> Rule:
     return {"code": code, "level": level, "message": message}
 
 
-def _collect_tables(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _collect_tables(extracted: dict[str, Any]) -> list[dict[str, Any]]:
     tables = extracted.get("tables")
-    result: List[Dict[str, Any]] = []
+    result: list[dict[str, Any]] = []
     if isinstance(tables, list):
         for table in tables:
             if isinstance(table, dict):
@@ -70,9 +71,9 @@ def _collect_tables(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
     return result
 
 
-def _collect_kv(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _collect_kv(extracted: dict[str, Any]) -> list[dict[str, Any]]:
     kv_entries = extracted.get("kv")
-    result: List[Dict[str, Any]] = []
+    result: list[dict[str, Any]] = []
     if isinstance(kv_entries, list):
         for entry in kv_entries:
             if isinstance(entry, dict):
@@ -85,7 +86,7 @@ def _collect_kv(extracted: Dict[str, Any]) -> List[Dict[str, Any]]:
     return result
 
 
-def _quality_flags(flow: Dict[str, Any]) -> List[str]:
+def _quality_flags(flow: dict[str, Any]) -> list[str]:
     quality = flow.get("quality")
     if not isinstance(quality, dict):
         return []
@@ -96,7 +97,7 @@ def _quality_flags(flow: Dict[str, Any]) -> List[str]:
     return flags
 
 
-def _base_payload(flow: Dict[str, Any]) -> Dict[str, Any]:
+def _base_payload(flow: dict[str, Any]) -> dict[str, Any]:
     extracted_src = flow.get("extracted")
     extracted_payload = dict(extracted_src) if isinstance(extracted_src, dict) else {}
     return {
@@ -110,23 +111,25 @@ def _base_payload(flow: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_chunks(
-    tables: List[Dict[str, Any]],
-    kv_entries: List[Dict[str, Any]],
-) -> List[ParsedItemChunkDTO]:
-    chunks: List[ParsedItemChunkDTO] = []
+    tables: list[dict[str, Any]],
+    kv_entries: list[dict[str, Any]],
+) -> list[ParsedItemChunkDTO]:
+    chunks: list[ParsedItemChunkDTO] = []
     seq = 1
     for table in tables:
         chunks.append(ParsedItemChunkDTO(parsed_item_id="", seq=seq, kind="table", payload=table))
         seq += 1
     if kv_entries:
         chunks.append(
-            ParsedItemChunkDTO(parsed_item_id="", seq=seq, kind="kv", payload={"entries": kv_entries})
+            ParsedItemChunkDTO(
+                parsed_item_id="", seq=seq, kind="kv", payload={"entries": kv_entries}
+            )
         )
     return chunks
 
 
-def _pipeline_tokens(pipeline: Any) -> List[str]:
-    tokens: List[str] = []
+def _pipeline_tokens(pipeline: Any) -> list[str]:
+    tokens: list[str] = []
     if isinstance(pipeline, list):
         for step in pipeline:
             if isinstance(step, str) and step:
@@ -135,17 +138,17 @@ def _pipeline_tokens(pipeline: Any) -> List[str]:
 
 
 def _should_classify_payment(
-    flow: Dict[str, Any],
-    pipeline_tokens: List[str],
-    kv_entries: List[Dict[str, Any]],
-    payment_block: Dict[str, Any],
+    flow: dict[str, Any],
+    pipeline_tokens: list[str],
+    kv_entries: list[dict[str, Any]],
+    payment_block: dict[str, Any],
 ) -> bool:
     doc_type = flow.get("doc_type")
     if isinstance(doc_type, str) and "payment" in doc_type.lower():
         return True
 
     filename = flow.get("fingerprints", {}).get("source_name")
-    hints: List[str] = []
+    hints: list[str] = []
     if isinstance(filename, str):
         hints.append(filename.lower())
     hints.extend(pipeline_tokens)
@@ -164,7 +167,7 @@ def _should_classify_payment(
     return False
 
 
-def _normalize_currency(currency: Optional[str]) -> Optional[str]:
+def _normalize_currency(currency: str | None) -> str | None:
     if not currency:
         return None
     candidate = non_empty_str(currency)
@@ -173,7 +176,7 @@ def _normalize_currency(currency: Optional[str]) -> Optional[str]:
     return candidate.upper()
 
 
-def _safe_parse_amount(raw_amount: Any) -> Tuple[Optional[Decimal], RuleList]:
+def _safe_parse_amount(raw_amount: Any) -> tuple[Decimal | None, RuleList]:
     if raw_amount in (None, ""):
         return None, []
     try:
@@ -182,7 +185,7 @@ def _safe_parse_amount(raw_amount: Any) -> Tuple[Optional[Decimal], RuleList]:
         return None, [_make_rule("payment.amount.parse_error", "Unable to parse payment amount")]
 
 
-def _safe_parse_date(raw_date: Any) -> Tuple[Optional[date], RuleList]:
+def _safe_parse_date(raw_date: Any) -> tuple[date | None, RuleList]:
     if raw_date in (None, ""):
         return None, []
     if isinstance(raw_date, date):
@@ -194,17 +197,17 @@ def _safe_parse_date(raw_date: Any) -> Tuple[Optional[date], RuleList]:
 
 
 def _map_payment(
-    flow: Dict[str, Any],
+    flow: dict[str, Any],
     *,
     tenant_id: str,
     content_hash: str,
     doc_type: str,
-    tables: List[Dict[str, Any]],
-    kv_entries: List[Dict[str, Any]],
-    flags: Dict[str, Any],
+    tables: list[dict[str, Any]],
+    kv_entries: list[dict[str, Any]],
+    flags: dict[str, Any],
     mvr_preview: bool,
-    mvr_score: Optional[Decimal],
-) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
+    mvr_score: Decimal | None,
+) -> tuple[ParsedItemDTO, list[ParsedItemChunkDTO]]:
     extracted = flow.get("extracted")
     payment_block = {}
     if isinstance(extracted, dict):
@@ -215,7 +218,9 @@ def _map_payment(
     amount_raw = payment_block.get("amount") if payment_block else flow.get("amount")
     currency_raw = payment_block.get("currency") if payment_block else flow.get("currency")
     date_raw = payment_block.get("payment_date") if payment_block else flow.get("payment_date")
-    counterparty_raw = payment_block.get("counterparty") if payment_block else flow.get("counterparty")
+    counterparty_raw = (
+        payment_block.get("counterparty") if payment_block else flow.get("counterparty")
+    )
 
     amount, amount_rules = _safe_parse_amount(amount_raw)
     payment_date, date_rules = _safe_parse_date(date_raw)
@@ -266,17 +271,17 @@ def _map_payment(
 
 
 def _map_other(
-    flow: Dict[str, Any],
+    flow: dict[str, Any],
     *,
     tenant_id: str,
     content_hash: str,
     doc_type: str,
-    tables: List[Dict[str, Any]],
-    kv_entries: List[Dict[str, Any]],
-    flags: Dict[str, Any],
+    tables: list[dict[str, Any]],
+    kv_entries: list[dict[str, Any]],
+    flags: dict[str, Any],
     mvr_preview: bool,
-    mvr_score: Optional[Decimal],
-) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
+    mvr_score: Decimal | None,
+) -> tuple[ParsedItemDTO, list[ParsedItemChunkDTO]]:
     payload = _base_payload(flow)
     confidence, dod_rules, quality_status = other_DoD(kv_entries=kv_entries, tables=tables)
     quality_flags = _quality_flags(flow)
@@ -304,19 +309,19 @@ def _map_other(
 
 
 def _map_invoice(
-    flow: Dict[str, Any],
+    flow: dict[str, Any],
     *,
     tenant_id: str,
     content_hash: str,
     doc_type: str,
-    pipeline: List[str],
-    tables: List[Dict[str, Any]],
-    kv_entries: List[Dict[str, Any]],
+    pipeline: list[str],
+    tables: list[dict[str, Any]],
+    kv_entries: list[dict[str, Any]],
     enforce_invoice: bool,
-    flags: Dict[str, Any],
+    flags: dict[str, Any],
     mvr_preview: bool,
-    mvr_score: Optional[Decimal],
-) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO], Dict[str, Any]]:
+    mvr_score: Decimal | None,
+) -> tuple[ParsedItemDTO, list[ParsedItemChunkDTO], dict[str, Any]]:
     amount = parse_amount(flow.get("amount"))
     invoice_no = flow.get("invoice_no")
     due_date = parse_iso_date(flow.get("due_date"))
@@ -332,7 +337,7 @@ def _map_invoice(
 
     table_rules: RuleList = []
     table_ok = False
-    primary_table: Dict[str, Any] | None = tables[0] if tables else None
+    primary_table: dict[str, Any] | None = tables[0] if tables else None
     if primary_table is not None:
         table_rules = validate_table_shape(primary_table)
         rules.extend(table_rules)
@@ -340,8 +345,12 @@ def _map_invoice(
     else:
         rules.append(_make_rule("invoice.table.missing", "Invoice table is required"))
 
-    required_ok = not any(rule["level"] == "error" for rule in (amount_rules + due_date_rules + invoice_rules))
-    amount_valid = amount is not None and not any(rule["code"] == "invoice.amount.invalid" for rule in amount_rules)
+    required_ok = not any(
+        rule["level"] == "error" for rule in (amount_rules + due_date_rules + invoice_rules)
+    )
+    amount_valid = amount is not None and not any(
+        rule["code"] == "invoice.amount.invalid" for rule in amount_rules
+    )
     due_date_plausible = due_date is not None and not any(
         rule["code"] == "invoice.due_date.implausible" for rule in due_date_rules
     )
@@ -357,7 +366,9 @@ def _map_invoice(
     mime_lower = mime.lower() if isinstance(mime, str) else ""
     source_keywords = ("pdf", "office", "word", "excel", "powerpoint")
     mime_keyword_hit = any(keyword in mime_lower for keyword in source_keywords)
-    pipeline_keyword_hit = any(any(keyword in token for keyword in source_keywords) for token in pipeline)
+    pipeline_keyword_hit = any(
+        any(keyword in token for keyword in source_keywords) for token in pipeline
+    )
     source_keyword_hit = mime_keyword_hit or pipeline_keyword_hit
     source_ok = source_keyword_hit and not has_ocr_warning
 
@@ -405,12 +416,12 @@ def _map_invoice(
 
 
 def artifact_to_dtos(
-    flow: Dict[str, Any],
+    flow: dict[str, Any],
     *,
     enforce_invoice: bool = True,
     enforce_payment: bool = True,
     enforce_other: bool = True,
-) -> Tuple[ParsedItemDTO, List[ParsedItemChunkDTO]]:
+) -> tuple[ParsedItemDTO, list[ParsedItemChunkDTO]]:
     tenant_id = flow.get("tenant_id", "")
     content_hash = flow.get("fingerprints", {}).get("content_hash", "")
     pipeline = flow.get("pipeline", [])
@@ -425,15 +436,21 @@ def artifact_to_dtos(
                 break
 
     extracted = flow.get("extracted")
-    extracted_dict: Dict[str, Any] = dict(extracted) if isinstance(extracted, dict) else {}
+    extracted_dict: dict[str, Any] = dict(extracted) if isinstance(extracted, dict) else {}
     tables = _collect_tables(extracted_dict)
     kv_entries = _collect_kv(extracted_dict)
-    payment_block = extracted_dict.get("payment") if isinstance(extracted_dict.get("payment"), dict) else {}
-    flags_map: Dict[str, Any] = dict(flow.get("flags") or {}) if isinstance(flow.get("flags"), dict) else {}
+    payment_block = (
+        extracted_dict.get("payment") if isinstance(extracted_dict.get("payment"), dict) else {}
+    )
+    flags_map: dict[str, Any] = (
+        dict(flow.get("flags") or {}) if isinstance(flow.get("flags"), dict) else {}
+    )
     mvr_preview_flag = bool(flags_map.get("mvr_preview"))
-    mvr_score: Optional[Decimal] = Decimal("0.00") if mvr_preview_flag else None
+    mvr_score: Decimal | None = Decimal("0.00") if mvr_preview_flag else None
 
-    if enforce_payment and _should_classify_payment(flow, pipeline_tokens, kv_entries, payment_block):
+    if enforce_payment and _should_classify_payment(
+        flow, pipeline_tokens, kv_entries, payment_block
+    ):
         return _map_payment(
             flow,
             tenant_id=tenant_id,

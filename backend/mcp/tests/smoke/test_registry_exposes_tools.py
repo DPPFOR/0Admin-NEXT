@@ -32,6 +32,7 @@ def test_cli_list_tools_matches_registry_flat(capsys):
     expected = [f"{t['id']}@{t['version']}" for t in registry.list_tools()]
     assert out == expected
 
+
 def test_cli_tree_and_json_outputs(capsys):
     # tree
     assert cli.main(["--tree"]) == 0

@@ -5,16 +5,15 @@ Revises: 20251019_add_kind_seq_to_chunks
 Create Date: 2025-10-19 15:30:00
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "20251019_invoice_quality_fields"
-down_revision: Union[str, None] = "20251019_add_kind_seq_to_chunks"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20251019_add_kind_seq_to_chunks"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 SCHEMA = "inbox_parsed"
 TABLE = "parsed_items"
@@ -41,7 +40,9 @@ def _ensure_schema_and_table() -> None:
                 nullable=False,
                 server_default=sa.text("'[]'::jsonb"),
             ),
-            sa.Column("payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column(
+                "payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False
+            ),
             sa.Column("amount", sa.Numeric(18, 2)),
             sa.Column("invoice_no", sa.Text()),
             sa.Column("due_date", sa.Date()),
@@ -92,7 +93,9 @@ def _add_or_update_columns() -> None:
             ),
             schema=SCHEMA,
         )
-    op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} ALTER COLUMN quality_status SET DEFAULT 'needs_review'")
+    op.execute(
+        f"ALTER TABLE {SCHEMA}.{TABLE} ALTER COLUMN quality_status SET DEFAULT 'needs_review'"
+    )
     op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} ALTER COLUMN quality_status SET NOT NULL")
 
     existing_constraints = {
@@ -161,9 +164,7 @@ def downgrade() -> None:
     existing_indexes = {idx["name"] for idx in inspector.get_indexes(TABLE, schema=SCHEMA)}
     if INDEX_NAME in existing_indexes:
         op.drop_index(INDEX_NAME, table_name=TABLE, schema=SCHEMA)
-    op.execute(
-        f"ALTER TABLE {SCHEMA}.{TABLE} DROP CONSTRAINT IF EXISTS {QUALITY_CHECK_NAME}"
-    )
+    op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} DROP CONSTRAINT IF EXISTS {QUALITY_CHECK_NAME}")
 
     columns = {col["name"] for col in inspector.get_columns(TABLE, schema=SCHEMA)}
 
@@ -172,7 +173,5 @@ def downgrade() -> None:
             op.drop_column(TABLE, column, schema=SCHEMA)
         else:
             op.execute(
-                sa.text(
-                    f"/* downgrade noop: column {column} missing on {SCHEMA}.{TABLE} */"
-                )
+                sa.text(f"/* downgrade noop: column {column} missing on {SCHEMA}.{TABLE} */")
             )

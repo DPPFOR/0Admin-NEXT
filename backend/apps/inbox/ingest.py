@@ -1,13 +1,13 @@
 import ipaddress
 import socket
 import time
-from typing import List, Tuple, Optional
-from urllib.parse import urlparse, urljoin
-import idna
+from urllib.parse import urljoin, urlparse
 
 import httpx
+import idna
 
 from backend.core.config import settings
+
 from .utils import detect_mime
 
 
@@ -21,7 +21,7 @@ class IngestError(Exception):
         self.http_status = http_status
 
 
-def _parse_domains(csv: str) -> List[str]:
+def _parse_domains(csv: str) -> list[str]:
     return [d.strip().lower() for d in csv.split(",") if d.strip()]
 
 
@@ -40,7 +40,7 @@ def _is_forbidden_ip(ip: str) -> bool:
         return True
 
 
-def _resolve_host_ips(host: str) -> List[str]:
+def _resolve_host_ips(host: str) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
         ips = []
@@ -90,7 +90,7 @@ def ensure_url_allowed(url: str) -> None:
     _check_host_allowed(p.hostname or "")
 
 
-def _http_fetch(url: str) -> Tuple[bytes, Optional[str]]:
+def _http_fetch(url: str) -> tuple[bytes, str | None]:
     """Fetch remote resource securely with redirects and timeouts.
 
     Returns: (content_bytes, filename)
@@ -171,7 +171,7 @@ def _http_fetch(url: str) -> Tuple[bytes, Optional[str]]:
             pass
 
 
-def fetch_remote(url: str) -> Tuple[bytes, Optional[str], Optional[str], float]:
+def fetch_remote(url: str) -> tuple[bytes, str | None, str | None, float]:
     """Fetch remote resource and return content, filename, detected_mime, fetch_duration_ms."""
     t0 = time.time()
     content, filename = _http_fetch(url)

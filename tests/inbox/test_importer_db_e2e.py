@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import os
-import json
 import importlib.util as _iu
+import json
+import os
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
-
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL")
@@ -25,7 +24,9 @@ def _ensure_database_ready(engine) -> None:
         conn.execute(text("TRUNCATE inbox_parsed.parsed_items CASCADE"))
 
 
-@pytest.mark.skipif(not RUN_DB_TESTS or not DB_URL, reason="requires RUN_DB_TESTS=1 and INBOX_DB_URL")
+@pytest.mark.skipif(
+    not RUN_DB_TESTS or not DB_URL, reason="requires RUN_DB_TESTS=1 and INBOX_DB_URL"
+)
 def test_importer_db_roundtrip(tmp_path):
     spec = _iu.spec_from_file_location("worker", "backend/apps/inbox/importer/worker.py")
     mod = _iu.module_from_spec(spec)  # type: ignore[arg-type]
@@ -37,7 +38,7 @@ def test_importer_db_roundtrip(tmp_path):
     _ensure_database_ready(engine)
 
     artifact_path = "artifacts/inbox_local/samples/sample_result.json"
-    data = json.loads(open(artifact_path, "r", encoding="utf-8").read())
+    data = json.loads(open(artifact_path, encoding="utf-8").read())
 
     parsed_id = run_importer(
         tenant_id=data["tenant_id"],

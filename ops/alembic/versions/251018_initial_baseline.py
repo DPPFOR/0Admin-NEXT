@@ -5,17 +5,15 @@ Revises: 000000000000
 Create Date: 2025-10-18 17:45:00.000000
 
 """
-from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision = "251018_initial_baseline"
 down_revision = "000000000000"
 branch_labels = None
 depends_on = None
+
 
 def upgrade() -> None:
     """Initial baseline - schema zero_admin, extension, trigger function"""
@@ -27,12 +25,15 @@ def upgrade() -> None:
     # Note: Requires SUPERUSER or appropriate rights
     try:
         op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
-    except Exception as e:
+    except Exception:
         # Log but continue if extension cannot be created
-        op.execute("SELECT 'Note: pgcrypto extension creation failed - may require SUPERUSER rights'")
+        op.execute(
+            "SELECT 'Note: pgcrypto extension creation failed - may require SUPERUSER rights'"
+        )
 
     # Trigger function for consistent updated_at timestamps (UTC)
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION zero_admin.set_updated_at()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -40,7 +41,8 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

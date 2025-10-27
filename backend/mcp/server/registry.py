@@ -28,6 +28,7 @@ TOOLS: list[dict[str, str]] = [
     {"id": "security.pii.redact", "version": "1.0.0"},
 ]
 
+
 def list_tools() -> list[dict[str, str]]:
     # Return tools sorted by id for deterministic outputs
     return sorted(TOOLS, key=lambda t: t["id"]).copy()

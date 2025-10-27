@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Mapping
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Engine
@@ -13,7 +14,6 @@ from sqlalchemy.engine import Engine
 from backend.core.config import settings
 from backend.core.observability.logging import get_logger, init_logging
 from backend.core.outbox.publisher import get_outbox_events_table
-
 
 BACKOFF_SECONDS = 60
 
@@ -42,7 +42,7 @@ def consume_one(engine: Engine | None = None) -> bool:
     engine = engine or _get_engine()
     metadata = sa.MetaData()
     events = get_outbox_events_table(metadata)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     with engine.begin() as conn:
         stmt = (
@@ -64,11 +64,7 @@ def consume_one(engine: Engine | None = None) -> bool:
             logger.info("outbox_consume_idle", extra={"status": "idle"})
             return False
 
-        conn.execute(
-            sa.update(events)
-            .where(events.c.id == row["id"])
-            .values(status="processing")
-        )
+        conn.execute(sa.update(events).where(events.c.id == row["id"]).values(status="processing"))
 
     event_id = str(row["id"])
     topic = row["topic"]
@@ -95,14 +91,14 @@ def consume_one(engine: Engine | None = None) -> bool:
         conn.execute(
             sa.update(events)
             .where(events.c.id == event_id)
-            .values(status="processed", next_attempt_at=datetime.now(timezone.utc))
+            .values(status="processed", next_attempt_at=datetime.now(UTC))
         )
     logger.info("outbox_event_processed", extra={"event_id": event_id, "topic": topic})
     return True
 
 
 def _schedule_retry(engine: Engine, events: sa.Table, event_id: str, attempt_count: int) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     delay_seconds = BACKOFF_SECONDS * max(1, attempt_count + 1)
     next_attempt = now + timedelta(seconds=delay_seconds)
     with engine.begin() as conn:

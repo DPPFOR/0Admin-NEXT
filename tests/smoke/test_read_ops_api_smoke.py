@@ -1,7 +1,7 @@
 import json
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -79,7 +79,9 @@ def test_read_ops_endpoints(monkeypatch, caplog):
     assert len(j1["items"]) <= 3
     nxt = j1.get("next")
     if nxt:
-        r2 = client.get(f"/api/v1/inbox/items?cursor={nxt}", headers={"X-Tenant": t1, "X-Trace-ID": xtrace})
+        r2 = client.get(
+            f"/api/v1/inbox/items?cursor={nxt}", headers={"X-Tenant": t1, "X-Trace-ID": xtrace}
+        )
         assert r2.status_code == 200
         j2 = r2.json()
         # Disjoint pages (compare ids)
@@ -102,7 +104,10 @@ def test_read_ops_endpoints(monkeypatch, caplog):
         assert "uri" not in it
 
     # Invalid cursor
-    bad = client.get("/api/v1/inbox/items?cursor=not-a-valid-cursor", headers={"X-Tenant": t1, "X-Trace-ID": xtrace})
+    bad = client.get(
+        "/api/v1/inbox/items?cursor=not-a-valid-cursor",
+        headers={"X-Tenant": t1, "X-Trace-ID": xtrace},
+    )
     assert bad.status_code == 400
 
     # Ops endpoints: require admin
@@ -118,23 +123,39 @@ def test_read_ops_endpoints(monkeypatch, caplog):
         {"id": str(uuid.uuid4()), "t": t1},
     )
 
-    dlq = client.get("/api/v1/ops/dlq", headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace})
+    dlq = client.get(
+        "/api/v1/ops/dlq",
+        headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace},
+    )
     assert dlq.status_code == 200 and len(dlq.json()["items"]) >= 1
 
     # Dry run replay
-    rep = client.post("/api/v1/ops/dlq/replay", headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace}, json={})
+    rep = client.post(
+        "/api/v1/ops/dlq/replay",
+        headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace},
+        json={},
+    )
     assert rep.status_code == 200 and rep.json()["committed"] == 0
 
     # Commit replay (limit 1)
-    rep2 = client.post("/api/v1/ops/dlq/replay", headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace}, json={"dry_run": False, "limit": 1})
+    rep2 = client.post(
+        "/api/v1/ops/dlq/replay",
+        headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace},
+        json={"dry_run": False, "limit": 1},
+    )
     assert rep2.status_code == 200 and rep2.json()["committed"] == 1
 
     # Outbox status
-    out = client.get("/api/v1/ops/outbox", headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace})
+    out = client.get(
+        "/api/v1/ops/outbox",
+        headers={"Authorization": f"Bearer {admin}", "X-Tenant": t1, "X-Trace-ID": xtrace},
+    )
     assert out.status_code == 200
 
     # Metrics endpoint
-    met = client.get("/api/v1/ops/metrics", headers={"Authorization": f"Bearer {admin}", "X-Trace-ID": xtrace})
+    met = client.get(
+        "/api/v1/ops/metrics", headers={"Authorization": f"Bearer {admin}", "X-Trace-ID": xtrace}
+    )
     assert met.status_code == 200 and isinstance(met.json(), dict)
 
     # Log assertions: trace id propagated; token not logged in clear; only actor_token_hash appears

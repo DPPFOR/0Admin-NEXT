@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
-
 
 _BEARER_RE = re.compile(r"^\s*Bearer\s+(?P<token>.+?)\s*$", re.IGNORECASE)
 
@@ -29,7 +27,7 @@ class TokenError(Exception):
         self.kind = kind
 
 
-def parse_bearer(header_value: Optional[str]) -> ParsedToken:
+def parse_bearer(header_value: str | None) -> ParsedToken:
     if not header_value or not isinstance(header_value, str):
         raise TokenError("missing", "Authorization header missing")
 

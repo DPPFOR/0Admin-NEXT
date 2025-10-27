@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 def _valid_path(p: str) -> bool:
@@ -13,9 +13,8 @@ class ArchiveUnpackAdapter:
         return "Unpack archives locally into artifacts/inbox (stub)."
 
     @staticmethod
-    def plan(path: str, tenant_id: str | None = None, dry_run: bool = True) -> Dict[str, Any]:
+    def plan(path: str, tenant_id: str | None = None, dry_run: bool = True) -> dict[str, Any]:
         if not isinstance(path, str) or not _valid_path(path):
             raise ValueError("VALIDATION: invalid path")
         plan = {"actions": [{"op": "unpack", "src": path, "dst": "artifacts/inbox/unpacked/"}]}
         return {"plan": plan, "ts": "2025-01-01T00:00:00Z"}
-

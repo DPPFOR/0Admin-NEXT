@@ -8,7 +8,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-
 VIOLATIONS = []
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)

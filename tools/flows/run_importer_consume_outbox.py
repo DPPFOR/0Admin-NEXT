@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import importlib.util as _iu
 import json
 import os
 import sys
-import importlib.util as _iu
 from pathlib import Path as _Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from sqlalchemy import MetaData, Table, Column, String, Text, DateTime, select, update, delete
+from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, delete, select, update
 from sqlalchemy.engine import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func

@@ -67,14 +67,19 @@ def test_fetch_review_queue(monkeypatch):
 
 
 def test_main_invokes_fetch(monkeypatch, capsys):
-    monkeypatch.setattr(
-        flock_samples, "fetch_invoices", lambda tenant, base_url="": {"foo": "bar"}
-    )
+    monkeypatch.setattr(flock_samples, "fetch_invoices", lambda tenant, base_url="": {"foo": "bar"})
     monkeypatch.setattr(
         flock_samples, "fetch_review_queue", lambda tenant, base_url="": {"baz": "qux"}
     )
     exit_code = flock_samples.main(
-        ["--tenant", "00000000-0000-0000-0000-000000000001", "--base-url", "http://api.local", "--what", "both"]
+        [
+            "--tenant",
+            "00000000-0000-0000-0000-000000000001",
+            "--base-url",
+            "http://api.local",
+            "--what",
+            "both",
+        ]
     )
     captured = capsys.readouterr().out
     assert exit_code == 0

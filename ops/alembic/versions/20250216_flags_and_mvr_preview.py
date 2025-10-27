@@ -5,15 +5,14 @@ Revises: 20250215_inbox_payment_and_other
 Create Date: 2025-02-16 10:00:00
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
-
 revision: str = "20250216_flags_and_mvr_preview"
-down_revision: Union[str, None] = "20250215_inbox_payment_and_other"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20250215_inbox_payment_and_other"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 SCHEMA = "inbox_parsed"
 TABLE = "parsed_items"
@@ -181,15 +180,9 @@ def downgrade() -> None:
         op.execute(f"DROP VIEW IF EXISTS {view}")
 
     op.execute(f"DROP INDEX IF EXISTS {INDEX_FLAGS}")
-    op.execute(
-        f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS mvr_score"
-    )
-    op.execute(
-        f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS mvr_preview"
-    )
-    op.execute(
-        f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS flags"
-    )
+    op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS mvr_score")
+    op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS mvr_preview")
+    op.execute(f"ALTER TABLE {SCHEMA}.{TABLE} DROP COLUMN IF EXISTS flags")
 
     op.execute(
         f"""

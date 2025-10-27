@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, Mapping, Optional
+from typing import Any
 
 
 def _ensure_mapping(payload: Any, context: str) -> Mapping[str, Any]:
@@ -10,7 +11,7 @@ def _ensure_mapping(payload: Any, context: str) -> Mapping[str, Any]:
     return payload
 
 
-def _ensure_dict(value: Any) -> Dict[str, Any]:
+def _ensure_dict(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     return {}
@@ -21,18 +22,18 @@ class InvoiceDTO:
     id: str
     tenant_id: str
     content_hash: str
-    amount: Optional[float]
-    invoice_no: Optional[str]
-    due_date: Optional[str]
-    quality_status: Optional[str]
-    confidence: Optional[float]
-    created_at: Optional[str]
-    flags: Dict[str, Any] = field(default_factory=dict)
+    amount: float | None
+    invoice_no: str | None
+    due_date: str | None
+    quality_status: str | None
+    confidence: float | None
+    created_at: str | None
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[float] = None
+    mvr_score: float | None = None
 
     @classmethod
-    def from_json(cls, payload: Any) -> "InvoiceDTO":
+    def from_json(cls, payload: Any) -> InvoiceDTO:
         data = _ensure_mapping(payload, "InvoiceDTO")
         return cls(
             id=str(data.get("id", "")),
@@ -49,7 +50,7 @@ class InvoiceDTO:
             mvr_score=data.get("mvr_score"),
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -58,19 +59,19 @@ class PaymentDTO:
     id: str
     tenant_id: str
     content_hash: str
-    amount: Optional[float]
-    currency: Optional[str]
-    counterparty: Optional[str]
-    payment_date: Optional[str]
-    quality_status: Optional[str]
-    confidence: Optional[float]
-    created_at: Optional[str]
-    flags: Dict[str, Any] = field(default_factory=dict)
+    amount: float | None
+    currency: str | None
+    counterparty: str | None
+    payment_date: str | None
+    quality_status: str | None
+    confidence: float | None
+    created_at: str | None
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[float] = None
+    mvr_score: float | None = None
 
     @classmethod
-    def from_json(cls, payload: Any) -> "PaymentDTO":
+    def from_json(cls, payload: Any) -> PaymentDTO:
         data = _ensure_mapping(payload, "PaymentDTO")
         return cls(
             id=str(data.get("id", "")),
@@ -88,7 +89,7 @@ class PaymentDTO:
             mvr_score=data.get("mvr_score"),
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -96,17 +97,17 @@ class PaymentDTO:
 class ReviewItemDTO:
     id: str
     tenant_id: str
-    doc_type: Optional[str]
-    quality_status: Optional[str]
-    confidence: Optional[float]
-    created_at: Optional[str]
-    content_hash: Optional[str]
-    flags: Dict[str, Any] = field(default_factory=dict)
+    doc_type: str | None
+    quality_status: str | None
+    confidence: float | None
+    created_at: str | None
+    content_hash: str | None
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[float] = None
+    mvr_score: float | None = None
 
     @classmethod
-    def from_json(cls, payload: Any) -> "ReviewItemDTO":
+    def from_json(cls, payload: Any) -> ReviewItemDTO:
         data = _ensure_mapping(payload, "ReviewItemDTO")
         return cls(
             id=str(data.get("id", "")),
@@ -121,7 +122,7 @@ class ReviewItemDTO:
             mvr_score=data.get("mvr_score"),
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -134,11 +135,11 @@ class SummaryDTO:
     cnt_other: int = 0
     cnt_needing_review: int = 0
     cnt_mvr_preview: int = 0
-    avg_confidence: Optional[float] = None
-    avg_mvr_score: Optional[float] = None
+    avg_confidence: float | None = None
+    avg_mvr_score: float | None = None
 
     @classmethod
-    def from_json(cls, payload: Any) -> "SummaryDTO":
+    def from_json(cls, payload: Any) -> SummaryDTO:
         data = _ensure_mapping(payload, "SummaryDTO")
         return cls(
             tenant_id=str(data.get("tenant_id", "")),
@@ -152,5 +153,5 @@ class SummaryDTO:
             avg_mvr_score=data.get("avg_mvr_score"),
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return asdict(self)

@@ -16,11 +16,12 @@ def _schema(path: str):
 
 def test_pii_redact_positive():
     schema = _schema("backend/mcp/contracts/security.pii.redact/1.0.0/output.json")
-    out = SecurityPIIRedactAdapter.plan(paths=["artifacts/inbox/samples/office/sample.docx"], dry_run=True)
+    out = SecurityPIIRedactAdapter.plan(
+        paths=["artifacts/inbox/samples/office/sample.docx"], dry_run=True
+    )
     Draft202012Validator(schema).validate(out)
 
 
 def test_pii_redact_negative():
     with pytest.raises(ValueError):
         SecurityPIIRedactAdapter.plan(paths=["/root/secret.txt"], dry_run=True)
-

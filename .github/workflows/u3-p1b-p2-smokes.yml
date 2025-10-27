@@ -1,10 +1,6 @@
 name: U3-P1b/P2 Smoke Tests
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     concurrency:
-      group: smoke-${{ github.ref }}
+      group: "${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }}"
       cancel-in-progress: false
     env:
       PYTHONWARNINGS: 'ignore::PendingDeprecationWarning'

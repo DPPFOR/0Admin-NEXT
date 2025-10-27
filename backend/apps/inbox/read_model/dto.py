@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Any
 from uuid import UUID
 
 
@@ -12,15 +12,15 @@ class InvoiceRowDTO:
     id: UUID
     tenant_id: UUID
     content_hash: str
-    amount: Optional[Decimal]
-    invoice_no: Optional[str]
-    due_date: Optional[date]
+    amount: Decimal | None
+    invoice_no: str | None
+    due_date: date | None
     quality_status: str
     confidence: float
     created_at: datetime
-    flags: Dict[str, Any] = field(default_factory=dict)
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[Decimal] = None
+    mvr_score: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -28,16 +28,16 @@ class PaymentRowDTO:
     id: UUID
     tenant_id: UUID
     content_hash: str
-    amount: Optional[Decimal]
-    currency: Optional[str]
-    counterparty: Optional[str]
-    payment_date: Optional[date]
+    amount: Decimal | None
+    currency: str | None
+    counterparty: str | None
+    payment_date: date | None
     quality_status: str
     confidence: float
     created_at: datetime
-    flags: Dict[str, Any] = field(default_factory=dict)
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[Decimal] = None
+    mvr_score: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -49,9 +49,9 @@ class NeedsReviewRowDTO:
     confidence: float
     created_at: datetime
     content_hash: str
-    flags: Dict[str, Any] = field(default_factory=dict)
+    flags: dict[str, Any] = field(default_factory=dict)
     mvr_preview: bool = False
-    mvr_score: Optional[Decimal] = None
+    mvr_score: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -63,5 +63,5 @@ class TenantSummaryDTO:
     cnt_other: int
     cnt_needing_review: int
     cnt_mvr_preview: int = 0
-    avg_confidence: Optional[float] = None
-    avg_mvr_score: Optional[float] = None
+    avg_confidence: float | None = None
+    avg_mvr_score: float | None = None

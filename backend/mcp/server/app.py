@@ -5,7 +5,8 @@ Provides factories to access registry and adapters. No loops/threads.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from . import registry
 

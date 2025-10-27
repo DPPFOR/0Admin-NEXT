@@ -6,13 +6,11 @@ import sys
 from pathlib import Path
 from uuid import UUID
 
-import anyio
 import pytest
 from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from backend.mcp_server.policy import EgressGuard
-
 
 WORKSPACE = Path(__file__).resolve().parents[2]
 TENANT_ID = UUID("00000000-0000-0000-0000-000000000001")

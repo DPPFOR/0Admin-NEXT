@@ -1,12 +1,9 @@
 """Health and readiness endpoints."""
-import asyncio
-from typing import Dict, Any
+
+from typing import Any
 
 from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
-
-from backend.core.config import settings
 
 router = APIRouter()
 
@@ -15,6 +12,7 @@ def get_version() -> str:
     """Get application version from pyproject.toml or commit hash."""
     try:
         import tomllib
+
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
             return data.get("tool", {}).get("poetry", {}).get("version", "unknown")
@@ -22,7 +20,8 @@ def get_version() -> str:
         # Fallback to pyproject.toml as TOML (older Python)
         try:
             import toml
-            with open("pyproject.toml", "r") as f:
+
+            with open("pyproject.toml") as f:
                 data = toml.load(f)
                 return data.get("tool", {}).get("poetry", {}).get("version", "unknown")
         except:
@@ -44,20 +43,20 @@ async def check_database() -> str:
 
 
 @router.get("/health/ready")
-async def readiness_check() -> Dict[str, Any]:
+async def readiness_check() -> dict[str, Any]:
     """Readiness endpoint for load balancers."""
     db_status = await check_database()
 
     response = {
         "status": "OK" if db_status == "OK" else "DEGRADED",
         "version": get_version(),
-        "db": db_status
+        "db": db_status,
     }
 
     return response
 
 
 @router.get("/health/live")
-async def liveness_check() -> Dict[str, str]:
+async def liveness_check() -> dict[str, str]:
     """Liveness endpoint - always OK if service is running."""
     return {"status": "OK"}

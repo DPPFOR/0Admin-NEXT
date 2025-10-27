@@ -5,10 +5,11 @@ import argparse
 import json
 import pathlib
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Iterable
+from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -17,8 +18,8 @@ if str(ROOT) not in sys.path:
 from backend.apps.inbox.read_model.query import (
     ReadModelError,
     fetch_invoices_latest,
-    fetch_payments_latest,
     fetch_items_needing_review,
+    fetch_payments_latest,
     fetch_tenant_summary,
 )
 

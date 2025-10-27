@@ -2,31 +2,29 @@ import json
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.exc import IntegrityError
 
+from backend.apps.inbox.mail.connectors import GraphConnectorImpl, ImapConnectorImpl, MailConnector
+from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
+from backend.apps.inbox.repository import (
+    InboxItem,
+    get_inbox_item_by_hash,
+    get_tables,
+    insert_inbox_item,
+)
+from backend.apps.inbox.storage import StorageError, put_bytes
+from backend.apps.inbox.utils import detect_mime, extension_for_mime, sha256_hex
 from backend.core.config import settings
 from backend.core.observability.logging import logger, set_tenant_id
 from backend.core.observability.metrics import (
     increment_counter,
     record_histogram,
 )
-from backend.apps.inbox.utils import sha256_hex, detect_mime, extension_for_mime
-from backend.apps.inbox.storage import put_bytes, StorageError
-from backend.apps.inbox.repository import (
-    InboxItem,
-    get_tables,
-    insert_inbox_item,
-    get_inbox_item_by_hash,
-)
-from backend.apps.inbox.mail.connectors import MailConnector
-from backend.apps.inbox.mail.connectors import ImapConnectorImpl, GraphConnectorImpl
-from backend.core.observability.logging import logger
 from backend.mcp.server.observability import get_logger as get_mcp_logger
-from backend.apps.inbox.orchestration.run_shadow_analysis import run_shadow_analysis
 
 
 # Metrics helpers
@@ -49,7 +47,7 @@ def _record_mail_latency(ms: float) -> None:
 @dataclass
 class Attachment:
     content: bytes
-    filename: Optional[str]
+    filename: str | None
     size: int
 
 
@@ -57,11 +55,11 @@ class Attachment:
 class MailMessage:
     id: str
     mailbox: str
-    received_at: Optional[str]
-    attachments: List[Attachment]
+    received_at: str | None
+    attachments: list[Attachment]
 
 
-def fetch_messages(provider: str, mailbox: str, batch_limit: int) -> List[MailMessage]:
+def fetch_messages(provider: str, mailbox: str, batch_limit: int) -> list[MailMessage]:
     """Fetch messages with attachments from the provider.
 
     Default implementation returns empty list. Real connectors are out of scope
@@ -79,7 +77,7 @@ class _EnvConnector(MailConnector):
     def __init__(self, provider: str) -> None:
         self.provider = provider
 
-    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> List[MailMessage]:  # type: ignore[override]
+    def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> list[MailMessage]:  # type: ignore[override]
         # since is currently not used in the legacy path; callers may still apply filtering upstream.
         return fetch_messages(self.provider, mailbox, limit)
 
@@ -108,15 +106,26 @@ def _auto_connector(provider: str) -> MailConnector:
             return ImapConnectorImpl()
         return _EnvConnector(provider)
     if provider == "graph":
-        if settings.GRAPH_TENANT_ID and settings.GRAPH_CLIENT_ID and settings.GRAPH_CLIENT_SECRET and settings.GRAPH_USER_ID:
+        if (
+            settings.GRAPH_TENANT_ID
+            and settings.GRAPH_CLIENT_ID
+            and settings.GRAPH_CLIENT_SECRET
+            and settings.GRAPH_USER_ID
+        ):
             return GraphConnectorImpl()
         return _EnvConnector(provider)
     return _EnvConnector(provider)
 
 
 def _process_attachment(
-    engine, inbox_items, event_outbox, tenant_id: str, message_id: str, mailbox: str, att: Attachment
-) -> Tuple[Optional[InboxItem], bool]:
+    engine,
+    inbox_items,
+    event_outbox,
+    tenant_id: str,
+    message_id: str,
+    mailbox: str,
+    att: Attachment,
+) -> tuple[InboxItem | None, bool]:
     # Validate size
     max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
     if att.size > max_bytes:
@@ -223,7 +232,14 @@ def _process_attachment(
                             payload_json=json.dumps(payload2),
                         )
                     )
-                mcp_logger.info("mcp_analysis_event_emitted", extra={"trace_id": trace_id, "tenant_id": tenant_id, "inbox_item_id": persisted.id})
+                mcp_logger.info(
+                    "mcp_analysis_event_emitted",
+                    extra={
+                        "trace_id": trace_id,
+                        "tenant_id": tenant_id,
+                        "inbox_item_id": persisted.id,
+                    },
+                )
             except Exception:
                 pass
     except Exception:
@@ -232,7 +248,9 @@ def _process_attachment(
     return persisted, False
 
 
-def process_mailbox(tenant_id: str, mailbox: Optional[str] = None, connector: Optional[MailConnector] = None) -> Dict[str, Any]:
+def process_mailbox(
+    tenant_id: str, mailbox: str | None = None, connector: MailConnector | None = None
+) -> dict[str, Any]:
     """Process one batch of messages from configured provider.
 
     Returns summary stats for logging and tests.
@@ -251,7 +269,7 @@ def process_mailbox(tenant_id: str, mailbox: Optional[str] = None, connector: Op
 
     # Compute since time window
     since_hours = max(0, int(settings.MAIL_SINCE_HOURS))
-    since = datetime.now(timezone.utc) - timedelta(hours=since_hours)
+    since = datetime.now(UTC) - timedelta(hours=since_hours)
 
     msgs = connector.fetch_messages(mailbox, since, settings.MAIL_BATCH_LIMIT)
 
@@ -278,13 +296,15 @@ def process_mailbox(tenant_id: str, mailbox: Optional[str] = None, connector: Op
                     except Exception:
                         pass
                     continue
-                res, dup = _process_attachment(engine, inbox_items, event_outbox, tenant_id, msg.id, mailbox, att)
+                res, dup = _process_attachment(
+                    engine, inbox_items, event_outbox, tenant_id, msg.id, mailbox, att
+                )
                 if dup:
                     duplicates += 1
                 if res is not None:
                     used_bytes += att.size
                     processed += 1
-            except StorageError as e:
+            except StorageError:
                 _inc_mail_failures(1)
             except Exception:
                 _inc_mail_failures(1)

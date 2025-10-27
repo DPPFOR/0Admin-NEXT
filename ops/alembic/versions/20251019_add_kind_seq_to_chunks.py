@@ -5,16 +5,15 @@ Revises: 20251019_inbox_parsed
 Create Date: 2025-10-19 13:45:00
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "20251019_add_kind_seq_to_chunks"
-down_revision: Union[str, None] = "20251019_inbox_parsed"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20251019_inbox_parsed"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 SCHEMA = "inbox_parsed"
 PARSED_ITEMS = "parsed_items"
@@ -47,7 +46,9 @@ def _ensure_parsed_items() -> None:
                 nullable=False,
                 server_default=sa.text("'[]'::jsonb"),
             ),
-            sa.Column("payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column(
+                "payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False
+            ),
             sa.Column("amount", sa.Text(), nullable=True),
             sa.Column("invoice_no", sa.Text(), nullable=True),
             sa.Column("due_date", sa.Date(), nullable=True),
@@ -89,7 +90,9 @@ def _ensure_chunks() -> None:
             sa.Column("parsed_item_id", sa.dialects.postgresql.UUID(as_uuid=False), nullable=False),
             sa.Column("seq", sa.Integer(), nullable=True),
             sa.Column("kind", sa.Text(), nullable=True),
-            sa.Column("payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column(
+                "payload", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False
+            ),
             sa.Column(
                 "created_at",
                 sa.TIMESTAMP(timezone=True),

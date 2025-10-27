@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator, ValidationError
+from jsonschema import Draft202012Validator
 
 from backend.mcp.server.adapters.detect.mime import DetectMimeAdapter
 
@@ -23,4 +23,3 @@ def test_detect_mime_positive():
 def test_detect_mime_negative():
     with pytest.raises(ValueError):
         DetectMimeAdapter.plan(paths=["../etc/passwd"], dry_run=True)
-

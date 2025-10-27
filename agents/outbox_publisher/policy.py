@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import datetime, timedelta
 
 from backend.core.config import settings
 
@@ -14,4 +13,3 @@ def backoff_seconds(attempt: int) -> int:
 
 def next_attempt_time(now: datetime, attempt: int) -> datetime:
     return now + timedelta(seconds=backoff_seconds(attempt))
-

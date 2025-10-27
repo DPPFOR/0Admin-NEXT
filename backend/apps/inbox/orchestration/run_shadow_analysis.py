@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from backend.mcp.server.observability import get_logger
 
 
 def _valid_relative_path(p: str) -> bool:
-    return isinstance(p, str) and p.startswith("artifacts/inbox/") and not p.startswith("/") and ".." not in p
+    return (
+        isinstance(p, str)
+        and p.startswith("artifacts/inbox/")
+        and not p.startswith("/")
+        and ".." not in p
+    )
 
 
 def run_shadow_analysis(
@@ -16,7 +20,7 @@ def run_shadow_analysis(
     trace_id: str,
     source_uri_or_path: str,
     content_sha256: str,
-    inbox_item_id: Optional[str] = None,
+    inbox_item_id: str | None = None,
 ) -> str:
     """Validate path, run local inbox flow deterministically and return artifact path.
 
@@ -49,6 +53,7 @@ def run_shadow_analysis(
     # Lazy import by file path to avoid package import side-effects
     import importlib.util as _iu
     import pathlib as _pl
+
     _p = _pl.Path(__file__).parent / "inbox_local_flow.py"
     _spec = _iu.spec_from_file_location("inbox_local_flow", str(_p))
     _mod = _iu.module_from_spec(_spec)  # type: ignore[arg-type]

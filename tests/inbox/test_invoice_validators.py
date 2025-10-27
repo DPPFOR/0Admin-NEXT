@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import importlib.util as _iu
 from datetime import date, timedelta
 from decimal import Decimal
-import importlib.util as _iu
 
 
 def _load_validators():
@@ -73,13 +73,19 @@ def test_validate_table_shape_rules():
 
 
 def test_confidence_and_quality_status_thresholds():
-    assert v.compute_confidence(
-        {"required_ok": True, "table_ok": True, "plausibility_ok": True, "source_ok": True}
-    ) == 100
+    assert (
+        v.compute_confidence(
+            {"required_ok": True, "table_ok": True, "plausibility_ok": True, "source_ok": True}
+        )
+        == 100
+    )
 
-    assert v.compute_confidence(
-        {"required_ok": True, "table_ok": False, "plausibility_ok": False, "source_ok": False}
-    ) == 40
+    assert (
+        v.compute_confidence(
+            {"required_ok": True, "table_ok": False, "plausibility_ok": False, "source_ok": False}
+        )
+        == 40
+    )
 
     assert v.decide_quality_status(True, 70) == "accepted"
     assert v.decide_quality_status(True, 69) == "needs_review"

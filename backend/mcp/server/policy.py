@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 try:
     import yaml  # type: ignore
@@ -33,11 +33,11 @@ class Policy:
     quotas: dict[str, Any]
 
 
-def _read_yaml(path: str) -> Optional[dict[str, Any]]:
+def _read_yaml(path: str) -> dict[str, Any] | None:
     if not path or not os.path.exists(path):
         return None
     try:
-        content = open(path, "r", encoding="utf-8").read()
+        content = open(path, encoding="utf-8").read()
     except FileNotFoundError:
         return None
     if not content.strip():
@@ -75,4 +75,3 @@ def load_policy(base_dir: str | None = None) -> Policy:
         allowed_tools=allowed_tools or DEFAULTS["allowed_tools"],
         quotas=quotas_parsed,
     )
-

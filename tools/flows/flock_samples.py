@@ -6,11 +6,11 @@ import json
 import time
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def _http_get(url: str, *, timeout: float = 5.0, retries: int = 1) -> Dict[str, Any]:
-    last_error: Optional[Exception] = None
+def _http_get(url: str, *, timeout: float = 5.0, retries: int = 1) -> dict[str, Any]:
+    last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url)
@@ -25,13 +25,13 @@ def _http_get(url: str, *, timeout: float = 5.0, retries: int = 1) -> Dict[str, 
     raise RuntimeError(last_error or "unexpected network failure")  # pragma: no cover
 
 
-def fetch_invoices(tenant: str, base_url: str = "http://localhost:8000") -> Dict[str, Any]:
+def fetch_invoices(tenant: str, base_url: str = "http://localhost:8000") -> dict[str, Any]:
     query = urllib.parse.urlencode({"tenant": tenant, "limit": 5, "offset": 0})
     url = f"{base_url.rstrip('/')}/inbox/read/invoices?{query}"
     return _http_get(url)
 
 
-def fetch_review_queue(tenant: str, base_url: str = "http://localhost:8000") -> Dict[str, Any]:
+def fetch_review_queue(tenant: str, base_url: str = "http://localhost:8000") -> dict[str, Any]:
     query = urllib.parse.urlencode({"tenant": tenant, "limit": 5, "offset": 0})
     url = f"{base_url.rstrip('/')}/inbox/read/review?{query}"
     return _http_get(url)

@@ -36,8 +36,10 @@ class Settings(BaseSettings):
     INGEST_TIMEOUT_CONNECT_MS: int = 2000
     INGEST_TIMEOUT_READ_MS: int = 5000
     INGEST_REDIRECT_LIMIT: int = 3
-    INGEST_URL_ALLOWLIST: str = ""  # CSV of allowed domains/suffixes; if set, only these are allowed
-    INGEST_URL_DENYLIST: str = ""   # CSV of denied domains/suffixes
+    INGEST_URL_ALLOWLIST: str = (
+        ""  # CSV of allowed domains/suffixes; if set, only these are allowed
+    )
+    INGEST_URL_DENYLIST: str = ""  # CSV of denied domains/suffixes
 
     # Worker / Parser settings
     WORKER_BATCH_SIZE: int = 50

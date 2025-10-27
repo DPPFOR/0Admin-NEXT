@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import importlib.util
-import sys
+from pathlib import Path
 
 
 def _load_flow_runner():

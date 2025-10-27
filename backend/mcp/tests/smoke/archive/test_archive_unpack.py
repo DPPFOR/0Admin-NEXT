@@ -23,4 +23,3 @@ def test_archive_unpack_positive():
 def test_archive_unpack_negative():
     with pytest.raises(ValueError):
         ArchiveUnpackAdapter.plan(path="/tmp/sample.zip", dry_run=True)
-

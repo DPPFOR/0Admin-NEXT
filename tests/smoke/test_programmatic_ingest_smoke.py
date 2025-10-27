@@ -1,20 +1,18 @@
-import io
 import json
 import os
 import uuid
 from pathlib import Path
 
 import pytest
+from alembic.config import Config as AlembicConfig
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
 from backend.app import create_app
-from backend.core.config import settings
 from backend.apps.inbox import ingest as ingest_module
-from alembic.config import Config as AlembicConfig
-from alembic.script import ScriptDirectory
-from alembic.runtime.migration import MigrationContext
-
+from backend.core.config import settings
 
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -51,7 +49,12 @@ def _assert_alembic_head(report: dict) -> None:
         context = MigrationContext.configure(conn)
         current = context.get_current_revision()
     ok = current in heads
-    report_step = {"name": "precheck_alembic_head", "current": current, "heads": list(heads), "status": "passed" if ok else "failed"}
+    report_step = {
+        "name": "precheck_alembic_head",
+        "current": current,
+        "heads": list(heads),
+        "status": "passed" if ok else "failed",
+    }
     report.setdefault("prechecks", []).append(report_step)
     if not ok:
         REPORT_PATH.write_text(json.dumps(report, indent=2))
@@ -80,10 +83,13 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     Path(base).mkdir(parents=True, exist_ok=True)
 
     # Monkeypatch DNS resolution to a public IP for example.com
-    monkeypatch.setattr(ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"])  # example.com IP
+    monkeypatch.setattr(
+        ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"]
+    )  # example.com IP
 
     # Monkeypatch fetch to avoid real network
     pdf_bytes = b"%PDF-1.4\nHello"
+
     def fake_fetch(url: str):
         return pdf_bytes, "sample.pdf", "application/pdf", 5.0
 
@@ -102,11 +108,20 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     j1 = r1.json()
     assert j1["status"] == "validated" and j1["duplicate"] is False
     inbox_id, content_hash = j1["id"], j1["content_hash"]
-    assert _db_count("SELECT COUNT(*) FROM inbox_items WHERE tenant_id=:t AND content_hash=:h", {"t": tenant_id, "h": content_hash}) == 1
-    assert _db_count(
-        "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND payload_json::json->>'inbox_item_id'=:i",
-        {"t": tenant_id, "i": inbox_id},
-    ) == 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM inbox_items WHERE tenant_id=:t AND content_hash=:h",
+            {"t": tenant_id, "h": content_hash},
+        )
+        == 1
+    )
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND payload_json::json->>'inbox_item_id'=:i",
+            {"t": tenant_id, "i": inbox_id},
+        )
+        == 1
+    )
     report["tests"].append({"name": "T-R1 Happy", "status": "passed"})
 
     # T-R2 Size Limit (set MAX_UPLOAD_MB=1 and return >1MB payload)
@@ -114,7 +129,9 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     try:
         settings.MAX_UPLOAD_MB = 1
         big = b"%PDF-1.4\n" + (b"0" * (2 * 1024 * 1024))
-        monkeypatch.setattr(ingest_module, "fetch_remote", lambda url: (big, "big.pdf", "application/pdf", 6.0))
+        monkeypatch.setattr(
+            ingest_module, "fetch_remote", lambda url: (big, "big.pdf", "application/pdf", 6.0)
+        )
         r2 = client.post(
             "/api/v1/inbox/items",
             headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id},
@@ -151,7 +168,9 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     report["tests"].append({"name": "T-R4 Redirect", "status": "passed"})
 
     # T-R5 Forbidden address (127.0.0.1)
-    monkeypatch.setattr(ingest_module, "_resolve_host_ips", lambda host: ["127.0.0.1"])  # private/loopback
+    monkeypatch.setattr(
+        ingest_module, "_resolve_host_ips", lambda host: ["127.0.0.1"]
+    )  # private/loopback
     r5 = client.post(
         "/api/v1/inbox/items",
         headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id},
@@ -161,27 +180,46 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     report["tests"].append({"name": "T-R5 Forbidden", "status": "passed"})
 
     # T-R6 Idempotency-Key
-    monkeypatch.setattr(ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"])  # restore public
+    monkeypatch.setattr(
+        ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"]
+    )  # restore public
     monkeypatch.setattr(ingest_module, "fetch_remote", fake_fetch)
     idem = "idem-xyz-1"
     r6a = client.post(
         "/api/v1/inbox/items",
-        headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id, "Idempotency-Key": idem},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant": tenant_id,
+            "Idempotency-Key": idem,
+        },
         json={"remote_url": "https://example.com/sample.pdf"},
     )
     r6b = client.post(
         "/api/v1/inbox/items",
-        headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id, "Idempotency-Key": idem},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant": tenant_id,
+            "Idempotency-Key": idem,
+        },
         json={"remote_url": "https://example.com/sample.pdf"},
     )
     assert r6a.status_code == 200 and r6b.status_code == 200
     j6a, j6b = r6a.json(), r6b.json()
     assert j6a["id"] == j6b["id"] and j6a["content_hash"] == j6b["content_hash"]
-    assert _db_count("SELECT COUNT(*) FROM inbox_items WHERE tenant_id=:t AND content_hash=:h", {"t": tenant_id, "h": j6a["content_hash"]}) == 1
-    assert _db_count(
-        "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND idempotency_key=:k",
-        {"t": tenant_id, "k": idem},
-    ) == 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM inbox_items WHERE tenant_id=:t AND content_hash=:h",
+            {"t": tenant_id, "h": j6a["content_hash"]},
+        )
+        == 1
+    )
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND idempotency_key=:k",
+            {"t": tenant_id, "k": idem},
+        )
+        == 1
+    )
     report["tests"].append({"name": "T-R6 Idem", "status": "passed"})
 
     # T-R7 MIME unsupported (random bytes)
@@ -219,7 +257,9 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
     )
     assert r10.status_code == 403 and r10.json()["detail"]["error"] == "forbidden_address"
     # IDNA/punycode domain (normalized)
-    monkeypatch.setattr(ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"])  # example.com-like
+    monkeypatch.setattr(
+        ingest_module, "_resolve_host_ips", lambda host: ["93.184.216.34"]
+    )  # example.com-like
     monkeypatch.setattr(ingest_module, "fetch_remote", fake_fetch)
     r11 = client.post(
         "/api/v1/inbox/items",
@@ -236,6 +276,7 @@ def test_programmatic_ingest_smoke(monkeypatch, caplog):
 
     # Metrics include fetch_duration_ms histogram
     from backend.core.observability.metrics import get_metrics
+
     m = get_metrics()
     assert "fetch_duration_ms" in m
 

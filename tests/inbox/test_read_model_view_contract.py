@@ -1,5 +1,7 @@
 """Contract tests für Inbox Read-Model-Views."""
+
 import os
+
 import pytest
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
@@ -22,6 +24,7 @@ except ImportError:  # Fallback für Umgebungen mit psycopg2
     def _connect(dsn: str):
         return psycopg.connect(dsn)
 
+
 from backend.core.config import settings
 
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL") or settings.database_url
@@ -43,27 +46,29 @@ def test_v_inbox_by_tenant_columns():
         "others",
         "avg_confidence",
     }
-    
+
     try:
         conn = _connect(_dsn())
     except PsyError as exc:
         pytest.skip(f"database connection not available: {exc}")
     try:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_schema = 'inbox_parsed' 
             AND table_name = 'v_inbox_by_tenant'
             ORDER BY column_name
-        """)
+        """
+        )
         actual_columns = {row[0] for row in cur.fetchall()}
         cur.close()
-        
+
         # Check that all expected columns exist
         missing = expected_columns - actual_columns
         assert not missing, f"Missing columns in v_inbox_by_tenant: {missing}"
-        
+
     finally:
         conn.close()
 
@@ -78,26 +83,28 @@ def test_v_invoices_latest_columns():
         "amount",
         "invoice_no",
     }
-    
+
     try:
         conn = _connect(_dsn())
     except PsyError as exc:
         pytest.skip(f"database connection not available: {exc}")
     try:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_schema = 'inbox_parsed' 
             AND table_name = 'v_invoices_latest'
             ORDER BY column_name
-        """)
+        """
+        )
         actual_columns = {row[0] for row in cur.fetchall()}
         cur.close()
-        
+
         # Check that all expected columns exist
         missing = expected_columns - actual_columns
         assert not missing, f"Missing columns in v_invoices_latest: {missing}"
-        
+
     finally:
         conn.close()

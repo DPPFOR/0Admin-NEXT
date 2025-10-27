@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -19,13 +19,18 @@ TENANT = "22222222-2222-2222-2222-222222222222"
 class DummyInvoiceClient:
     def __init__(self, *, base_url=None):
         self.base_url = base_url
-        self.invocation: Dict[str, Any] = {}
+        self.invocation: dict[str, Any] = {}
 
     def get_invoices(self, tenant_id, **params):
         self.invocation["invoices"] = (tenant_id, params)
         return {
             "items": [
-                {"id": "acc-1", "tenant_id": tenant_id, "confidence": 0.95, "quality_status": "accepted"},
+                {
+                    "id": "acc-1",
+                    "tenant_id": tenant_id,
+                    "confidence": 0.95,
+                    "quality_status": "accepted",
+                },
             ],
             "total": 1,
             "limit": params.get("limit", 50),
@@ -36,9 +41,27 @@ class DummyInvoiceClient:
         self.invocation["review"] = (tenant_id, params)
         return {
             "items": [
-                {"id": "rev-1", "tenant_id": tenant_id, "confidence": 0.42, "doc_type": "invoice", "quality_status": "needs_review"},
-                {"id": "rev-2", "tenant_id": tenant_id, "confidence": 0.12, "doc_type": "other", "quality_status": "rejected"},
-                {"id": "rev-3", "tenant_id": tenant_id, "confidence": 0.66, "doc_type": "invoice", "quality_status": "needs_review"},
+                {
+                    "id": "rev-1",
+                    "tenant_id": tenant_id,
+                    "confidence": 0.42,
+                    "doc_type": "invoice",
+                    "quality_status": "needs_review",
+                },
+                {
+                    "id": "rev-2",
+                    "tenant_id": tenant_id,
+                    "confidence": 0.12,
+                    "doc_type": "other",
+                    "quality_status": "rejected",
+                },
+                {
+                    "id": "rev-3",
+                    "tenant_id": tenant_id,
+                    "confidence": 0.66,
+                    "doc_type": "invoice",
+                    "quality_status": "needs_review",
+                },
             ],
             "total": 3,
             "limit": params.get("limit", 50),
@@ -46,9 +69,13 @@ class DummyInvoiceClient:
         }
 
 
-def test_invoice_triage_happy_path(monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]) -> None:
+def test_invoice_triage_happy_path(
+    monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
     dummy = DummyInvoiceClient()
-    monkeypatch.setattr("tools.flock.playbook_invoice_triage.FlockReadClient", lambda base_url=None: dummy)
+    monkeypatch.setattr(
+        "tools.flock.playbook_invoice_triage.FlockReadClient", lambda base_url=None: dummy
+    )
 
     exit_code = playbook_invoice_triage.main(["--tenant", TENANT, "--base-url", "http://api.local"])
     captured = capfd.readouterr()
@@ -63,7 +90,9 @@ def test_invoice_triage_happy_path(monkeypatch: pytest.MonkeyPatch, capfd: pytes
     assert params["min_conf"] == 80
 
 
-def test_invoice_triage_handles_client_error(monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]) -> None:
+def test_invoice_triage_handles_client_error(
+    monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
     class FailingClient:
         def __init__(self, *, base_url=None):
             pass
@@ -89,7 +118,12 @@ class DummyPaymentClient:
     def get_payments(self, tenant_id, **params):
         return {
             "items": [
-                {"id": "pay-1", "tenant_id": tenant_id, "amount": 100, "payment_date": "2025-01-15"},
+                {
+                    "id": "pay-1",
+                    "tenant_id": tenant_id,
+                    "amount": 100,
+                    "payment_date": "2025-01-15",
+                },
                 {"id": "pay-2", "tenant_id": tenant_id, "amount": 50, "payment_date": "2025-01-05"},
                 {"id": "pay-3", "tenant_id": tenant_id, "amount": 75, "payment_date": "2025-02-01"},
             ],
@@ -102,9 +136,13 @@ class DummyPaymentClient:
         return {"tenant_id": tenant_id, "avg_confidence": 0.85, "cnt_needing_review": 2}
 
 
-def test_payment_recap_prints_totals(monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]) -> None:
+def test_payment_recap_prints_totals(
+    monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
     dummy = DummyPaymentClient()
-    monkeypatch.setattr("tools.flock.playbook_payment_recap.FlockReadClient", lambda base_url=None: dummy)
+    monkeypatch.setattr(
+        "tools.flock.playbook_payment_recap.FlockReadClient", lambda base_url=None: dummy
+    )
 
     exit_code = playbook_payment_recap.main(["--tenant", TENANT])
     captured = capfd.readouterr()

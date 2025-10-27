@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Set, Tuple, Literal
+from typing import Literal
 
 from backend.core.config import settings
-
 
 Reason = Literal["missing", "malformed", "unknown", "ok"]
 
 
-UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 @dataclass
@@ -33,9 +33,9 @@ class TenantAllowlistLoader:
 
     def __init__(self) -> None:
         self._source: str = "env"
-        self._path: Optional[Path] = None
-        self._allow: Set[str] = set()
-        self._mtime: Optional[float] = None
+        self._path: Path | None = None
+        self._allow: set[str] = set()
+        self._mtime: float | None = None
         self._last_load: float = 0.0
         self._refresh_sec: int = int(getattr(settings, "TENANT_ALLOWLIST_REFRESH_SEC", 0) or 0)
         self._init_from_env_or_file()
@@ -50,7 +50,7 @@ class TenantAllowlistLoader:
             self._path = None
         self._load()
 
-    def _read_file_allowlist(self) -> Set[str]:
+    def _read_file_allowlist(self) -> set[str]:
         if not self._path or not self._path.exists():
             return set()
         text = self._path.read_text(encoding="utf-8")
@@ -66,7 +66,7 @@ class TenantAllowlistLoader:
         # Naive YAML: match UUID-like tokens
         return set(UUID_RE.findall(text))
 
-    def _read_env_allowlist(self) -> Set[str]:
+    def _read_env_allowlist(self) -> set[str]:
         raw = (getattr(settings, "TENANT_ALLOWLIST", "") or "").strip()
         if not raw:
             return set()
@@ -95,7 +95,7 @@ class TenantAllowlistLoader:
             # Always reload env on interval
             self._load()
 
-    def validate(self, uuid_str: Optional[str]) -> TenantValidationResult:
+    def validate(self, uuid_str: str | None) -> TenantValidationResult:
         self.maybe_reload()
         if not uuid_str:
             return TenantValidationResult(ok=False, reason="missing")
@@ -109,7 +109,7 @@ class TenantAllowlistLoader:
             return TenantValidationResult(ok=False, reason="unknown")
         return TenantValidationResult(ok=True, reason="ok")
 
-    def info(self) -> Tuple[str, str, int, Set[str]]:
+    def info(self) -> tuple[str, str, int, set[str]]:
         """Return (source, version, count, allowlist). Version is 'env' or mtime string."""
         self.maybe_reload()
         if self._source == "file":
@@ -123,6 +123,5 @@ class TenantAllowlistLoader:
 loader = TenantAllowlistLoader()
 
 
-def validate_tenant(uuid_str: Optional[str]) -> TenantValidationResult:
+def validate_tenant(uuid_str: str | None) -> TenantValidationResult:
     return loader.validate(uuid_str)
-

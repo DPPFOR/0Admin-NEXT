@@ -1,16 +1,14 @@
 from __future__ import annotations
 
+import importlib.util as _iu
 import json
 from datetime import date
 from decimal import Decimal
-import importlib.util as _iu
 from pathlib import Path
 
 
 def _load_worker():
-    spec = _iu.spec_from_file_location(
-        "worker", "backend/apps/inbox/importer/worker.py"
-    )
+    spec = _iu.spec_from_file_location("worker", "backend/apps/inbox/importer/worker.py")
     mod = _iu.module_from_spec(spec)  # type: ignore[arg-type]
     assert spec and spec.loader
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
@@ -20,7 +18,7 @@ def _load_worker():
 def test_importer_idempotent_skip(monkeypatch):
     mod = _load_worker()
     artifact_path = "artifacts/inbox_local/samples/sample_result.json"
-    data = json.loads(open(artifact_path, "r", encoding="utf-8").read())
+    data = json.loads(open(artifact_path, encoding="utf-8").read())
     tenant_id = data["tenant_id"]
 
     def fake(engine, item, chunks, *, upsert, replace_chunks):
@@ -28,14 +26,16 @@ def test_importer_idempotent_skip(monkeypatch):
         return "pid-1", "skip", 0
 
     monkeypatch.setattr(mod, "_upsert_parsed_item_with_chunks", fake)
-    res = mod.run_importer(tenant_id=tenant_id, artifact_path=artifact_path, upsert=False, engine=object())
+    res = mod.run_importer(
+        tenant_id=tenant_id, artifact_path=artifact_path, upsert=False, engine=object()
+    )
     assert res == "pid-1"
 
 
 def test_importer_idempotent_insert(monkeypatch):
     mod = _load_worker()
     artifact_path = "artifacts/inbox_local/samples/sample_result.json"
-    data = json.loads(open(artifact_path, "r", encoding="utf-8").read())
+    data = json.loads(open(artifact_path, encoding="utf-8").read())
     tenant_id = data["tenant_id"]
 
     def fake(engine, item, chunks, *, upsert, replace_chunks):
@@ -43,7 +43,9 @@ def test_importer_idempotent_insert(monkeypatch):
         return "pid-new", "insert", len(chunks)
 
     monkeypatch.setattr(mod, "_upsert_parsed_item_with_chunks", fake)
-    res = mod.run_importer(tenant_id=tenant_id, artifact_path=artifact_path, upsert=True, engine=object())
+    res = mod.run_importer(
+        tenant_id=tenant_id, artifact_path=artifact_path, upsert=True, engine=object()
+    )
     assert res == "pid-new"
 
 

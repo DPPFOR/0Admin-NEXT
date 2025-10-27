@@ -1,35 +1,43 @@
 from __future__ import annotations
 
-import json
-import time
-from datetime import datetime, timezone
-from typing import Optional, Tuple
-from uuid import uuid4
-
 import signal
 import threading
+import time
 import time as _time
-from sqlalchemy import Table, Column, String, Text, DateTime, Integer, select, update, insert
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
+from datetime import UTC, datetime
+from uuid import uuid4
 
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    insert,
+    select,
+    update,
+)
+from sqlalchemy.engine import Engine
+
+from agents.outbox_publisher.policy import next_attempt_time
+from agents.outbox_publisher.transports import StdoutTransport, WebhookTransport
 from backend.core.config import settings
 from backend.core.observability.logging import logger
 from backend.core.observability.metrics import (
     increment_publisher_attempts,
-    increment_publisher_sent,
     increment_publisher_failures,
-    record_publisher_lag,
+    increment_publisher_sent,
+    increment_tenant_unknown_dropped,
     record_publish_duration,
+    record_publisher_lag,
 )
-from agents.outbox_publisher.policy import next_attempt_time
-from agents.outbox_publisher.transports import StdoutTransport, WebhookTransport
 from backend.core.tenant.validator import validate_tenant
-from backend.core.observability.metrics import increment_tenant_unknown_dropped
 
 
-def tables(metadata: MetaData) -> Tuple[Table, Table]:
+def tables(metadata: MetaData) -> tuple[Table, Table]:
     event_outbox = Table(
         "event_outbox",
         metadata,
@@ -66,7 +74,7 @@ def get_transport():
     return StdoutTransport()
 
 
-def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) -> int:
+def run_once(engine: Engine | None = None, batch_size: int | None = None) -> int:
     """Publish up to batch_size pending outbox events.
 
     Returns number of events processed (sent, failed, or retried)."""
@@ -74,7 +82,7 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
     metadata = MetaData()
     event_outbox, dead_letters = tables(metadata)
     limit = batch_size or settings.PUBLISH_BATCH_SIZE
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     transport = get_transport()
 
@@ -92,7 +100,9 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                 event_outbox.c.created_at,
             )
             .where((event_outbox.c.status == "pending") | (event_outbox.c.status.is_(None)))
-            .where((event_outbox.c.next_attempt_at.is_(None)) | (event_outbox.c.next_attempt_at <= now))
+            .where(
+                (event_outbox.c.next_attempt_at.is_(None)) | (event_outbox.c.next_attempt_at <= now)
+            )
             .order_by(event_outbox.c.created_at)
             .limit(limit)
         ).fetchall()
@@ -136,20 +146,40 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                             created_at=now,
                         )
                     )
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="failed")
+                    )
                 try:
                     increment_tenant_unknown_dropped()
                 except Exception:
                     pass
                 processed += 1
                 continue
-            res = transport.publish(row.tenant_id, row.event_type, row.payload_json or "{}", row.trace_id)
+            res = transport.publish(
+                row.tenant_id, row.event_type, row.payload_json or "{}", row.trace_id
+            )
             ok = bool(res.ok)
             with engine.begin() as conn:
                 if ok:
-                    conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="sent"))
+                    conn.execute(
+                        update(event_outbox)
+                        .where(event_outbox.c.id == row.id)
+                        .values(status="sent")
+                    )
                     increment_publisher_sent()
-                    logger.info("published", extra={"tenant_id": row.tenant_id, "event_type": row.event_type, "attempt": (row.attempt_count or 0) + 1, "transport": transport.name, "status": "sent", "duration_ms": (time.time() - t0) * 1000.0})
+                    logger.info(
+                        "published",
+                        extra={
+                            "tenant_id": row.tenant_id,
+                            "event_type": row.event_type,
+                            "attempt": (row.attempt_count or 0) + 1,
+                            "transport": transport.name,
+                            "status": "sent",
+                            "duration_ms": (time.time() - t0) * 1000.0,
+                        },
+                    )
                 else:
                     # Handle failure
                     attempts = (row.attempt_count or 0) + 1
@@ -165,7 +195,11 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                                 created_at=now,
                             )
                         )
-                        conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                        conn.execute(
+                            update(event_outbox)
+                            .where(event_outbox.c.id == row.id)
+                            .values(status="failed")
+                        )
                         increment_publisher_failures()
                     else:
                         if attempts >= settings.PUBLISH_RETRY_MAX:
@@ -179,16 +213,32 @@ def run_once(engine: Optional[Engine] = None, batch_size: Optional[int] = None) 
                                     created_at=now,
                                 )
                             )
-                            conn.execute(update(event_outbox).where(event_outbox.c.id == row.id).values(status="failed"))
+                            conn.execute(
+                                update(event_outbox)
+                                .where(event_outbox.c.id == row.id)
+                                .values(status="failed")
+                            )
                             increment_publisher_failures()
                         else:
                             na = next_attempt_time(now, attempts)
                             conn.execute(
                                 update(event_outbox)
                                 .where(event_outbox.c.id == row.id)
-                                .values(status="pending", attempt_count=attempts, next_attempt_at=na)
+                                .values(
+                                    status="pending", attempt_count=attempts, next_attempt_at=na
+                                )
                             )
-                    logger.info("publish_failed" if not ok else "published", extra={"tenant_id": row.tenant_id, "event_type": row.event_type, "attempt": (row.attempt_count or 0) + 1, "transport": transport.name, "status": "sent" if ok else "failed", "duration_ms": (time.time() - t0) * 1000.0})
+                    logger.info(
+                        "publish_failed" if not ok else "published",
+                        extra={
+                            "tenant_id": row.tenant_id,
+                            "event_type": row.event_type,
+                            "attempt": (row.attempt_count or 0) + 1,
+                            "transport": transport.name,
+                            "status": "sent" if ok else "failed",
+                            "duration_ms": (time.time() - t0) * 1000.0,
+                        },
+                    )
             processed += 1
         except Exception:
             processed += 1
@@ -223,7 +273,9 @@ def run_forever(service_mode: bool = True) -> int:
 
     # Fatal config validation
     if settings.PUBLISH_TRANSPORT == "webhook" and not settings.WEBHOOK_URL:
-        logger.error("publisher_config_error", extra={"reason": "WEBHOOK_URL missing for webhook transport"})
+        logger.error(
+            "publisher_config_error", extra={"reason": "WEBHOOK_URL missing for webhook transport"}
+        )
         return 1
 
     poll_ms = max(0, int(getattr(settings, "PUBLISH_POLL_INTERVAL_MS", 1000)))

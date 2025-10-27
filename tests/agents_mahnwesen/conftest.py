@@ -1,14 +1,15 @@
 """Test configuration and fixtures for Mahnwesen agents."""
 
-import pytest
-import tempfile
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+
 from agents.mahnwesen.config import DunningConfig
+from agents.mahnwesen.dto import DunningChannel, DunningNotice, DunningStage
 from agents.mahnwesen.playbooks import TemplateEngine
-from agents.mahnwesen.dto import DunningNotice, DunningStage, DunningChannel
-from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -16,46 +17,47 @@ def temp_template_dir(tmp_path):
     """Create isolated template directory for tests."""
     template_dir = tmp_path / "templates"
     template_dir.mkdir()
-    
+
     # Copy default templates to temp directory
     default_templates = Path("agents/mahnwesen/templates/default")
     if default_templates.exists():
         shutil.copytree(default_templates, template_dir / "default")
-    
+
     return template_dir
 
 
 @pytest.fixture
 def isolated_template_engine(temp_template_dir):
     """Create template engine with isolated template directory."""
+
     def _create_engine(config):
         # Patch the FileSystemLoader to use temp directory
-        with patch('agents.mahnwesen.playbooks.FileSystemLoader') as mock_loader:
+        with patch("agents.mahnwesen.playbooks.FileSystemLoader") as mock_loader:
             mock_loader.return_value = None
-            
+
             # Create engine with patched loader
             engine = TemplateEngine(config)
-            
+
             # Manually set up the environment with temp directory
             from jinja2 import Environment, FileSystemLoader
+
             engine.env = Environment(
-                loader=FileSystemLoader([
-                    str(temp_template_dir / config.tenant_id),
-                    str(temp_template_dir / "default")
-                ]),
+                loader=FileSystemLoader(
+                    [str(temp_template_dir / config.tenant_id), str(temp_template_dir / "default")]
+                ),
                 undefined=engine.env.undefined,
                 autoescape=engine.env.autoescape,
                 trim_blocks=engine.env.trim_blocks,
                 lstrip_blocks=engine.env.lstrip_blocks,
-                cache_size=0
+                cache_size=0,
             )
-            
+
             # Copy filters and globals
             engine.env.filters = engine.env.filters
             engine.env.globals = engine.env.globals
-            
+
             return engine
-    
+
     return _create_engine
 
 
@@ -66,7 +68,7 @@ def test_config():
         tenant_id="test-tenant",
         company_name="Test Company",
         company_address="Test Street 123, 12345 Test City",
-        support_email="support@test.com"
+        support_email="support@test.com",
     )
 
 
@@ -76,7 +78,7 @@ def test_config_no_company():
     return DunningConfig(
         tenant_id="test-tenant",
         company_address="Test Street 123, 12345 Test City",
-        support_email="support@test.com"
+        support_email="support@test.com",
     )
 
 
@@ -94,7 +96,7 @@ def sample_notice():
         total_amount_cents=5000,
         customer_name="Test Customer",
         invoice_number="INV-001",
-        due_date=datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
+        due_date=datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC),
         recipient_email="customer@example.com",
-        recipient_name="Test Customer"
+        recipient_name="Test Customer",
     )

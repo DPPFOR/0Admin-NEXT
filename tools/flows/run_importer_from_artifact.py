@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util as _iu
 import os
 import sys
-import importlib.util as _iu
 from pathlib import Path as _Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))

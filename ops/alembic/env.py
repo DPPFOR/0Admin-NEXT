@@ -1,9 +1,10 @@
 import os
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool, text
-from alembic import context
 import sys
+from logging.config import fileConfig
 from pathlib import Path
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -13,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 config = context.config
 
 # Set sqlalchemy.url from environment variable if not already set
-if 'DATABASE_URL' in os.environ and not config.get_section_option('alembic', 'sqlalchemy.url'):
-    config.set_section_option('alembic', 'sqlalchemy.url', os.environ['DATABASE_URL'])
+if "DATABASE_URL" in os.environ and not config.get_section_option("alembic", "sqlalchemy.url"):
+    config.set_section_option("alembic", "sqlalchemy.url", os.environ["DATABASE_URL"])
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -95,7 +96,7 @@ def run_migrations_online() -> None:
             version_table_schema=version_table_schema,
             include_schemas=True,
             compare_type=True,
-            naming_convention=naming_convention
+            naming_convention=naming_convention,
         )
 
         with context.begin_transaction():

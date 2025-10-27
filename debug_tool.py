@@ -11,6 +11,7 @@ from backend.mcp_server.config import ServerConfig
 from backend.mcp_server.policy import load_policy
 from backend.mcp_server.registry import execute_tool
 
+
 def main():
     workspace = Path.cwd()
     config = ServerConfig.load(base_dir=workspace)
@@ -31,15 +32,18 @@ def main():
                 "path": "artifacts/tests/mcp/sample_invoice.pdf",  # relative path as in test
             },
             config=config,
-            policy=policy
+            policy=policy,
         )
         print("SUCCESS:")
         import json
+
         print(json.dumps(result, indent=2))
     except Exception as e:
         print("ERROR:", e)
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

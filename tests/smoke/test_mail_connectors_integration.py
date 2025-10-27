@@ -1,13 +1,17 @@
 import os
 import uuid
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-from backend.core.config import settings
-from backend.apps.inbox.mail.connectors import ImapConnector, GraphConnector, MailMessage, MailAttachment
+from backend.apps.inbox.mail.connectors import (
+    GraphConnector,
+    ImapConnector,
+    MailAttachment,
+    MailMessage,
+)
 from backend.apps.inbox.mail.ingest import process_mailbox
+from backend.core.config import settings
 
 
 class SimAttachment:
@@ -42,6 +46,7 @@ class SimGraph(GraphConnector):
         self.calls += 1
         return self._messages[:limit]
 
+
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 pytestmark = pytest.mark.skipif(
     not RUN_DB_TESTS,
@@ -64,7 +69,15 @@ def test_mail_connectors_integration(tmp_path, monkeypatch):
     big = b"%PDF-1.4\n" + (b"0" * (2 * 1024 * 1024))
 
     # T-C1 IMAP Happy (2 attachments)
-    imap_msgs = [SimMessage("m1", [SimAttachment(pdf, "application/pdf", "a.pdf"), SimAttachment(png, "image/png", "b.png")])]
+    imap_msgs = [
+        SimMessage(
+            "m1",
+            [
+                SimAttachment(pdf, "application/pdf", "a.pdf"),
+                SimAttachment(png, "image/png", "b.png"),
+            ],
+        )
+    ]
     res1 = process_mailbox(tenant, "INBOX", connector=SimImap(imap_msgs))
     assert res1["processed"] == 2 and res1["duplicates"] == 0
 
@@ -79,7 +92,15 @@ def test_mail_connectors_integration(tmp_path, monkeypatch):
 
     # T-C4 Graph Happy (1 PDF + 1 CSV)
     csv = b"a,b\n1,2\n"
-    graph_msgs = [SimMessage("g1", [SimAttachment(pdf, "application/pdf", "a.pdf"), SimAttachment(csv, "text/csv", "c.csv")])]
+    graph_msgs = [
+        SimMessage(
+            "g1",
+            [
+                SimAttachment(pdf, "application/pdf", "a.pdf"),
+                SimAttachment(csv, "text/csv", "c.csv"),
+            ],
+        )
+    ]
     res4 = process_mailbox(tenant, "INBOX", connector=SimGraph(graph_msgs))
     assert res4["processed"] >= 1
 
@@ -87,21 +108,49 @@ def test_mail_connectors_integration(tmp_path, monkeypatch):
     old = settings.MAX_UPLOAD_MB
     try:
         settings.MAX_UPLOAD_MB = 1
-        res6 = process_mailbox(tenant, "INBOX", connector=SimImap([SimMessage("m3", [SimAttachment(big, "application/pdf", "big.pdf")])]))
+        res6 = process_mailbox(
+            tenant,
+            "INBOX",
+            connector=SimImap(
+                [SimMessage("m3", [SimAttachment(big, "application/pdf", "big.pdf")])]
+            ),
+        )
         assert res6["processed"] == 0
     finally:
         settings.MAX_UPLOAD_MB = old
 
     # T-C8 Idempotenz-Key: same message id + same hash is no-op on second run
-    res8a = process_mailbox(tenant, "INBOX", connector=SimImap([SimMessage("m4", [SimAttachment(pdf, "application/pdf", "x.pdf")])]))
-    res8b = process_mailbox(tenant, "INBOX", connector=SimImap([SimMessage("m4", [SimAttachment(pdf, "application/pdf", "x.pdf")])]))
+    res8a = process_mailbox(
+        tenant,
+        "INBOX",
+        connector=SimImap([SimMessage("m4", [SimAttachment(pdf, "application/pdf", "x.pdf")])]),
+    )
+    res8b = process_mailbox(
+        tenant,
+        "INBOX",
+        connector=SimImap([SimMessage("m4", [SimAttachment(pdf, "application/pdf", "x.pdf")])]),
+    )
     assert res8a["processed"] >= 1 and res8b["duplicates"] >= 1
 
     # T-C9 Throttling: enforce MAIL_MAX_BYTES_PER_RUN small
     old_cap = settings.MAIL_MAX_BYTES_PER_RUN
     try:
         settings.MAIL_MAX_BYTES_PER_RUN = 16
-        res9 = process_mailbox(tenant, "INBOX", connector=SimImap([SimMessage("m5", [SimAttachment(pdf, "application/pdf", "a.pdf"), SimAttachment(pdf, "application/pdf", "b.pdf")])]))
+        res9 = process_mailbox(
+            tenant,
+            "INBOX",
+            connector=SimImap(
+                [
+                    SimMessage(
+                        "m5",
+                        [
+                            SimAttachment(pdf, "application/pdf", "a.pdf"),
+                            SimAttachment(pdf, "application/pdf", "b.pdf"),
+                        ],
+                    )
+                ]
+            ),
+        )
         assert res9["processed"] >= 1 and res9["deferred"] >= 1
         # Metric presence: mail_deferred_total counter increased
         from backend.core.observability.metrics import get_metrics

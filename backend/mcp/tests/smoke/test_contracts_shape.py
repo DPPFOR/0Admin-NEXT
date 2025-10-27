@@ -3,9 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from jsonschema import Draft202012Validator
-
 
 SCHEMA_URL = "https://json-schema.org/draft/2020-12/schema"
 ALLOWED_ERRORS = {"VALIDATION", "NOT_FOUND", "UPSTREAM", "POLICY_DENIED", "RETRYABLE_IO"}
@@ -28,7 +26,9 @@ def test_all_contracts_schemas_and_changelogs_present():
                 continue
             version = ver_dir.name
             # semver strict
-            assert version.count(".") == 2 and all(part.isdigit() for part in version.split(".")), f"bad semver: {version}"
+            assert version.count(".") == 2 and all(
+                part.isdigit() for part in version.split(".")
+            ), f"bad semver: {version}"
             input_p = ver_dir / "input.json"
             output_p = ver_dir / "output.json"
             errors_p = ver_dir / "errors.json"
@@ -48,6 +48,7 @@ def test_all_contracts_schemas_and_changelogs_present():
             found += 1
     # Ensure at least the registry-declared tools are present
     from backend.mcp.server import registry
+
     reg_ids = {t["id"] for t in registry.list_tools()}
     disk_ids = {p.name for p in base.iterdir() if p.is_dir()}
     assert reg_ids.issubset(disk_ids)
@@ -90,7 +91,7 @@ def test_specific_field_rules():
 
             # QA selection whitelist
             if tool_dir.name == "qa.run_smoke":
-                expected = ["upload","programmatic","worker","mail","read_ops","publisher"]
+                expected = ["upload", "programmatic", "worker", "mail", "read_ops", "publisher"]
                 got = input_s.get("properties", {}).get("selection", {}).get("enum")
                 assert got == expected
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID
 
 from mcp import types
@@ -79,15 +79,15 @@ class PdfTableExtractInput(TenantContext):
 class ExtractedTable(BaseModel):
     index: int
     row_count: int
-    headers: List[str]
-    rows: List[List[str]]
+    headers: list[str]
+    rows: list[list[str]]
 
 
 class PdfTableExtractOutput(BaseModel):
     tenant_id: UUID
     trace_id: str
     source_path: str
-    tables: List[ExtractedTable]
+    tables: list[ExtractedTable]
     artifact_path: str
 
 
@@ -108,7 +108,7 @@ class SecurityPIIRedactOutput(BaseModel):
     trace_id: str
     policy: str
     redacted_text: str
-    detections: List[Detection]
+    detections: list[Detection]
     artifact_path: str
 
 
@@ -148,17 +148,24 @@ def _extract_pdf_text(source: Path) -> str:
     return re.sub(r"\s+", " ", printable).strip()
 
 
-def _persist_artifact(config: ServerConfig, tool: str, tenant_id: str, trace_id: str, suffix: str, data: dict) -> Path:
-    base = config.ensure_artifact_directory() / tool / _safe_component(tenant_id) / _safe_component(trace_id)
+def _persist_artifact(
+    config: ServerConfig, tool: str, tenant_id: str, trace_id: str, suffix: str, data: dict
+) -> Path:
+    base = (
+        config.ensure_artifact_directory()
+        / tool
+        / _safe_component(tenant_id)
+        / _safe_component(trace_id)
+    )
     base.mkdir(parents=True, exist_ok=True)
     target = base / suffix
     target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return target
 
 
-def _extract_tables_from_text(text: str) -> List[List[List[str]]]:
-    tables: List[List[List[str]]] = []
-    current: List[List[str]] = []
+def _extract_tables_from_text(text: str) -> list[list[list[str]]]:
+    tables: list[list[list[str]]] = []
+    current: list[list[str]] = []
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped:
@@ -182,8 +189,8 @@ EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_RE = re.compile(r"\b\+?[0-9][0-9\s\-]{6,}[0-9]\b")
 
 
-def _redact_text(text: str) -> Tuple[str, List[Detection]]:
-    detections: List[Detection] = []
+def _redact_text(text: str) -> tuple[str, list[Detection]]:
+    detections: list[Detection] = []
 
     def email_repl(match: re.Match[str]) -> str:
         detections.append(
@@ -246,7 +253,7 @@ def _pdf_table_handler(payload: dict, config: ServerConfig, policy: Policy) -> d
     source = ensure_path_allowed(path=Path(args.path), policy=policy)
     text = _extract_pdf_text(source)
     tables_raw = _extract_tables_from_text(text)
-    tables: List[ExtractedTable] = []
+    tables: list[ExtractedTable] = []
     for index, table_rows in enumerate(tables_raw):
         if not table_rows:
             continue
@@ -304,7 +311,7 @@ def _security_pii_handler(payload: dict, config: ServerConfig, policy: Policy) -
     return SecurityPIIRedactOutput.model_validate(data).model_dump(mode="json")
 
 
-REGISTRY: Dict[str, ToolDefinition] = {
+REGISTRY: dict[str, ToolDefinition] = {
     "pdf_text_extract": ToolDefinition(
         name="pdf_text_extract",
         description="Extract plain text from a PDF using local tooling (no OCR).",
@@ -329,9 +336,9 @@ REGISTRY: Dict[str, ToolDefinition] = {
 }
 
 
-def list_tools() -> List[types.Tool]:
+def list_tools() -> list[types.Tool]:
     """Return tool definitions as MCP protocol objects."""
-    tools: List[types.Tool] = []
+    tools: list[types.Tool] = []
     for tool in REGISTRY.values():
         tools.append(
             types.Tool(

@@ -2,4 +2,3 @@
 
 No network/subprocess. Uses existing DB infra via SQLAlchemy.
 """
-

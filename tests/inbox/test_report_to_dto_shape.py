@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import importlib.util
 
 import pytest
 
-import importlib.util
-
 
 def _load_mapping():
-    spec_dto = importlib.util.spec_from_file_location(
-        "dto", "backend/apps/inbox/mapping/dto.py"
-    )
+    spec_dto = importlib.util.spec_from_file_location("dto", "backend/apps/inbox/mapping/dto.py")
     dto_mod = importlib.util.module_from_spec(spec_dto)
     assert spec_dto and spec_dto.loader
     import sys as _sys
+
     _sys.modules[spec_dto.name] = dto_mod  # ensure visible to dataclasses
     spec_dto.loader.exec_module(dto_mod)  # type: ignore[union-attr]
 

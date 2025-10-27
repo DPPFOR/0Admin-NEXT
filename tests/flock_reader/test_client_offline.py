@@ -4,7 +4,7 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from urllib import error as urlerror
 from urllib import parse as urlparse
 
@@ -51,7 +51,7 @@ def _make_http_error(url: str, status: int, payload: str) -> urlerror.HTTPError:
 
 
 def test_get_invoices_builds_query_and_headers(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def fake_urlopen(request, timeout=None):
         captured["url"] = request.full_url

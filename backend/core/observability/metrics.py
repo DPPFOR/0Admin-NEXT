@@ -1,7 +1,8 @@
 """In-process metrics counters and histograms."""
+
 import time
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Any
 
 from backend.core.config import settings
 
@@ -15,7 +16,7 @@ def init_metrics() -> None:
         return
 
 
-def increment_counter(name: str, labels: Dict[str, str] = None, value: float = 1.0) -> None:
+def increment_counter(name: str, labels: dict[str, str] = None, value: float = 1.0) -> None:
     """Increment a counter metric."""
     if not settings.enable_metrics:
         return
@@ -27,7 +28,7 @@ def increment_counter(name: str, labels: Dict[str, str] = None, value: float = 1
     _metrics[key]["count"] += value
 
 
-def record_histogram(name: str, value: float, labels: Dict[str, str] = None) -> None:
+def record_histogram(name: str, value: float, labels: dict[str, str] = None) -> None:
     """Record a histogram measurement."""
     if not settings.enable_metrics:
         return
@@ -56,13 +57,13 @@ def record_histogram(name: str, value: float, labels: Dict[str, str] = None) -> 
         metrics["buckets"][">=1000.0"] += 1
 
 
-def observe_duration(start_time: float, name: str, labels: Dict[str, str] = None) -> None:
+def observe_duration(start_time: float, name: str, labels: dict[str, str] = None) -> None:
     """Observe a duration measurement."""
     duration_ms = (time.time() - start_time) * 1000
     record_histogram(name, duration_ms, labels)
 
 
-def get_metrics() -> Dict[str, Any]:
+def get_metrics() -> dict[str, Any]:
     """Get current metrics snapshot."""
     if not settings.enable_metrics:
         return {"note": "metrics disabled"}
@@ -70,19 +71,18 @@ def get_metrics() -> Dict[str, Any]:
     # Calculate basic statistics for histograms
     result = {}
     for key, data in _metrics.items():
-        metric_result = {
-            "count": data["count"],
-            "sum": data["sum"]
-        }
+        metric_result = {"count": data["count"], "sum": data["sum"]}
 
         if data["values"]:
             values = data["values"]
-            metric_result.update({
-                "min": min(values),
-                "max": max(values),
-                "avg": data["sum"] / len(values),
-                "buckets": dict(data["buckets"])
-            })
+            metric_result.update(
+                {
+                    "min": min(values),
+                    "max": max(values),
+                    "avg": data["sum"] / len(values),
+                    "buckets": dict(data["buckets"]),
+                }
+            )
 
         result[key] = metric_result
 

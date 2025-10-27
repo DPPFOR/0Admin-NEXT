@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
-from typing import Any, Mapping
+from typing import Any
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -62,7 +63,7 @@ def enqueue_event(topic: str, payload: Mapping[str, Any], *, delay_s: int = 0) -
         raise ValueError("payload must be JSON serializable") from exc
 
     event_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     next_attempt = now + timedelta(seconds=delay_s)
 
     engine = _get_engine()

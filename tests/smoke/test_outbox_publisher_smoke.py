@@ -1,15 +1,13 @@
 import json
 import os
 import uuid
-from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine, text
 
-from backend.core.config import settings
 from agents.outbox_publisher import runner as pub_runner
 from agents.outbox_publisher import transports as pub_transports
-
+from backend.core.config import settings
 
 ARTIFACTS_DIR = "artifacts"
 
@@ -48,7 +46,13 @@ def seed_outbox(tenant_id: str, n: int) -> list[str]:
             INSERT INTO event_outbox (id, tenant_id, event_type, schema_version, idempotency_key, trace_id, payload_json, status, attempt_count, created_at)
             VALUES (:id, :t, 'InboxItemParsed', '1.0', :ik, :tr, :p, 'pending', 0, NOW())
             """,
-            {"id": oid, "t": tenant_id, "ik": f"idem-{i}", "tr": str(uuid.uuid4()), "p": json.dumps({"ok": True})},
+            {
+                "id": oid,
+                "t": tenant_id,
+                "ik": f"idem-{i}",
+                "tr": str(uuid.uuid4()),
+                "p": json.dumps({"ok": True}),
+            },
         )
         ids.append(oid)
     return ids
@@ -63,7 +67,12 @@ def test_publisher_stdout(monkeypatch):
     processed = pub_runner.run_once(batch_size=10)
     assert processed >= 3
     # Sent count in DB
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}) >= 3
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}
+        )
+        >= 3
+    )
 
 
 def test_publisher_webhook_success(monkeypatch):
@@ -86,7 +95,12 @@ def test_publisher_webhook_success(monkeypatch):
     monkeypatch.setattr(pub_runner, "get_transport", lambda: FakeWebhook())
     processed = pub_runner.run_once(batch_size=10)
     assert processed >= 2
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}) >= 2
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}
+        )
+        >= 2
+    )
 
 
 def test_publisher_webhook_retry_and_dlq(monkeypatch):
@@ -113,7 +127,13 @@ def test_publisher_webhook_retry_and_dlq(monkeypatch):
     # Second run: exceed max -> DLQ and failed
     pub_runner.run_once(batch_size=10)
     assert _db_count("SELECT COUNT(*) FROM dead_letters WHERE tenant_id=:t", {"t": tenant}) >= 1
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'", {"t": tenant}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'",
+            {"t": tenant},
+        )
+        >= 1
+    )
 
 
 def test_publisher_webhook_unsupported_scheme(monkeypatch):
@@ -133,7 +153,13 @@ def test_publisher_webhook_unsupported_scheme(monkeypatch):
     pub_runner.run_once(batch_size=10)
     # Non-retriable: should be failed + DLQ
     assert _db_count("SELECT COUNT(*) FROM dead_letters WHERE tenant_id=:t", {"t": tenant}) >= 1
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'", {"t": tenant}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'",
+            {"t": tenant},
+        )
+        >= 1
+    )
 
 
 def test_publisher_webhook_domain_allowlist(monkeypatch):
@@ -152,20 +178,31 @@ def test_publisher_webhook_domain_allowlist(monkeypatch):
             super().__init__()
             self.url = "https://events.example.com/hook"
             # headers sanitized in super(): must not contain auth/cookie
-            assert all(k.lower() not in ("authorization", "cookie", "set-cookie") for k in self.headers.keys())
-            assert "X-Custom" in self.headers or "x-custom" in {k.lower() for k in self.headers.keys()}
+            assert all(
+                k.lower() not in ("authorization", "cookie", "set-cookie")
+                for k in self.headers.keys()
+            )
+            assert "X-Custom" in self.headers or "x-custom" in {
+                k.lower() for k in self.headers.keys()
+            }
             self.client = None  # avoid real network
 
         def publish(self, tenant_id, event_type, payload_json, trace_id=None):
             # Should pass host allow check
             from urllib.parse import urlparse
+
             assert self._host_allowed(urlparse(self.url).hostname)
             return pub_transports.PublishResult(ok=True, status_code=200)
 
     monkeypatch.setattr(pub_runner, "get_transport", lambda: AllowWebhook())
     processed = pub_runner.run_once(batch_size=10)
     assert processed >= 1
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='sent'", {"t": tenant}
+        )
+        >= 1
+    )
 
 
 def test_publisher_webhook_domain_block(monkeypatch):
@@ -184,6 +221,7 @@ def test_publisher_webhook_domain_block(monkeypatch):
 
         def publish(self, tenant_id, event_type, payload_json, trace_id=None):
             from urllib.parse import urlparse
+
             # Should fail host allow check
             assert not self._host_allowed(urlparse(self.url).hostname)
             return pub_transports.PublishResult(ok=False, status_code=0, error="forbidden_address")
@@ -192,4 +230,10 @@ def test_publisher_webhook_domain_block(monkeypatch):
     pub_runner.run_once(batch_size=10)
     # Forbidden address is non-retriable: DLQ + failed
     assert _db_count("SELECT COUNT(*) FROM dead_letters WHERE tenant_id=:t", {"t": tenant}) >= 1
-    assert _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'", {"t": tenant}) >= 1
+    assert (
+        _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND status='failed'",
+            {"t": tenant},
+        )
+        >= 1
+    )

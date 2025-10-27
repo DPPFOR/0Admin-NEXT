@@ -1,7 +1,4 @@
 import os
-import pathlib
-from typing import Optional
-import tempfile
 import uuid
 
 from backend.core.config import settings
@@ -17,7 +14,7 @@ def _ensure_dir(path: str) -> None:
 
 def _join_uri(base_uri: str, *parts: str) -> str:
     if base_uri.startswith("file://"):
-        base_path = base_uri[len("file://"):]
+        base_path = base_uri[len("file://") :]
         abs_path = os.path.join(base_path, *parts)
         return f"file://{abs_path}"
     elif base_uri.startswith("sb://"):
@@ -39,7 +36,7 @@ def put_bytes(tenant_id: str, content_hash: str, data: bytes, file_ext: str) -> 
         if not base_uri.startswith("file://"):
             raise StorageError("STORAGE_BASE_URI must be file:///... for file backend")
 
-        base_path = base_uri[len("file://"):]
+        base_path = base_uri[len("file://") :]
         hh = content_hash[:2]
         rel_path = os.path.join(tenant_id, hh)
         dir_path = os.path.join(base_path, rel_path)

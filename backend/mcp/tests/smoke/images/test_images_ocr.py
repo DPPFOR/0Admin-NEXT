@@ -23,4 +23,3 @@ def test_images_ocr_positive():
 def test_images_ocr_negative():
     with pytest.raises(ValueError):
         ImagesOCRAdapter.plan(path="/etc/passwd", dry_run=True)
-

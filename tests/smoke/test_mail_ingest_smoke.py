@@ -4,15 +4,14 @@ import uuid
 from pathlib import Path
 
 import pytest
+from alembic.config import Config as AlembicConfig
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 
-from backend.core.config import settings
 from backend.apps.inbox.mail import ingest as mail_ingest
 from backend.apps.inbox.mail.ingest import Attachment, MailMessage
-from alembic.config import Config as AlembicConfig
-from alembic.script import ScriptDirectory
-from alembic.runtime.migration import MigrationContext
-
+from backend.core.config import settings
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 pytestmark = pytest.mark.skipif(
@@ -49,7 +48,14 @@ def _assert_alembic_head(report: dict) -> None:
         context = MigrationContext.configure(conn)
         current = context.get_current_revision()
     ok = current in heads
-    report.setdefault("prechecks", []).append({"name": "precheck_alembic_head", "current": current, "heads": list(heads), "status": "passed" if ok else "failed"})
+    report.setdefault("prechecks", []).append(
+        {
+            "name": "precheck_alembic_head",
+            "current": current,
+            "heads": list(heads),
+            "status": "passed" if ok else "failed",
+        }
+    )
     if not ok:
         REPORT_PATH.write_text(json.dumps(report, indent=2))
         pytest.fail(f"Alembic not at head: current={current}, heads={','.join(heads)}")
@@ -75,7 +81,13 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
     # Monkeypatch provider messages
     def provider_messages(provider, mailbox, limit):
         return [
-            make_msg("m1", [Attachment(content=pdf, filename="a.pdf", size=len(pdf)), Attachment(content=png, filename="b.png", size=len(png))]),
+            make_msg(
+                "m1",
+                [
+                    Attachment(content=pdf, filename="a.pdf", size=len(pdf)),
+                    Attachment(content=png, filename="b.png", size=len(png)),
+                ],
+            ),
         ]
 
     monkeypatch.setattr(mail_ingest, "fetch_messages", provider_messages)
@@ -91,7 +103,10 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
     assert res1["processed"] == 2 and res1["duplicates"] == 0
     c_inbox = _db_count("SELECT COUNT(*) FROM inbox_items WHERE tenant_id=:t", {"t": tenant_id})
     assert c_inbox >= 2
-    c_events = _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'", {"t": tenant_id})
+    c_events = _db_count(
+        "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'",
+        {"t": tenant_id},
+    )
     assert c_events >= 2
     report["tests"].append({"name": "T-M1 IMAP Happy", "status": "passed"})
 
@@ -109,7 +124,10 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
     monkeypatch.setattr(mail_ingest, "fetch_messages", provider_bad)
     res3 = mail_ingest.process_mailbox(tenant_id, "INBOX")
     # processed remains unchanged, failures increased implicitly; check events unchanged
-    c_events2 = _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'", {"t": tenant_id})
+    c_events2 = _db_count(
+        "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'",
+        {"t": tenant_id},
+    )
     assert c_events2 == c_events
     report["tests"].append({"name": "T-M3 Unsupported MIME", "status": "passed"})
 
@@ -117,9 +135,18 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
     old = settings.MAX_UPLOAD_MB
     try:
         settings.MAX_UPLOAD_MB = 1
-        monkeypatch.setattr(mail_ingest, "fetch_messages", lambda p, m, l: [make_msg("m3", [Attachment(content=big_pdf, filename="big.pdf", size=len(big_pdf))])])
+        monkeypatch.setattr(
+            mail_ingest,
+            "fetch_messages",
+            lambda p, m, l: [
+                make_msg("m3", [Attachment(content=big_pdf, filename="big.pdf", size=len(big_pdf))])
+            ],
+        )
         res4 = mail_ingest.process_mailbox(tenant_id, "INBOX")
-        c_events3 = _db_count("SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'", {"t": tenant_id})
+        c_events3 = _db_count(
+            "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'",
+            {"t": tenant_id},
+        )
         assert c_events3 == c_events
         report["tests"].append({"name": "T-M4 Size Limit", "status": "passed"})
     finally:
@@ -140,7 +167,14 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
     class NoNetImap(conn_mod.ImapConnectorImpl):
         def fetch_messages(self, mailbox, since, limit):  # type: ignore[override]
             return [
-                mail_ingest.MailMessage(id="auto1", mailbox=mailbox, received_at=None, attachments=[mail_ingest.Attachment(content=pdf, filename="x.pdf", size=len(pdf))])
+                mail_ingest.MailMessage(
+                    id="auto1",
+                    mailbox=mailbox,
+                    received_at=None,
+                    attachments=[
+                        mail_ingest.Attachment(content=pdf, filename="x.pdf", size=len(pdf))
+                    ],
+                )
             ]
 
     monkeypatch.setenv("MAIL_CONNECTOR_AUTO", "1")

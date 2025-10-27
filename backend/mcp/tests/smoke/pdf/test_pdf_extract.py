@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from backend.mcp.server.adapters.pdf.text_extract import PdfTextExtractAdapter
 from backend.mcp.server.adapters.pdf.ocr_extract import PdfOCRExtractAdapter
 from backend.mcp.server.adapters.pdf.tables_extract import PdfTablesExtractAdapter
+from backend.mcp.server.adapters.pdf.text_extract import PdfTextExtractAdapter
 
 
 def _schema(path: str):
@@ -34,7 +34,7 @@ def test_pdf_tables_extract():
     Draft202012Validator(schema).validate(out)
 
 
-@pytest.mark.parametrize("bad", ["../pdf", "/pdf"]) 
+@pytest.mark.parametrize("bad", ["../pdf", "/pdf"])
 def test_pdf_negative(bad):
     with pytest.raises(ValueError):
         PdfTextExtractAdapter.plan(path=bad, dry_run=True)

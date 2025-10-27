@@ -4,7 +4,7 @@ import json
 import os
 import time
 from contextlib import closing
-from typing import Any, Dict, Optional, Type
+from typing import Any
 from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
@@ -26,7 +26,7 @@ class FlockClientError(RuntimeError):
 class FlockClientResponseError(FlockClientError):
     """Raised when the Flock read client receives an unexpected HTTP response."""
 
-    def __init__(self, status_code: int, message: str, response_body: Optional[bytes] = None):
+    def __init__(self, status_code: int, message: str, response_body: bytes | None = None):
         super().__init__(f"http_{status_code}: {message}")
         self.status_code = status_code
         self.response_body = response_body or b""
@@ -38,7 +38,7 @@ class FlockReadClient:
     def __init__(
         self,
         *,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
         backoff_factor: float = 0.5,
@@ -56,8 +56,8 @@ class FlockReadClient:
         *,
         limit: int = 50,
         offset: int = 0,
-        min_conf: Optional[int] = None,
-        status: Optional[str] = None,
+        min_conf: int | None = None,
+        status: str | None = None,
     ) -> Any:
         params = self._build_pagination_params(limit, offset)
         if min_conf is not None:
@@ -79,8 +79,8 @@ class FlockReadClient:
         *,
         limit: int = 50,
         offset: int = 0,
-        min_conf: Optional[int] = None,
-        status: Optional[str] = None,
+        min_conf: int | None = None,
+        status: str | None = None,
     ) -> Any:
         params = self._build_pagination_params(limit, offset)
         if min_conf is not None:
@@ -113,7 +113,7 @@ class FlockReadClient:
             raise FlockClientError("summary response must be a JSON object")
         return SummaryDTO.from_json(data).to_json()
 
-    def _build_pagination_params(self, limit: int, offset: int) -> Dict[str, int]:
+    def _build_pagination_params(self, limit: int, offset: int) -> dict[str, int]:
         if not isinstance(limit, int) or not isinstance(offset, int):
             raise ValueError("limit and offset must be integers")
         if limit < 0 or offset < 0:
@@ -122,7 +122,7 @@ class FlockReadClient:
             raise ValueError(f"limit must be <= {MAX_LIMIT}")
         return {"limit": limit, "offset": offset}
 
-    def _request(self, path: str, tenant_id: str, params: Dict[str, Any]) -> Any:
+    def _request(self, path: str, tenant_id: str, params: dict[str, Any]) -> Any:
         self._validate_tenant(tenant_id)
         url = self._build_url(path, params)
         headers = {
@@ -163,7 +163,7 @@ class FlockReadClient:
     def _has_attempts_remaining(self, attempt: int) -> bool:
         return attempt + 1 < self.max_retries
 
-    def _should_retry(self, status_code: Optional[int]) -> bool:
+    def _should_retry(self, status_code: int | None) -> bool:
         if status_code is None:
             return False
         if status_code == 429:
@@ -171,10 +171,10 @@ class FlockReadClient:
         return status_code >= 500
 
     def _sleep(self, attempt: int) -> None:
-        delay = self.backoff_factor * (2 ** attempt)
+        delay = self.backoff_factor * (2**attempt)
         time.sleep(delay)
 
-    def _build_url(self, path: str, params: Dict[str, Any]) -> str:
+    def _build_url(self, path: str, params: dict[str, Any]) -> str:
         base = self.base_url.rstrip("/") + "/"
         path_fragment = path.lstrip("/")
         url = urlparse.urljoin(base, path_fragment)
@@ -192,7 +192,7 @@ class FlockReadClient:
         except json.JSONDecodeError as exc:
             raise FlockClientError("invalid JSON response") from exc
 
-    def _as_list(self, payload: Any, dto_type: Type) -> Any:
+    def _as_list(self, payload: Any, dto_type: type) -> Any:
         if payload is None:
             return {"items": [], "total": 0, "limit": 0, "offset": 0}
         if isinstance(payload, list):
@@ -217,7 +217,7 @@ class FlockReadClient:
         except (ValueError, TypeError) as exc:
             raise ValueError("tenant_id must be a valid UUID string") from exc
 
-    def _derive_error_message(self, body: bytes, reason: Optional[str]) -> str:
+    def _derive_error_message(self, body: bytes, reason: str | None) -> str:
         text = body.decode("utf-8", "ignore").strip()
         if text:
             return text

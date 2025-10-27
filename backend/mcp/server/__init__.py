@@ -8,4 +8,3 @@ This package exposes side-effect-free modules for:
 
 No HTTP/ASGI servers, threads, or event loops are started here.
 """
-

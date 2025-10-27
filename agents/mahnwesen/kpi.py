@@ -3,37 +3,37 @@
 This module generates daily KPI reports with cycle time metrics.
 """
 
-import logging
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 import json
-
+import logging
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
 @dataclass
 class CycleTimeEntry:
     """Represents a single cycle time measurement."""
+
     invoice_id: str
     stage: int
     created_at: datetime
-    sent_at: Optional[datetime] = None
-    cycle_time_hours: Optional[float] = None
+    sent_at: datetime | None = None
+    cycle_time_hours: float | None = None
 
 
 @dataclass
 class DailyKPIReport:
     """Daily KPI report for a tenant."""
+
     tenant_id: str
     report_date: str  # YYYY-MM-DD
     timezone: str
     total_overdue: int = 0
     notices_created: int = 0
     notices_sent: int = 0
-    cycle_time_median: Optional[float] = None
-    cycle_times: List[float] = None
+    cycle_time_median: float | None = None
+    cycle_times: list[float] = None
     stage_1_count: int = 0
     stage_2_count: int = 0
     stage_3_count: int = 0
@@ -53,9 +53,7 @@ class MahnwesenKPI:
         self.timezone = ZoneInfo("Europe/Berlin")
 
     def generate_daily_report(
-        self,
-        tenant_id: str,
-        target_date: Optional[datetime] = None
+        self, tenant_id: str, target_date: datetime | None = None
     ) -> DailyKPIReport:
         """Generate daily KPI report for a tenant.
 
@@ -78,9 +76,7 @@ class MahnwesenKPI:
 
         # Create base report
         report = DailyKPIReport(
-            tenant_id=tenant_id,
-            report_date=report_date_str,
-            timezone="Europe/Berlin"
+            tenant_id=tenant_id, report_date=report_date_str, timezone="Europe/Berlin"
         )
 
         # TODO: In production, fetch real data from database/log files
@@ -111,6 +107,7 @@ class MahnwesenKPI:
         """
         # Simulate realistic KPI data
         import random
+
         random.seed(hash(report.tenant_id + report.report_date))  # Deterministic seeding
 
         report.total_overdue = random.randint(50, 200)
@@ -119,7 +116,9 @@ class MahnwesenKPI:
         report.stage_1_count = report.notices_created * 0.7  # 70% stage 1
         report.stage_2_count = report.notices_created * 0.25  # 25% stage 2
         report.stage_3_count = report.notices_created * 0.05  # 5% stage 3
-        report.error_rate = (report.notices_created - report.notices_sent) / max(1, report.notices_created)
+        report.error_rate = (report.notices_created - report.notices_sent) / max(
+            1, report.notices_created
+        )
 
         # Generate sample cycle times (in hours)
         cycle_times = []
@@ -135,7 +134,7 @@ class MahnwesenKPI:
 
         return report
 
-    def save_report(self, report: DailyKPIReport, output_path: Optional[Path] = None) -> Path:
+    def save_report(self, report: DailyKPIReport, output_path: Path | None = None) -> Path:
         """Save KPI report to files.
 
         Args:
@@ -165,14 +164,14 @@ class MahnwesenKPI:
             "stage_3_count": int(round(report.stage_3_count)),
             "error_rate": report.error_rate,
             "generated_at": datetime.now(self.timezone).isoformat(),
-            "version": "1.0"
+            "version": "1.0",
         }
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
 
         # Save Markdown version
-        md_path = output_path.with_suffix('.md')
+        md_path = output_path.with_suffix(".md")
         md_content = f"""# Mahnwesen KPIs - {report.tenant_id}
 **Datum:** {report.report_date}  
 **Zeitzone:** {report.timezone}
@@ -198,13 +197,15 @@ class MahnwesenKPI:
 *Generiert am: {datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}*
 """
 
-        with open(md_path, 'w', encoding='utf-8') as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write(md_content)
 
         self.logger.info(f"KPI report saved: {output_path}")
         return output_path
 
-    def generate_batch_reports(self, tenant_ids: List[str], target_date: Optional[datetime] = None) -> List[Path]:
+    def generate_batch_reports(
+        self, tenant_ids: list[str], target_date: datetime | None = None
+    ) -> list[Path]:
         """Generate KPI reports for multiple tenants.
 
         Args:

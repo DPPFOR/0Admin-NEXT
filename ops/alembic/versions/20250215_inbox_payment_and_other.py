@@ -5,15 +5,14 @@ Revises: 20250214_outbox_events
 Create Date: 2025-02-15 09:00:00
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
-
 revision: str = "20250215_inbox_payment_and_other"
-down_revision: Union[str, None] = "20250214_outbox_events"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20250214_outbox_events"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 SCHEMA = "inbox_parsed"
 TABLE = "parsed_items"
@@ -93,7 +92,12 @@ def _ensure_columns() -> None:
 
 
 def _create_views() -> None:
-    for view in (VIEW_PAYMENTS_LATEST, VIEW_ITEMS_REVIEW, VIEW_INVOICES_LATEST, VIEW_TENANT_SUMMARY):
+    for view in (
+        VIEW_PAYMENTS_LATEST,
+        VIEW_ITEMS_REVIEW,
+        VIEW_INVOICES_LATEST,
+        VIEW_TENANT_SUMMARY,
+    ):
         op.execute(f"DROP VIEW IF EXISTS {view}")
 
     op.execute(

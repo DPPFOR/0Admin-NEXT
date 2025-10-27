@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 from backend.apps.inbox.read_model.dto import (
     InvoiceRowDTO,
-    PaymentRowDTO,
     NeedsReviewRowDTO,
+    PaymentRowDTO,
     TenantSummaryDTO,
 )
 

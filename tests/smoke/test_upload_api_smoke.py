@@ -1,22 +1,19 @@
 import io
 import json
 import os
-import time
 import uuid
 from pathlib import Path
 
 import pytest
+from alembic.config import Config as AlembicConfig
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
 from backend.app import create_app
 from backend.core.config import settings
 from backend.core.observability.metrics import get_metrics
-from alembic.config import Config as AlembicConfig
-from alembic import command as alembic_command
-from alembic.script import ScriptDirectory
-from alembic.runtime.migration import MigrationContext
-
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 pytestmark = pytest.mark.skipif(
@@ -47,13 +44,18 @@ def _db_count(sql: str, params: dict) -> int:
 def _table_exists(name: str) -> bool:
     eng = _db_engine()
     with eng.begin() as conn:
-        res = conn.execute(text("""
+        res = conn.execute(
+            text(
+                """
             SELECT EXISTS (
               SELECT 1
               FROM information_schema.tables
               WHERE table_name = :name
             )
-        """), {"name": name}).scalar()
+        """
+            ),
+            {"name": name},
+        ).scalar()
     return bool(res)
 
 
@@ -80,7 +82,12 @@ def _assert_alembic_head(report: dict) -> None:
         current = context.get_current_revision()
 
     ok = current in heads
-    report_step = {"name": "precheck_alembic_head", "current": current, "heads": list(heads), "status": "passed" if ok else "failed"}
+    report_step = {
+        "name": "precheck_alembic_head",
+        "current": current,
+        "heads": list(heads),
+        "status": "passed" if ok else "failed",
+    }
     report.setdefault("prechecks", []).append(report_step)
     if not ok:
         REPORT_PATH.write_text(json.dumps(report, indent=2))
@@ -153,9 +160,12 @@ def test_u3_p1b_smoke(monkeypatch, caplog):
     # Validate schema_version on the outbox row
     eng = _db_engine()
     with eng.begin() as conn:
-        sv = conn.execute(text(
-            "SELECT schema_version FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND payload_json::json->>'inbox_item_id'=:i ORDER BY created_at DESC LIMIT 1"
-        ), {"t": tenant_id, "i": inbox_id}).scalar()
+        sv = conn.execute(
+            text(
+                "SELECT schema_version FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated' AND payload_json::json->>'inbox_item_id'=:i ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"t": tenant_id, "i": inbox_id},
+        ).scalar()
     assert sv == "1.0"
 
     # Logs contain required fields (trace_id, tenant_id)
@@ -163,7 +173,9 @@ def test_u3_p1b_smoke(monkeypatch, caplog):
     assert "trace_id" in log_text
     assert tenant_id in log_text
 
-    report["tests"].append({"name": "T-1 Happy", "status": "passed", "inbox_id": inbox_id, "hash": content_hash})
+    report["tests"].append(
+        {"name": "T-1 Happy", "status": "passed", "inbox_id": inbox_id, "hash": content_hash}
+    )
 
     # T-2: Duplicate
     resp2 = client.post(
@@ -223,13 +235,21 @@ def test_u3_p1b_smoke(monkeypatch, caplog):
     idem_key = "idem-abc-123"
     r6a = client.post(
         "/api/v1/inbox/items/upload",
-        headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id, "Idempotency-Key": idem_key},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant": tenant_id,
+            "Idempotency-Key": idem_key,
+        },
         files={"file": ("sample.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
     )
     assert r6a.status_code == 200
     r6b = client.post(
         "/api/v1/inbox/items/upload",
-        headers={"Authorization": f"Bearer {token}", "X-Tenant": tenant_id, "Idempotency-Key": idem_key},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant": tenant_id,
+            "Idempotency-Key": idem_key,
+        },
         files={"file": ("sample.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
     )
     assert r6b.status_code == 200

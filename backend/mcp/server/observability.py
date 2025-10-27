@@ -35,4 +35,3 @@ def get_logger(name: str = "mcp"):
     except Exception:
         pass
     return _NullLogger()
-

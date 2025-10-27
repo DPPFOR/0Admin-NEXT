@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from typing import List, Optional, Tuple
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID, insert as pg_insert
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.sql import func
 
@@ -14,9 +15,9 @@ from backend.core.config import settings
 from backend.mcp.server.observability import get_logger
 
 try:  # pragma: no cover - regular import path
-    from .dto import ParsedItemDTO, ParsedItemChunkDTO  # type: ignore
-    from .validators import validate_artifact_minimum, validate_tables_shape  # type: ignore
+    from .dto import ParsedItemChunkDTO, ParsedItemDTO  # type: ignore
     from .mapper import artifact_to_dtos  # type: ignore
+    from .validators import validate_artifact_minimum, validate_tables_shape  # type: ignore
 except Exception:  # pragma: no cover - fallback for direct module load (tests/CLI)
     import importlib.util as _iu
     import sys as _sys
@@ -58,7 +59,9 @@ PARSED_ITEMS_TABLE = sa.Table(
     sa.Column("invoice_no", sa.String()),
     sa.Column("due_date", sa.Date()),
     sa.Column("doctype", sa.String(), nullable=False, server_default=sa.text("'unknown'")),
-    sa.Column("quality_status", sa.String(), nullable=False, server_default=sa.text("'needs_review'")),
+    sa.Column(
+        "quality_status", sa.String(), nullable=False, server_default=sa.text("'needs_review'")
+    ),
     sa.Column("confidence", sa.Numeric(5, 2), nullable=False, server_default=sa.text("0")),
     sa.Column("rules", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
     sa.Column("flags", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
@@ -89,7 +92,12 @@ PARSED_ITEM_CHUNKS_TABLE = sa.Table(
     sa.Column("seq", sa.Integer(), nullable=False),
     sa.Column("kind", sa.String(), nullable=False),
     sa.Column("payload", JSONB, nullable=False),
-    sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("timezone('utc', now())")),
+    sa.Column(
+        "created_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("timezone('utc', now())"),
+    ),
     schema=SCHEMA,
     extend_existing=True,
 )
@@ -105,7 +113,12 @@ AUDIT_LOG_TABLE = sa.Table(
     "audit_log",
     _METADATA,
     sa.Column("id", PGUUID(as_uuid=False), primary_key=True),
-    sa.Column("ts", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("timezone('utc', now())")),
+    sa.Column(
+        "ts",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.text("timezone('utc', now())"),
+    ),
     sa.Column("trace_id", sa.String()),
     sa.Column("actor", sa.String()),
     sa.Column("tenant_id", PGUUID(as_uuid=False)),
@@ -119,10 +132,15 @@ AUDIT_LOG_TABLE = sa.Table(
 
 
 def _valid_artifact_path(path: str) -> bool:
-    return isinstance(path, str) and path.startswith("artifacts/") and not path.startswith("/") and ".." not in path
+    return (
+        isinstance(path, str)
+        and path.startswith("artifacts/")
+        and not path.startswith("/")
+        and ".." not in path
+    )
 
 
-def _ensure_engine(engine: Optional[Engine]) -> Engine:
+def _ensure_engine(engine: Engine | None) -> Engine:
     return engine or create_engine(settings.database_url, future=True)
 
 
@@ -132,9 +150,9 @@ def _log_audit_event(
     item_id: str,
     source: str,
     op: str,
-    trace_id: Optional[str] = None,
-    actor: Optional[str] = None,
-    meta: Optional[dict] = None,
+    trace_id: str | None = None,
+    actor: str | None = None,
+    meta: dict | None = None,
 ) -> None:
     """Log an audit event to the audit_log table."""
     audit_id = str(uuid.uuid4())
@@ -154,57 +172,58 @@ def _log_audit_event(
 def process_artifact_file(
     tenant_id: str,
     artifact_path: str,
-    engine: Optional[Engine] = None,
-) -> 'ProcessResult':
+    engine: Engine | None = None,
+) -> ProcessResult:
     """Process an artifact file and return the result."""
     from .dto import ProcessResult
-    
+
     engine = _ensure_engine(engine)
-    
+
     with engine.begin() as conn:
         # Load artifact data
         import json
-        with open(artifact_path, 'r') as f:
+
+        with open(artifact_path) as f:
             artifact_data = json.load(f)
-        
+
         # Convert to DTOs
         from .mapper import artifact_to_dtos
+
         item, chunks = artifact_to_dtos(artifact_data)
         item.tenant_id = tenant_id
-        
+
         # Upsert item
         parsed_item_id, action = _upsert_parsed_item(conn, item)
-        
+
         # Insert chunks
         chunk_count = 0
         for chunk in chunks:
             chunk.parsed_item_id = parsed_item_id
             try:
-                conn.execute(sa.insert(PARSED_ITEM_CHUNKS_TABLE).values(
-                    id=str(uuid.uuid4()),
-                    parsed_item_id=chunk.parsed_item_id,
-                    seq=chunk.seq,
-                    kind=chunk.kind,
-                    payload=chunk.payload,
-                ))
+                conn.execute(
+                    sa.insert(PARSED_ITEM_CHUNKS_TABLE).values(
+                        id=str(uuid.uuid4()),
+                        parsed_item_id=chunk.parsed_item_id,
+                        seq=chunk.seq,
+                        kind=chunk.kind,
+                        payload=chunk.payload,
+                    )
+                )
                 chunk_count += 1
             except Exception:
                 # Ignore duplicate chunks
                 pass
-        
-        return ProcessResult(
-            parsed_item_id=parsed_item_id,
-            action=action,
-            chunk_count=chunk_count
-        )
+
+        return ProcessResult(parsed_item_id=parsed_item_id, action=action, chunk_count=chunk_count)
 
 
 def _upsert_parsed_item(
     conn,
     item: ParsedItemDTO,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     # Deterministic ID generation based on tenant_id and content_hash
     import hashlib
+
     deterministic_input = f"{item.tenant_id}|{item.content_hash}"
     deterministic_hash = hashlib.sha256(deterministic_input.encode()).hexdigest()[:32]
     insert_id = str(uuid.UUID(deterministic_hash))
@@ -283,7 +302,7 @@ def _upsert_parsed_item(
     row = conn.execute(upsert_stmt, params).fetchone()
     parsed_item_id = row.id
     action = "insert" if parsed_item_id == insert_id else "update"
-    
+
     # Log audit event
     _log_audit_event(
         conn=conn,
@@ -291,11 +310,11 @@ def _upsert_parsed_item(
         item_id=parsed_item_id,
         source="importer",
         op="IMPORT_UPSERT",
-        trace_id=getattr(item, 'trace_id', None),
-        actor=getattr(item, 'actor', None),
-        meta={"action": action, "content_hash": item.content_hash}
+        trace_id=getattr(item, "trace_id", None),
+        actor=getattr(item, "actor", None),
+        meta={"action": action, "content_hash": item.content_hash},
     )
-    
+
     return parsed_item_id, action
 
 
@@ -350,7 +369,7 @@ def _insert_only(
 def _insert_chunks(
     conn,
     parsed_item_id: str,
-    chunks: List[ParsedItemChunkDTO],
+    chunks: list[ParsedItemChunkDTO],
     *,
     replace_chunks: bool,
 ) -> int:
@@ -359,7 +378,9 @@ def _insert_chunks(
 
     if replace_chunks:
         conn.execute(
-            sa.delete(PARSED_ITEM_CHUNKS_TABLE).where(PARSED_ITEM_CHUNKS_TABLE.c.parsed_item_id == parsed_item_id)
+            sa.delete(PARSED_ITEM_CHUNKS_TABLE).where(
+                PARSED_ITEM_CHUNKS_TABLE.c.parsed_item_id == parsed_item_id
+            )
         )
 
     chunk_insert = pg_insert(PARSED_ITEM_CHUNKS_TABLE).values(
@@ -390,11 +411,11 @@ def _insert_chunks(
 def _upsert_parsed_item_with_chunks(
     engine: Engine,
     item: ParsedItemDTO,
-    chunk_dtos: List[ParsedItemChunkDTO],
+    chunk_dtos: list[ParsedItemChunkDTO],
     *,
     upsert: bool,
     replace_chunks: bool,
-) -> Tuple[str, str, int]:
+) -> tuple[str, str, int]:
     with engine.begin() as conn:
         existing_row = conn.execute(
             sa.select(PARSED_ITEMS_TABLE.c.id)
@@ -407,7 +428,9 @@ def _upsert_parsed_item_with_chunks(
 
         if not existing_row and not upsert:
             parsed_id = _insert_only(conn, item)
-            inserted_chunks = _insert_chunks(conn, parsed_id, chunk_dtos, replace_chunks=replace_chunks)
+            inserted_chunks = _insert_chunks(
+                conn, parsed_id, chunk_dtos, replace_chunks=replace_chunks
+            )
             return parsed_id, "insert", inserted_chunks
 
         parsed_id, action = _upsert_parsed_item(conn, item)
@@ -419,11 +442,11 @@ def run_importer(
     *,
     tenant_id: str,
     artifact_path: str,
-    trace_id: Optional[str] = None,
+    trace_id: str | None = None,
     dry_run: bool = False,
     upsert: bool = True,
     replace_chunks: bool = False,
-    engine: Optional[Engine] = None,
+    engine: Engine | None = None,
     enforce_invoice: bool = True,
     enforce_payment: bool = True,
     enforce_other: bool = True,
@@ -434,7 +457,7 @@ def run_importer(
     if not _valid_artifact_path(artifact_path):
         raise ValueError("invalid artifact path")
 
-    data = json.loads(open(artifact_path, "r", encoding="utf-8").read())
+    data = json.loads(open(artifact_path, encoding="utf-8").read())
     validate_artifact_minimum(data, tenant_id)
     validate_tables_shape(data.get("extracted", {}).get("tables", []))
 

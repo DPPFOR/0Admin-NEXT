@@ -1,8 +1,6 @@
-import os
 import json
-from pathlib import Path
 
-from backend.core.tenant.validator import TenantAllowlistLoader, validate_tenant
+from backend.core.tenant.validator import TenantAllowlistLoader
 
 
 def test_env_allowlist(tmp_path, monkeypatch):

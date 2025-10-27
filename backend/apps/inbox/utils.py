@@ -1,6 +1,4 @@
 import hashlib
-import io
-from typing import Optional
 
 
 def sha256_hex(data: bytes) -> str:
@@ -10,7 +8,7 @@ def sha256_hex(data: bytes) -> str:
     return h.hexdigest()
 
 
-def detect_mime(data: bytes) -> Optional[str]:
+def detect_mime(data: bytes) -> str | None:
     """Server-side MIME detection based on magic numbers/content heuristics.
 
     Allowlist includes:
@@ -71,4 +69,3 @@ def extension_for_mime(mime: str) -> str:
         "application/xml": ".xml",
     }
     return mapping.get(mime, "")
-

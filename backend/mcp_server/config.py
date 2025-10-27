@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -13,9 +13,9 @@ class ToolTimeouts(BaseModel):
     """Timeout configuration per tool (seconds)."""
 
     default: float = Field(default=60.0, ge=0)
-    pdf_text_extract: Optional[float] = Field(default=None, ge=0)
-    pdf_table_extract: Optional[float] = Field(default=None, ge=0)
-    security_pii_redact: Optional[float] = Field(default=None, ge=0)
+    pdf_text_extract: float | None = Field(default=None, ge=0)
+    pdf_table_extract: float | None = Field(default=None, ge=0)
+    security_pii_redact: float | None = Field(default=None, ge=0)
 
 
 class ServerConfig(BaseModel):
@@ -23,7 +23,9 @@ class ServerConfig(BaseModel):
 
     workspace_root: Path = Field(default_factory=lambda: Path.cwd())
     artifacts_dir: Path = Field(default_factory=lambda: Path("artifacts") / "mcp")
-    policy_file: Path = Field(default_factory=lambda: Path("ops") / "mcp" / "policies" / "default-policy.yaml")
+    policy_file: Path = Field(
+        default_factory=lambda: Path("ops") / "mcp" / "policies" / "default-policy.yaml"
+    )
     log_level: str = Field(default="INFO")
     allow_unix_socket: bool = Field(default=False)
     timeouts: ToolTimeouts = Field(default_factory=ToolTimeouts)
@@ -44,14 +46,14 @@ class ServerConfig(BaseModel):
         return (workspace / value).resolve()
 
     @classmethod
-    def load(cls, *, base_dir: Path | None = None, config_path: Path | None = None) -> "ServerConfig":
+    def load(cls, *, base_dir: Path | None = None, config_path: Path | None = None) -> ServerConfig:
         """Load configuration from YAML file + environment overrides."""
 
         base = base_dir or Path.cwd()
         config_file = config_path or (base / "mcp.config.yaml")
         if not config_file.is_absolute():
             config_file = (base / config_file).resolve()
-        raw: Dict[str, Any] = {}
+        raw: dict[str, Any] = {}
 
         if config_file.exists():
             try:
@@ -61,7 +63,7 @@ class ServerConfig(BaseModel):
             except Exception:
                 raw = {}
 
-        env_overrides: Dict[str, Any] = {}
+        env_overrides: dict[str, Any] = {}
         from os import getenv
 
         if artifacts := getenv("ARTIFACTS_DIR"):
@@ -76,7 +78,7 @@ class ServerConfig(BaseModel):
         merged = {**raw, **env_overrides}
         merged["workspace_root"] = base.resolve()
         # Ensure nested timeouts dict is pydantic-friendly
-        timeouts_cfg: Dict[str, Any] = merged.get("timeouts", {}) or {}
+        timeouts_cfg: dict[str, Any] = merged.get("timeouts", {}) or {}
         merged["timeouts"] = timeouts_cfg
 
         return cls.model_validate(merged)

@@ -3,23 +3,26 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from backend.mcp.server import app as mcp_app
-
 
 FROZEN_TS = "2025-01-01T00:00:00Z"
 
 
 def _valid_path(p: str) -> bool:
-    return isinstance(p, str) and p.startswith("artifacts/inbox/") and ".." not in p and not p.startswith("/")
+    return (
+        isinstance(p, str)
+        and p.startswith("artifacts/inbox/")
+        and ".." not in p
+        and not p.startswith("/")
+    )
 
 
 def _policy_fingerprint() -> str:
     policy_path = os.path.join("ops", "mcp", "policies", "default-policy.yaml")
-    if os.path.exists(policy_path) and open(policy_path, "r", encoding="utf-8").read().strip():
-        content = open(policy_path, "r", encoding="utf-8").read().encode("utf-8")
+    if os.path.exists(policy_path) and open(policy_path, encoding="utf-8").read().strip():
+        content = open(policy_path, encoding="utf-8").read().encode("utf-8")
     else:
         content = b"dry_run_default:true\nallowed_tools:[ops.health_check]\n"
     return hashlib.sha256(content).hexdigest()
@@ -33,9 +36,11 @@ def _ext(path: str) -> str:
     return os.path.splitext(path)[1].lower()
 
 
-def _classify_tool_for_path(path: str, *, enable_ocr: bool, enable_table_boost: bool) -> Tuple[str, List[str]]:
+def _classify_tool_for_path(
+    path: str, *, enable_ocr: bool, enable_table_boost: bool
+) -> tuple[str, list[str]]:
     e = _ext(path)
-    pipeline: List[str] = []
+    pipeline: list[str] = []
     if e in {".zip", ".7z"}:
         pipeline.append("archive.unpack")
     if e in {".docx"}:
@@ -59,7 +64,7 @@ def _classify_tool_for_path(path: str, *, enable_ocr: bool, enable_table_boost: 
     return ("application/octet-stream", pipeline)
 
 
-def _call_adapter(tool_id: str, **kwargs: Any) -> Dict[str, Any]:
+def _call_adapter(tool_id: str, **kwargs: Any) -> dict[str, Any]:
     cls = mcp_app.get_adapter_factory(tool_id)
     if cls is None:
         raise ValueError(f"adapter not found: {tool_id}")
@@ -72,7 +77,7 @@ def run_inbox_local_flow(
     *,
     tenant_id: str,
     path: str,
-    trace_id: Optional[str] = None,
+    trace_id: str | None = None,
     enable_ocr: bool = False,
     enable_browser: bool = False,
     enable_table_boost: bool = False,
@@ -83,10 +88,12 @@ def run_inbox_local_flow(
 
     # Detect MIME (stub)
     detect = _call_adapter("detect.mime", paths=[path], tenant_id=tenant_id, dry_run=True)
-    mime, pipeline = _classify_tool_for_path(path, enable_ocr=enable_ocr, enable_table_boost=enable_table_boost)
+    mime, pipeline = _classify_tool_for_path(
+        path, enable_ocr=enable_ocr, enable_table_boost=enable_table_boost
+    )
 
-    executed: List[str] = ["detect.mime"]
-    extracted: Dict[str, Any] = {}
+    executed: list[str] = ["detect.mime"]
+    extracted: dict[str, Any] = {}
 
     # Optional unpack
     if pipeline and pipeline[0] == "archive.unpack":
@@ -137,7 +144,7 @@ def run_inbox_local_flow(
             # unknown step
             continue
 
-    flow_result: Dict[str, Any] = {
+    flow_result: dict[str, Any] = {
         "tenant_id": tenant_id,
         "trace_id": trace_id,
         "source_path": path,
@@ -145,8 +152,8 @@ def run_inbox_local_flow(
         "mime": mime,
         "pipeline": executed,
         "extracted": extracted,
-        "quality": quality if 'quality' in locals() else {"valid": True, "issues": []},
-        "pii": pii_plan if 'pii_plan' in locals() else {"steps": []},
+        "quality": quality if "quality" in locals() else {"valid": True, "issues": []},
+        "pii": pii_plan if "pii_plan" in locals() else {"steps": []},
         "fingerprints": {"content_hash": _sha256_hex(path)},
         "policy_fingerprint": _policy_fingerprint(),
         "flags": {
