@@ -85,6 +85,12 @@ jobs:
           PY
           pip freeze | grep -E 'wrapt|opentelemetry' || true
 
+      - name: No Jaeger exporters
+        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+        shell: bash
+        run: |
+          pip freeze | grep -E 'opentelemetry-exporter-jaeger(|-proto-grpc)' && { echo "Jaeger exporter detected; failing."; exit 1; } || echo "OK: no Jaeger exporters"
+
       - name: Run tests
         if: ${{ steps.detect.outputs.run_tests == 'true' }}
         shell: bash
