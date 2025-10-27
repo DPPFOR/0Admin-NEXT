@@ -43,8 +43,10 @@ class SimGraph(GraphConnector):
         return self._messages[:limit]
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
-if not RUN_DB_TESTS:
-    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
+pytestmark = pytest.mark.skipif(
+    not RUN_DB_TESTS,
+    reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL",
+)
 
 
 def test_mail_connectors_integration(tmp_path, monkeypatch):

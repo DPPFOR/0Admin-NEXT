@@ -15,8 +15,10 @@ from alembic.runtime.migration import MigrationContext
 
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
-if not RUN_DB_TESTS:
-    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
+pytestmark = pytest.mark.skipif(
+    not RUN_DB_TESTS,
+    reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL",
+)
 
 
 ARTIFACTS_DIR = Path("artifacts")
