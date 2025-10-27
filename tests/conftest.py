@@ -2,6 +2,7 @@ import inspect
 import json
 import os
 import socket
+import warnings
 from pathlib import Path
 
 import httpx
@@ -12,6 +13,12 @@ VIOLATIONS = []
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 REPORT = ARTIFACTS_DIR / "egress-violations.json"
+
+warnings.filterwarnings(
+    "ignore",
+    message="Please use `import python_multipart` instead.",
+    category=PendingDeprecationWarning,
+)
 
 
 def _is_allowed_callstack(allowed_paths: list[str]) -> bool:
@@ -93,4 +100,3 @@ def egress_guard():
     httpx.Client.__init__ = real_httpx_init  # type: ignore[assignment]
 
     REPORT.write_text(json.dumps(VIOLATIONS, indent=2))
-

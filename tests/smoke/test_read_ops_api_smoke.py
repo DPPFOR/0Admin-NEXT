@@ -2,7 +2,6 @@ import json
 import os
 import uuid
 from datetime import datetime, timedelta
-import warnings
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,12 +9,6 @@ from sqlalchemy import create_engine, text
 
 from backend.app import create_app
 from backend.core.config import settings
-
-warnings.filterwarnings(
-    "ignore",
-    message="Please use `import python_multipart` instead.",
-    category=PendingDeprecationWarning,
-)
 
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 pytestmark = pytest.mark.skipif(
