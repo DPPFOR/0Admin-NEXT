@@ -1,14 +1,27 @@
-"""Test configuration and fixtures for Mahnwesen agents."""
+"""Test configuration and fixtures for Mahnwesen agents.
 
+Diese Tests benötigen den agents-Code und eine passende Umgebung. In CI ohne
+die Agents-Komponente werden sie komplett übersprungen.
+"""
+
+import os
 import pytest
 import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import patch
-from agents.mahnwesen.config import DunningConfig
-from agents.mahnwesen.playbooks import TemplateEngine
-from agents.mahnwesen.dto import DunningNotice, DunningStage, DunningChannel
 from datetime import datetime, timezone
+
+RUN_AGENTS_TESTS = os.getenv("RUN_AGENTS_TESTS") == "1"
+
+try:
+    from agents.mahnwesen.config import DunningConfig
+    from agents.mahnwesen.playbooks import TemplateEngine
+    from agents.mahnwesen.dto import DunningNotice, DunningStage, DunningChannel
+except ModuleNotFoundError as exc:
+    if not RUN_AGENTS_TESTS:
+        pytest.skip("requires RUN_AGENTS_TESTS=1 and agents package", allow_module_level=True)
+    raise
 
 
 @pytest.fixture
