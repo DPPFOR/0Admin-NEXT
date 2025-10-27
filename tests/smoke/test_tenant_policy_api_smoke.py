@@ -1,9 +1,16 @@
 import os
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app import create_app
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+pytestmark = pytest.mark.skipif(
+    not RUN_DB_TESTS,
+    reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL",
+)
 
 
 def test_tenant_policy_api(monkeypatch):
@@ -29,4 +36,3 @@ def test_tenant_policy_api(monkeypatch):
     # T-A4 unknown
     r_unk = client.get("/api/v1/inbox/items", headers={"X-Tenant": invalid})
     assert r_unk.status_code == 403 and r_unk.json()["detail"]["error"] == "tenant_unknown"
-
