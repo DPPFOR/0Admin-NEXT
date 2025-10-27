@@ -71,7 +71,7 @@ jobs:
           if [ -n "$flock_pkg" ]; then
             pip install --no-deps "$flock_pkg"
           fi
-          pip install -U -r "$tmp_req" -r requirements-dev.txt
+          pip install -U -r "$tmp_req" -r requirements-dev.txt -c ci/constraints.txt opentelemetry-exporter-otlp-proto-grpc==1.31.1
           rm -f "$tmp_req"
           # Projekt NICHT installieren (kein 'pip install .'); wir testen via PYTHONPATH
 
