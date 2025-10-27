@@ -1,8 +1,15 @@
 """Contract tests für Inbox Read-Model-Views."""
+import os
 import pytest
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
 
 try:
     import psycopg  # bevorzugter Treiber (psycopg v3)
+
+    PsyError = psycopg.Error
 
     def _connect(dsn: str):
         return psycopg.connect(dsn)
@@ -10,10 +17,20 @@ try:
 except ImportError:  # Fallback für Umgebungen mit psycopg2
     import psycopg2 as psycopg
 
+    PsyError = psycopg.Error
+
     def _connect(dsn: str):
         return psycopg.connect(dsn)
 
 from backend.core.config import settings
+
+DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL") or settings.database_url
+
+
+def _dsn() -> str:
+    return DB_URL.replace("postgresql+psycopg2://", "postgresql://").replace(
+        "postgresql+psycopg://", "postgresql://"
+    )
 
 
 def test_v_inbox_by_tenant_columns():
@@ -27,11 +44,10 @@ def test_v_inbox_by_tenant_columns():
         "avg_confidence",
     }
     
-    conn = _connect(
-        settings.database_url.replace("postgresql+psycopg2://", "postgresql://").replace(
-            "postgresql+psycopg://", "postgresql://"
-        )
-    )
+    try:
+        conn = _connect(_dsn())
+    except PsyError as exc:
+        pytest.skip(f"database connection not available: {exc}")
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -63,11 +79,10 @@ def test_v_invoices_latest_columns():
         "invoice_no",
     }
     
-    conn = _connect(
-        settings.database_url.replace("postgresql+psycopg2://", "postgresql://").replace(
-            "postgresql+psycopg://", "postgresql://"
-        )
-    )
+    try:
+        conn = _connect(_dsn())
+    except PsyError as exc:
+        pytest.skip(f"database connection not available: {exc}")
     try:
         cur = conn.cursor()
         cur.execute("""
