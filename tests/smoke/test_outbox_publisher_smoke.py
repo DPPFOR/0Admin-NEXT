@@ -13,6 +13,12 @@ from agents.outbox_publisher import transports as pub_transports
 
 ARTIFACTS_DIR = "artifacts"
 
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+pytestmark = pytest.mark.skipif(
+    not RUN_DB_TESTS,
+    reason="requires RUN_DB_TESTS=1 and DATABASE_URL/OUTBOX_DB_URL",
+)
+
 
 def _db_engine():
     return create_engine(os.environ.get("DATABASE_URL", settings.database_url), future=True)
