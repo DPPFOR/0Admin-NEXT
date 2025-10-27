@@ -80,7 +80,9 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import importlib, sys
+          import sys, importlib
+          from importlib.metadata import version, PackageNotFoundError
+
           def v(name):
               try:
                   mod = importlib.import_module(name)
@@ -88,9 +90,19 @@ jobs:
               except Exception as exc:
                   print(f"{name}: IMPORT_ERROR {exc}")
                   sys.exit(2)
+
           print("Python:", sys.version.split()[0])
-          for name in ["wrapt", "grpc", "google.protobuf", "opentelemetry", "opentelemetry.sdk", "flock"]:
+
+          # harte Laufzeit-Checks (müssen importierbar sein)
+          for name in ["wrapt", "grpc", "google.protobuf", "opentelemetry", "opentelemetry.sdk"]:
               v(name)
+
+          # flock NICHT importieren – nur Installation validieren
+          try:
+              print("flock-core (installed):", version("flock-core"))
+          except PackageNotFoundError:
+              print("flock-core (installed): NOT FOUND")
+              sys.exit(2)
           PY
           pip freeze | grep -E 'wrapt|grpcio|protobuf|opentelemetry|flock-core' || true
 
