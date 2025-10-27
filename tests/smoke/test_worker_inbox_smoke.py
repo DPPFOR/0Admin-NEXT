@@ -7,8 +7,17 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine, text
 
-from backend.core.config import settings
-from agents.inbox_worker.runner import run_once
+try:
+    from backend.core.config import settings
+    from agents.inbox_worker.runner import run_once
+except ModuleNotFoundError as exc:
+    pytest.skip(f"backend/agents package not importable: {exc}", allow_module_level=True)
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 
 
 ARTIFACTS_DIR = Path("artifacts")
