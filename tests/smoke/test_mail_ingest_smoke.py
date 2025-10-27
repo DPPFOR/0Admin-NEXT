@@ -14,6 +14,11 @@ from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
 
 
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
+
+
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_PATH = ARTIFACTS_DIR / "u5-m-mail-ingest-smoke.json"
