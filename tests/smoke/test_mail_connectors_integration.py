@@ -3,6 +3,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from backend.core.config import settings
 from backend.apps.inbox.mail.connectors import ImapConnector, GraphConnector, MailMessage, MailAttachment
 from backend.apps.inbox.mail.ingest import process_mailbox
@@ -39,6 +41,10 @@ class SimGraph(GraphConnector):
     def fetch_messages(self, mailbox: str, since: datetime, limit: int) -> list[MailMessage]:
         self.calls += 1
         return self._messages[:limit]
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
 
 
 def test_mail_connectors_integration(tmp_path, monkeypatch):
