@@ -65,7 +65,12 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          pip install -U -r requirements.txt
+          pip install -U -r requirements.txt -c ci/constraints.txt
+          pip install -c ci/constraints.txt \
+            camelot-py==0.11.0 \
+            opencv-python==4.12.0.88 \
+            ghostscript==0.8.1 \
+            pdftopng==0.2.4
           # Projekt NICHT installieren (kein 'pip install .'); wir testen via PYTHONPATH
 
       - name: Verify resolved versions

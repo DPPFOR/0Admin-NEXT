@@ -45,7 +45,7 @@ pdfminer.six>=20231228
 pytesseract>=0.3.13
 pillow>=10.0.0
 ocrmypdf>=16.0.0
-camelot-py[cv]>=0.11.0
+camelot-py==0.11.0  # pin to avoid pip backtracking (cv extra removed upstream)
 tabula-py>=2.9.0
 
 # Web-Automation & HTTP (Portale/Downloads)
