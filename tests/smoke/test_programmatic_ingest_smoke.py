@@ -8,9 +8,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
-from backend.app import create_app
-from backend.core.config import settings
-from backend.apps.inbox import ingest as ingest_module
+try:
+    from backend.app import create_app
+    from backend.core.config import settings
+    from backend.apps.inbox import ingest as ingest_module
+except ModuleNotFoundError as exc:
+    pytest.skip(f"backend package not importable: {exc}", allow_module_level=True)
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 from alembic.config import Config as AlembicConfig
 from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
