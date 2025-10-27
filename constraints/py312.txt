@@ -15,22 +15,34 @@ opentelemetry-exporter-otlp-proto-http==1.30.0
 opentelemetry-exporter-otlp-proto-common==1.30.0
 opentelemetry-proto==1.30.0
 
-# --- GRPC + Protobuf + GAPIC ---
-grpcio==1.74.0
-protobuf>=4.25.3,<5
-googleapis-common-protos>=1.56.2,<2
+# --- GRPC + Protobuf + GAPIC (mit Jaeger kompatibel) ---
+grpcio==1.67.1
+protobuf==5.28.3
+googleapis-common-protos==1.52.0  # 1.52.x: weiterhin kompatibel zu flock-core Exportern
 
-# --- Numeric pin, vermeidet 2.x Suchraum ---
-numpy==1.26.4
+# --- Numeric pin, vermeidet wildes Backtracking ---
+numpy==2.2.6
 
 # --- FastAPI-Stack deterministisch ---
 fastapi==0.120.0
 starlette==0.40.0
 pydantic==2.12.3
+pydantic-settings==2.11.0
+python-multipart==0.0.20
+typer==0.20.0
 
 # --- HTTP-Client eng, vermeidet Ranges ---
 httpx==0.28.1
+aiosqlite==0.21.0
 
 # --- CV / ONNX: Haupttreiber fürs Backtracking, deshalb hart pinnen ---
 opencv-python-headless==4.11.0.86
 onnxruntime>=1.18.0
+
+# --- Flock-Core / LLM Abhängigkeiten stabilisieren ---
+openai==2.6.1
+tiktoken==0.12.0
+json-repair==0.52.3
+diskcache==5.6.3
+tokenizers==0.22.1
+mcp==1.19.0
