@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      PYTHONWARNINGS: 'ignore:Please use `import python_multipart` instead.:PendingDeprecationWarning'
+      PYTHONWARNINGS: 'ignore::PendingDeprecationWarning'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
