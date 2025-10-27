@@ -3,11 +3,21 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
-from backend.app import create_app
-from backend.core.config import settings
+try:
+    from backend.app import create_app
+    from backend.core.config import settings
+except ModuleNotFoundError as exc:
+    pytest.skip(f"backend package not importable: {exc}", allow_module_level=True)
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 
 
 def _db_engine():
