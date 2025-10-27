@@ -1,10 +1,25 @@
 """Contract tests for inbox read model database views.
 
 Ensures that database views have expected columns to catch schema mismatches early.
+These tests require a live Postgres connection and are therefore optional in CI.
 """
+import os
+
 import pytest
-import psycopg2
-from backend.core.config import settings
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
+
+from backend.core.config import settings  # noqa: E402
+
+DB_URL = getattr(settings, "database_url", None)
+
+if not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
+
+import psycopg2  # noqa: E402
 
 
 def test_v_inbox_by_tenant_columns():
@@ -17,8 +32,7 @@ def test_v_inbox_by_tenant_columns():
         "others",
         "avg_confidence",
     }
-    
-    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = psycopg2.connect(DB_URL.replace("postgresql+psycopg2://", "postgresql://"))
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -49,8 +63,7 @@ def test_v_invoices_latest_columns():
         "amount",
         "invoice_no",
     }
-    
-    conn = psycopg2.connect(settings.database_url.replace("postgresql+psycopg2://", "postgresql://"))
+    conn = psycopg2.connect(DB_URL.replace("postgresql+psycopg2://", "postgresql://"))
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -69,4 +82,3 @@ def test_v_invoices_latest_columns():
         
     finally:
         conn.close()
-
