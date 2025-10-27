@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import socket
+import os
+import sys
 from pathlib import Path
 from uuid import UUID
 
@@ -37,7 +39,8 @@ def sample_pdf_path() -> str:
 
 
 def _server_parameters() -> StdioServerParameters:
-    python_bin = WORKSPACE / ".venv" / "bin" / "python"
+    python_override = os.getenv("MCP_PYTHON_BIN")
+    python_bin = Path(python_override) if python_override else Path(sys.executable)
     return StdioServerParameters(
         command=str(python_bin),
         args=["-m", "backend.mcp_server"],
