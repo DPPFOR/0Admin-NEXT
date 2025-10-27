@@ -8,10 +8,16 @@ from sqlalchemy import create_engine, text
 
 from backend.core.config import settings
 from backend.apps.inbox.mail import ingest as mail_ingest
-from backend.apps.inbox.mail.ingest import Attachment, MailMessage
+from backend.apps/inbox/mail.ingest import Attachment, MailMessage
 from alembic.config import Config as AlembicConfig
 from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 
 
 ARTIFACTS_DIR = Path("artifacts")
