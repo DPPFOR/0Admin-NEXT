@@ -12,6 +12,9 @@ pytestmark = pytest.mark.skipif(
     reason="requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL",
 )
 
+if not RUN_DB_TESTS:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
+
 
 def test_tenant_policy_api(monkeypatch):
     app = create_app()
