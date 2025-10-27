@@ -3,9 +3,17 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from backend.core.config import settings
 from backend.apps.inbox.mail.connectors import ImapConnector, GraphConnector, MailMessage, MailAttachment
 from backend.apps.inbox.mail.ingest import process_mailbox
+
+RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
+DB_URL = getattr(settings, "database_url", None)
+
+if not RUN_DB_TESTS or not DB_URL:
+    pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL", allow_module_level=True)
 
 
 class SimAttachment:
