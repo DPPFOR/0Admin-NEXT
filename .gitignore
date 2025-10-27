@@ -231,3 +231,7 @@ frontend/dist/
 # frontend console specific
 frontend/console/node_modules/
 frontend/console/dist/
+
+# Ops reports (never version control reports), references to dir cannot be $HOME because 0Admin-NEXT is relative
+_ops_reports/
+.venv_tmp_ci/

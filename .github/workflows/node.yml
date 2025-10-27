@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Node CI (Guard)
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check lockfile
+        id: lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "**/package-lock.json" > /dev/null || compgen -G "**/yarn.lock" > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Lockfile found."
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No lockfile found. Job will be skipped by condition."
+          fi
+
+      - name: Lockfile present – placeholder success
+        if: ${{ steps.lockfile.outputs.present == 'true' }}
+        run: echo "Lockfile present → Node job allowed; placeholder step only."
