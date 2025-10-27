@@ -43,6 +43,8 @@ class SimGraph(GraphConnector):
 
 def test_mail_connectors_integration(tmp_path, monkeypatch):
     tenant = os.environ.get("SMOKE_TENANT", str(uuid.uuid4()))
+    base_dir = tmp_path / "uploads"
+    monkeypatch.setattr(settings, "STORAGE_BASE_URI", f"file://{base_dir}")
     base = settings.STORAGE_BASE_URI.replace("file://", "")
     Path(base).mkdir(parents=True, exist_ok=True)
 
