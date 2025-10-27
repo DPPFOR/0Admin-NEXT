@@ -36,6 +36,8 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     report = {"tests": []}
 
     # Prepare storage file
+    tmp_storage = tmp_path / "uploads"
+    monkeypatch.setattr(settings, "STORAGE_BASE_URI", f"file://{tmp_storage}")
     base = settings.STORAGE_BASE_URI.replace("file://", "")
     Path(base).mkdir(parents=True, exist_ok=True)
     tenant_id = os.environ.get("SMOKE_TENANT", str(uuid.uuid4()))
