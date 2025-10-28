@@ -38,7 +38,8 @@ jobs:
             "onnxruntime==1.18.0"
       - name: Install deps (respect constraints)
         run: |
-          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
+          pip install -U pip
+          pip install -c constraints/py312.txt -e .[dev]
       - name: Lint (ruff)
         run: ruff check tools/mcp
       - name: Typecheck (mypy)
@@ -254,7 +255,7 @@ jobs:
       - name: Run pip-audit (warn-only)
         run: |
           mkdir -p artifacts
-          pip-audit -r requirements.txt -r requirements-dev.txt -f json -o artifacts/pip-audit.json || true
+          pip-audit -e .[dev] -f json -o artifacts/pip-audit.json || true
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
         with:
@@ -288,7 +289,8 @@ jobs:
             "onnxruntime==1.18.0"
       - name: Install deps (respect constraints)
         run: |
-          pip install -c constraints/py312.txt -r requirements.txt -r requirements-dev.txt
+          pip install -U pip
+          pip install -c constraints/py312.txt -e .[dev]
       - name: Alembic Roundtrip
         run: |
           mkdir -p artifacts

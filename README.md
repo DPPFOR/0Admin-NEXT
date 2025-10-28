@@ -178,8 +178,9 @@ Das Projekt nutzt zwei Anforderungsdateien:
 
 Installation:
 - source .venv/bin/activate
-- pip install -r requirements.txt -r requirements-dev.txt
-Die Trennung sorgt dafür, dass Produktionssysteme nur minimale, sichere Pakete laden.
+- pip install -c constraints/py312.txt -e .[dev]
+# Add , [google] if needed for Google integrations
+Die Trennung sorgt dafür, dass Produktionssysteme nur minimale, sichere Pakete laden und Entwickler von den Arbeitsabhängigkeiten profitieren.
 ## Quality Gates
 - CI Quality Gate (build): Lint (ruff inkl. Security S), Typecheck (mypy), Tests mit Coverage (Domain/Parsing ≥80%).
 - Smoke-Matrix: Upload, Programmatic, Mail, Worker, Publisher, Read/Ops.

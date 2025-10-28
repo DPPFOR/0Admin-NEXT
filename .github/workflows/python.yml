@@ -62,13 +62,9 @@ jobs:
       - name: Install dependencies (with constraints)
         if: ${{ steps.detect.outputs.run_tests == 'true' }}
         shell: bash
-        env:
-          PIP_CONSTRAINT: constraints/py312.txt
         run: |
-          set -euo pipefail
-          python -m pip install --upgrade pip
-          pip install -U -r requirements.txt -c constraints/py312.txt
-          pip install -U -r requirements-dev.txt -c constraints/py312.txt
+          pip install -U pip
+          pip install -c constraints/py312.txt -e .[dev]
           pip uninstall -y \
             opentelemetry-exporter-jaeger \
             opentelemetry-exporter-jaeger-proto-grpc \
