@@ -27,6 +27,9 @@ from .utils import detect_mime, extension_for_mime, sha256_hex
 
 router = APIRouter(prefix="/api/v1/inbox/items")
 
+# Module-level singleton for File default to avoid function call in arg defaults
+FILE_DEFAULT = File(...)
+
 
 class UploadResponse(BaseModel):
     id: str
@@ -46,7 +49,7 @@ def _error(status_code: int, code: str, detail: str):
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_item(
-    file: UploadFile = File(...),
+    file: UploadFile = FILE_DEFAULT,
     source: str | None = Form(None),
     filename: str | None = Form(None),
     meta_json: str | None = Form(None),

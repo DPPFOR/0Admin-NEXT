@@ -6,6 +6,10 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+# Import metadata objects
+from backend.apps.inbox.importer.worker import _METADATA as inbox_metadata
+from backend.core.outbox.publisher import _METADATA as outbox_metadata
+
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -33,11 +37,6 @@ naming_convention = {
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
     "pk": "pk_%(table_name)s",
 }
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-from backend.apps.inbox.importer.worker import _METADATA as inbox_metadata
-from backend.core.outbox.publisher import _METADATA as outbox_metadata
 
 # Combine all metadata objects
 target_metadata = [inbox_metadata, outbox_metadata]

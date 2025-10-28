@@ -11,10 +11,6 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 from backend.apps.inbox.read_model.query import (
     ReadModelError,
     fetch_invoices_latest,
@@ -22,6 +18,10 @@ from backend.apps.inbox.read_model.query import (
     fetch_payments_latest,
     fetch_tenant_summary,
 )
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def _coerce_value(value: Any) -> Any:

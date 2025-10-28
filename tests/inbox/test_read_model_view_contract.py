@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+from backend.core.config import settings
+
 RUN_DB_TESTS = os.getenv("RUN_DB_TESTS") == "1"
 if not RUN_DB_TESTS:
     pytest.skip("requires RUN_DB_TESTS=1 and DATABASE_URL/INBOX_DB_URL", allow_module_level=True)
@@ -24,8 +26,6 @@ except ImportError:  # Fallback für Umgebungen mit psycopg2
     def _connect(dsn: str):
         return psycopg.connect(dsn)
 
-
-from backend.core.config import settings
 
 DB_URL = os.getenv("INBOX_DB_URL") or os.getenv("DATABASE_URL") or settings.database_url
 

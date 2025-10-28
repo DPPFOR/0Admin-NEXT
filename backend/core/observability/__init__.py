@@ -4,9 +4,7 @@ Provides JSON logging, health/readiness endpoints, and in-process metrics
 for go-live readiness without external dependencies.
 """
 
-import os
 import uuid
-from typing import Optional
 
 from . import health, metrics
 from . import logging as logging_module

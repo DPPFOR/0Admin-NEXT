@@ -10,15 +10,15 @@ from urllib import parse as urlparse
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 from backend.clients.flock_reader.client import (
     FlockClientError,
     FlockClientResponseError,
     FlockReadClient,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 
