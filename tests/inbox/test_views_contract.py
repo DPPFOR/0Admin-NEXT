@@ -96,7 +96,7 @@ class TestViewsContract:
             }
 
             # Check that all expected columns exist
-            for col_name, (expected_type, expected_nullable) in expected_columns.items():
+            for col_name, (expected_type, _expected_nullable) in expected_columns.items():
                 assert col_name in columns, f"Column {col_name} not found in view"
                 actual_type, actual_nullable = columns[col_name]
                 # Note: PostgreSQL type names might vary slightly

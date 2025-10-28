@@ -46,7 +46,7 @@ class TestIdempotentImport:
             )
 
         # Import the same artifact 3 times
-        for i in range(3):
+        for _i in range(3):
             result = process_artifact_file(
                 tenant_id=test_tenant_id, artifact_path=test_artifact_path, engine=engine
             )

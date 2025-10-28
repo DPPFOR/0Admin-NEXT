@@ -150,7 +150,6 @@ def test_worker_parses_validated_pdf(tmp_path, monkeypatch):
     report["tests"].append({"name": "T-W2 Unsupported MIME", "status": "passed"})
 
     # T-W3 Idempotency: same idempotency_key second event is skipped (no-op)
-    inbox3 = inbox_id  # refer to first parsed item
     ev2_id = str(uuid.uuid4())
     _db_exec(
         """

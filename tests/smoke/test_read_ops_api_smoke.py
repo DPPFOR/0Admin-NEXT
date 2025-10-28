@@ -44,7 +44,6 @@ def test_read_ops_endpoints(monkeypatch, caplog):
     # Seed data for two tenants
     t1 = os.environ.get("SMOKE_TENANT", str(uuid.uuid4()))
     t2 = str(uuid.uuid4())
-    now = datetime.utcnow()
 
     def seed_inbox(tenant, idx):
         iid = str(uuid.uuid4())
@@ -68,8 +67,8 @@ def test_read_ops_endpoints(monkeypatch, caplog):
         )
         return iid, pid
 
-    ids = [seed_inbox(t1, i) for i in range(5)]
-    ids2 = [seed_inbox(t2, i) for i in range(3)]
+    [seed_inbox(t1, i) for i in range(5)]
+    [seed_inbox(t2, i) for i in range(3)]
 
     # Read inbox with keyset pagination
     xtrace = "trace-smoke-12345"

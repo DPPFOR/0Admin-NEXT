@@ -81,14 +81,14 @@ class TestMVREispatchDryRun:
         playbook = DunningPlaybook(test_config)
 
         # Run dry-run
-        result = playbook.run_once(context)
+        _result = playbook.run_once(context)
 
         # Verify results
-        assert result.success
-        assert result.notices_created == 2  # Both invoices processed
+        assert _result.success
+        assert _result.notices_created == 2  # Both invoices processed
         # In dry-run, events are still dispatched but with dry_run=True
-        assert result.events_dispatched == 2
-        assert result.processing_time_seconds > 0
+        assert _result.events_dispatched == 2
+        assert _result.processing_time_seconds > 0
 
         # Verify no actual API calls were made
         mock_outbox.return_value.publish_dunning_issued.assert_not_called()
@@ -119,7 +119,7 @@ class TestMVREispatchDryRun:
         playbook = DunningPlaybook(test_config)
 
         # Run dry-run
-        result = playbook.run_once(context)
+        playbook.run_once(context)
 
         # Verify Brevo was called in dry-run mode
         assert mock_brevo.call_count == 2  # Called for each invoice
@@ -152,7 +152,7 @@ class TestMVREispatchDryRun:
         playbook = DunningPlaybook(test_config)
 
         # Exhaust rate limit first
-        for i in range(15):  # More than max_notices_per_hour
+        for _i in range(15):  # More than max_notices_per_hour
             context.mvr_engine._check_rate_limit("test-tenant")
 
         # Run dry-run (should still work despite rate limit)

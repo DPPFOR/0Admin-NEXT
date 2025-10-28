@@ -106,7 +106,7 @@ def test_publisher_webhook_success(monkeypatch):
 def test_publisher_webhook_retry_and_dlq(monkeypatch):
     tenant = str(uuid.uuid4())
     monkeypatch.setenv("TENANT_ALLOWLIST", tenant)
-    ids = seed_outbox(tenant, 1)
+    seed_outbox(tenant, 1)
 
     class AlwaysFail(pub_transports.WebhookTransport):
         def __init__(self):

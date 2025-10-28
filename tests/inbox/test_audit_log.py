@@ -98,7 +98,7 @@ class TestAuditLog:
         )
 
         # Second import (should be UPDATE)
-        result2 = process_artifact_file(
+        process_artifact_file(
             tenant_id=test_tenant_id, artifact_path=test_artifact_path, engine=engine
         )
 

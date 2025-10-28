@@ -122,7 +122,7 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
         return [make_msg("m2", [Attachment(content=exe, filename="evil.exe", size=len(exe))])]
 
     monkeypatch.setattr(mail_ingest, "fetch_messages", provider_bad)
-    res3 = mail_ingest.process_mailbox(tenant_id, "INBOX")
+    mail_ingest.process_mailbox(tenant_id, "INBOX")
     # processed remains unchanged, failures increased implicitly; check events unchanged
     c_events2 = _db_count(
         "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'",
@@ -138,11 +138,11 @@ def test_mail_ingest_smoke(monkeypatch, caplog):
         monkeypatch.setattr(
             mail_ingest,
             "fetch_messages",
-            lambda p, m, l: [
+            lambda p, m, limit: [
                 make_msg("m3", [Attachment(content=big_pdf, filename="big.pdf", size=len(big_pdf))])
             ],
         )
-        res4 = mail_ingest.process_mailbox(tenant_id, "INBOX")
+        mail_ingest.process_mailbox(tenant_id, "INBOX")
         c_events3 = _db_count(
             "SELECT COUNT(*) FROM event_outbox WHERE tenant_id=:t AND event_type='InboxItemValidated'",
             {"t": tenant_id},
