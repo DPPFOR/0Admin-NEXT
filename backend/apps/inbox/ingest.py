@@ -44,7 +44,7 @@ def _resolve_host_ips(host: str) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
         ips = []
-        for family, _, _, _, sockaddr in infos:
+        for _family, _, _, _, sockaddr in infos:
             ip = sockaddr[0]
             ips.append(ip)
         return list(sorted(set(ips)))
@@ -113,8 +113,8 @@ def _http_fetch(url: str) -> tuple[bytes, str | None]:
             # HEAD to check Content-Length
             try:
                 head = client.head(current)
-            except httpx.TimeoutException:
-                raise IngestError("remote_timeout", 504, "HEAD timeout")
+            except httpx.TimeoutException as err:
+                raise IngestError("remote_timeout", 504, "HEAD timeout") from err
 
             cl = head.headers.get("Content-Length")
             if cl:
@@ -128,8 +128,8 @@ def _http_fetch(url: str) -> tuple[bytes, str | None]:
             # GET with hard cap; do not forward incoming headers (no Authorization/Cookies)
             try:
                 resp = client.get(current)
-            except httpx.TimeoutException:
-                raise IngestError("remote_timeout", 504, "GET timeout")
+            except httpx.TimeoutException as err:
+                raise IngestError("remote_timeout", 504, "GET timeout") from err
 
             # Handle redirects manually
             if resp.status_code in (301, 302, 303, 307, 308):

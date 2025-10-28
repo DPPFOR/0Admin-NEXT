@@ -16,7 +16,7 @@ def get_version() -> str:
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
             return data.get("tool", {}).get("poetry", {}).get("version", "unknown")
-    except:
+    except Exception:
         # Fallback to pyproject.toml as TOML (older Python)
         try:
             import toml
@@ -24,7 +24,7 @@ def get_version() -> str:
             with open("pyproject.toml") as f:
                 data = toml.load(f)
                 return data.get("tool", {}).get("poetry", {}).get("version", "unknown")
-        except:
+        except Exception:
             return "dev"
 
 

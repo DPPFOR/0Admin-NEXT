@@ -258,7 +258,6 @@ class GraphConnectorImpl(GraphConnector):
                 if not m.get("hasAttachments"):
                     continue
                 mid = m["id"]
-                rec = m.get("receivedDateTime") or since.isoformat()
                 rr = c.get(
                     f"{base}/users/{self.user_id}/messages/{mid}/attachments?$select=id,name,contentType,contentBytes,@odata.type"
                 )

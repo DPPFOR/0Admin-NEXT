@@ -18,7 +18,7 @@ from backend.integrations.brevo_client import send_transactional
 
 from .clients import OutboxClient, ReadApiClient
 from .config import DunningConfig
-from .dto import DunningNotice, DunningStage, OverdueInvoice
+from .dto import DunningEvent, DunningNotice, DunningStage, OverdueInvoice
 from .mvr import MVREngine
 from .policies import DunningPolicies
 
@@ -187,8 +187,8 @@ class TemplateEngine:
                     templates["stage_3"] = f.read()
 
                 self.logger.info(f"Loaded templates from {default_dir}")
-            except FileNotFoundError:
-                raise FileNotFoundError("No templates found in default directory")
+            except FileNotFoundError as err:
+                raise FileNotFoundError("No templates found in default directory") from err
 
         return templates
 
@@ -591,7 +591,7 @@ class DunningPlaybook:
 
     def _create_dunning_event_impl(
         self, notice: DunningNotice, stage: DunningStage, context: DunningContext
-    ) -> "DunningEvent":
+    ) -> DunningEvent:
         """Create dunning event for notice.
 
         Args:
@@ -602,8 +602,6 @@ class DunningPlaybook:
         Returns:
             Dunning event
         """
-        from .dto import DunningEvent
-
         return DunningEvent(
             event_id=f"EVENT-{notice.notice_id}",
             tenant_id=notice.tenant_id,

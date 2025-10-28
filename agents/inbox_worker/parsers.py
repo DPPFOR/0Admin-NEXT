@@ -90,7 +90,6 @@ def parse_xml(data: bytes) -> dict:
         root = ET.fromstring(data)
     except Exception:
         return {"doc_type": "xml"}
-    ns = ""
     res = {"doc_type": "xml"}
     # naive search
     for tag in ("invoice", "invoice_no", "InvoiceNo", "InvoiceID"):

@@ -15,7 +15,7 @@ from backend.core.config import settings
 from backend.mcp.server.observability import get_logger
 
 try:  # pragma: no cover - regular import path
-    from .dto import ParsedItemChunkDTO, ParsedItemDTO  # type: ignore
+    from .dto import ParsedItemChunkDTO, ParsedItemDTO, ProcessResult  # type: ignore
     from .mapper import artifact_to_dtos  # type: ignore
     from .validators import validate_artifact_minimum, validate_tables_shape  # type: ignore
 except Exception:  # pragma: no cover - fallback for direct module load (tests/CLI)
@@ -175,7 +175,6 @@ def process_artifact_file(
     engine: Engine | None = None,
 ) -> ProcessResult:
     """Process an artifact file and return the result."""
-    from .dto import ProcessResult
 
     engine = _ensure_engine(engine)
 

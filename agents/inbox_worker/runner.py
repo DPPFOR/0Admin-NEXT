@@ -267,7 +267,7 @@ def run_once(engine: Engine | None = None, batch_size: int | None = None) -> int
                     has_chunks, chunks_map = maybe_chunk(text_for_chunks)
                     if has_chunks:
                         seq = 1
-                        for k, txt in chunks_map.items():
+                        for _k, txt in chunks_map.items():
                             conn.execute(
                                 insert(chunks).values(
                                     id=str(uuid4()),

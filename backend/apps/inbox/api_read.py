@@ -201,7 +201,6 @@ def get_inbox_item(
         _error(status.HTTP_404_NOT_FOUND, "not_found", "Item not found")
     increment_inbox_read()
     record_read_duration((time.time() - start) * 1000.0)
-    trace_id = trace_header or str(uuid.uuid4())
     return InboxItemOut(
         id=r.id,
         status=r.status,
@@ -317,7 +316,6 @@ def get_parsed_item(
         pj = {}
     increment_parsed_read()
     record_read_duration((time.time() - start) * 1000.0)
-    trace_id = trace_header or str(uuid.uuid4())
     return ParsedItemOut(
         id=r.id,
         tenant_id=r.tenant_id,
