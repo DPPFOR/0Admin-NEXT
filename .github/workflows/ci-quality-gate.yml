@@ -34,7 +34,7 @@ jobs:
             "wrapt>=1.17.0,<2" \
             "typing-extensions==4.15.0" \
             "importlib-metadata==8.1.0" \
-            "opencv-python-headless==4.11.0.86" \
+            "opencv-python-headless==4.12.0.88" \
             "onnxruntime==1.18.0"
       - name: Install deps (respect constraints)
         run: |
@@ -282,7 +282,7 @@ jobs:
             "wrapt>=1.17.0,<2" \
             "typing-extensions==4.15.0" \
             "importlib-metadata==8.1.0" \
-            "opencv-python-headless==4.11.0.86" \
+            "opencv-python-headless==4.12.0.88" \
             "onnxruntime==1.18.0"
       - name: Install deps (respect constraints)
         run: |
