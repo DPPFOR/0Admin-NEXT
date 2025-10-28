@@ -2,11 +2,12 @@ name: CI Quality Gate
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 2 * * *'
+    branches: [ "main" ]
+  workflow_dispatch:
+# schedule:    <-- raus
+#   - cron: "0 4 * * *"
 
 jobs:
   build:
