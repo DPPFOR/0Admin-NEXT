@@ -43,6 +43,129 @@ jobs:
         run: ruff check tools/mcp
       - name: Typecheck (mypy)
         run: mypy --config-file mypy.ini tools/mcp/validate_contracts.py
+      - name: Prepare test artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/inbox_local/samples
+
+          # sample_result.json – generisches Artefakt für Mapping/Importer
+          cat > artifacts/inbox_local/samples/sample_result.json << 'JSON'
+          {
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "trace_id": "trace-sample-001",
+            "doc_type": "pdf",
+            "fingerprints": {
+              "content_hash": "invoice-sample-0001",
+              "source_name": "sample-invoice.pdf"
+            },
+            "pipeline": ["pdf.text_extract", "pdf.tables_extract", "invoice.map"],
+            "extracted": {
+              "tables": [
+                {
+                  "headers": ["Description", "Amount"],
+                  "rows": [
+                    ["Consulting Services", "0.00"],
+                    ["Subtotal", "0.00"]
+                  ]
+                }
+              ],
+              "kv": []
+            },
+            "quality": {"valid": true, "issues": []},
+            "pii": {"steps": []},
+            "flags": {"enable_ocr": false},
+            "amount": null,
+            "invoice_no": "INV-999",
+            "due_date": null
+          }
+          JSON
+
+          # payment_good.json – soll Payment-Mapping passieren
+          cat > artifacts/inbox_local/samples/payment_good.json << 'JSON'
+          {
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "trace_id": "trace-payment-good-001",
+            "doc_type": "payment",
+            "fingerprints": {
+              "content_hash": "payment-good-0001",
+              "source_name": "payment-good.pdf"
+            },
+            "pipeline": ["pdf.text_extract", "payment.extract"],
+            "extracted": {
+              "payment": {
+                "amount": "250.00",
+                "currency": "EUR",
+                "payment_date": "2025-02-15",
+                "counterparty": "ACME Bank",
+                "reference": "SEPA-REF-2025-02-15"
+              },
+              "kv": [
+                {"key": "Payment Amount", "value": "250.00 EUR"},
+                {"key": "Counterparty", "value": "ACME Bank"}
+              ]
+            },
+            "quality": {"valid": true, "issues": []},
+            "pii": {"steps": []},
+            "flags": {
+              "enable_table_boost": true,
+              "mvr_preview": true
+            },
+            "amount": "250.00",
+            "currency": "EUR",
+            "payment_date": "2025-02-15",
+            "counterparty": "ACME Bank"
+          }
+          JSON
+
+          # payment_bad.json – absichtlich unvollständig/negativer Fall
+          cat > artifacts/inbox_local/samples/payment_bad.json << 'JSON'
+          {
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "trace_id": "trace-payment-bad-001",
+            "doc_type": "payment",
+            "fingerprints": {
+              "content_hash": "payment-bad-0001",
+              "source_name": "payment-bad.pdf"
+            },
+            "pipeline": ["pdf.text_extract", "payment.extract"],
+            "extracted": {
+              "payment": {
+                "amount": null,
+                "currency": "EUR",
+                "payment_date": "",
+                "counterparty": null
+              }
+            },
+            "quality": {"valid": false, "issues": ["payment.amount.missing"]},
+            "pii": {"steps": []},
+            "flags": {"enable_ocr": false},
+            "amount": null,
+            "currency": "EUR"
+          }
+          JSON
+
+          # other_min.json – Minimalfall, der nicht Invoice/Payment erfüllt
+          cat > artifacts/inbox_local/samples/other_min.json << 'JSON'
+          {
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "trace_id": "trace-other-001",
+            "doc_type": "other",
+            "fingerprints": {
+              "content_hash": "other-min-0001",
+              "source_name": "other-min.pdf"
+            },
+            "pipeline": ["pdf.text_extract", "other.extract"],
+            "extracted": {
+              "kv": [
+                {"key": "Note", "value": "minimal payload"}
+              ],
+              "tables": []
+            },
+            "quality": {"valid": true, "issues": []},
+            "pii": {"steps": []},
+            "flags": {"mvr_preview": false}
+          }
+          JSON
       - name: Tests + Coverage (domain/parsing)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
