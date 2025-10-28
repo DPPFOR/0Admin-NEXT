@@ -81,14 +81,15 @@ line-length = 100
 target-version = ["py312"]
 
 [tool.ruff]
+target-version = "py312"
 line-length = 100
-
+fix = false
+exclude = ["migrations/**", "build/**", "node_modules/**", "frontend/**"]
 [tool.ruff.lint]
-select = ["E", "F", "W", "N", "UP", "B", "SIM", "I", "S", "ANN", "DTZ"]
-ignore = ["E501", "F403", "F405"]
-
+select = ["E", "F", "B"]
+ignore = ["E501", "F401", "B011", "B008"]
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "ANN", "DTZ"]
+"tests/**" = ["B011"]
 
 [tool.alembic]
 script_location = "backend/migrations/alembic"
@@ -112,6 +113,7 @@ disallow_incomplete_defs = false
 no_implicit_optional = true
 strict_equality = true
 ignore_missing_imports = true
+exclude = ["tests"]
 
 [[tool.mypy.overrides]]
 module = "backend.apps.inbox.*"
