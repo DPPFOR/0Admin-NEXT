@@ -102,7 +102,7 @@ class TestMVRRules:
     def test_should_send_rate_limit(self, mvr_engine, sample_invoice):
         """Test rate limiting."""
         # Exhaust rate limit
-        for i in range(10):  # Max 10 per hour
+        for _i in range(10):  # Max 10 per hour
             mvr_engine._check_rate_limit("test-tenant")
 
         decision = mvr_engine.should_send_dunning(sample_invoice, DunningStage.STAGE_1)

@@ -220,7 +220,7 @@ class TestFlowSmokeLocalDB:
         # Mock connection pool
         with patch.object(context.read_client, "health_check", return_value=True):
             # Simulate multiple connections
-            for i in range(5):
+            for _i in range(5):
                 is_healthy = context.read_client.health_check()
                 assert is_healthy is True
 

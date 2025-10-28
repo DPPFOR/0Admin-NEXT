@@ -51,7 +51,7 @@ class TestMVRApprovalEngine:
         engine = MVRApprovalEngine()
 
         # Create request
-        request = engine.create_approval_request(
+        _request = engine.create_approval_request(
             tenant_id="tenant-1",
             notice_id="NOTICE-001",
             invoice_id="INV-001",
