@@ -1,9 +1,9 @@
 name: Nightly DB Contract Tests
 
 on:
-  schedule:
-    - cron: "0 2 * * *"
   workflow_dispatch:
+# schedule:   <-- raus
+#   - cron: "0 2 * * *"
 
 jobs:
   db-contracts:
