@@ -43,7 +43,7 @@ jobs:
       - name: Lint (ruff)
         run: ruff check tools/mcp
       - name: Typecheck (mypy)
-        run: mypy --config-file mypy.ini tools/mcp/validate_contracts.py
+        run: mypy tools/mcp/validate_contracts.py
       - name: Prepare test artifacts
         run: |
           set -euo pipefail
