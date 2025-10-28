@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util as _iu
 import os
+import pytest
 
 
 def test_shadow_analysis_mail_path_guards(monkeypatch):
@@ -17,7 +18,7 @@ def test_shadow_analysis_mail_path_guards(monkeypatch):
         mod.run_shadow_analysis(
             tenant_id="t", trace_id="x", source_uri_or_path="/abs/path.pdf", content_sha256=""
         )
-        assert False, "expected ValueError"
+        pytest.fail("expected ValueError")
     except ValueError:
         pass
     # invalid traversal
@@ -28,7 +29,7 @@ def test_shadow_analysis_mail_path_guards(monkeypatch):
             source_uri_or_path="artifacts/inbox/../../etc/passwd",
             content_sha256="",
         )
-        assert False, "expected ValueError"
+        pytest.fail("expected ValueError")
     except ValueError:
         pass
     # valid
