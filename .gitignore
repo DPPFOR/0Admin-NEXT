@@ -237,4 +237,6 @@ _ops_reports/
 .venv_tmp_ci/
 
 # local test artifacts
-artifacts/
+build/test artifacts
+artifacts/**
+!artifacts/.keep
