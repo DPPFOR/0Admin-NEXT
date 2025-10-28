@@ -36,7 +36,7 @@ httpx==0.28.1
 aiosqlite==0.21.0
 
 # --- CV / ONNX: Haupttreiber fürs Backtracking, deshalb hart pinnen ---
-opencv-python-headless==4.11.0.86
+opencv-python-headless==4.12.0.88
 onnxruntime>=1.18.0
 
 # --- Flock-Core / LLM Abhängigkeiten stabilisieren ---
