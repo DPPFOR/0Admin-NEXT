@@ -1,0 +1,7 @@
+pytest
+pytest-cov
+httpx
+freezegun
+requests
+pyyaml
+
