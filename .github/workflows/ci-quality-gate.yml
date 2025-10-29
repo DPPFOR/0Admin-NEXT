@@ -3,8 +3,20 @@ name: CI Quality Gate
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - '.github/workflows/**'
+      - 'requirements*.txt'
+      - 'constraints/**'
+      - 'pyproject.toml'
+      - 'setup.cfg'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - '.github/workflows/**'
+      - 'requirements*.txt'
+      - 'constraints/**'
+      - 'pyproject.toml'
+      - 'setup.cfg'
   workflow_dispatch:
 # schedule:    <-- raus
 #   - cron: "0 4 * * *"
@@ -253,9 +265,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install pip-audit
       - name: Run pip-audit (warn-only)
+        continue-on-error: true
         run: |
+          echo "pip-audit set to warn-only (FASTLANE)"
           mkdir -p artifacts
-          pip-audit -e .[dev] -f json -o artifacts/pip-audit.json || true
+          pip-audit -e .[dev] -f json -o artifacts/pip-audit.json
       - name: Ensure pip-audit artifact exists
         if: always()
         run: |

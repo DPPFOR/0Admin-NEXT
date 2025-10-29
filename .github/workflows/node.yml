@@ -7,11 +7,13 @@ on:
     paths:
       - '**/package-lock.json'
       - '**/yarn.lock'
+      - '**/pnpm-lock.yaml'
       - '**/npm-shrinkwrap.json'
   pull_request:
     paths:
       - '**/package-lock.json'
       - '**/yarn.lock'
+      - '**/pnpm-lock.yaml'
       - '**/npm-shrinkwrap.json'
 
 jobs:
@@ -28,6 +30,7 @@ jobs:
         id: lock
         run: |
           if compgen -G "**/package-lock.json" > /dev/null || \
+             compgen -G "**/pnpm-lock.yaml" > /dev/null || \
              compgen -G "**/yarn.lock" > /dev/null || \
              compgen -G "**/npm-shrinkwrap.json" > /dev/null; then
             echo "found=true" >> "$GITHUB_OUTPUT"
@@ -42,6 +45,10 @@ jobs:
           if compgen -G "**/package-lock.json" > /dev/null; then
             npm ci
             npm test || true
+          elif compgen -G "**/pnpm-lock.yaml" > /dev/null; then
+            npm install -g pnpm
+            pnpm install --frozen-lockfile
+            pnpm test || true
           elif compgen -G "**/yarn.lock" > /dev/null; then
             yarn install --frozen-lockfile
             yarn test || true

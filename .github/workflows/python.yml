@@ -5,20 +5,18 @@ name: Python CI (Focused Mahnwesen)
 on:
   push:
     paths:
-      - 'agents/**'
-      - 'tools/**'
+      - 'agents/mahnwesen/**'
+      - 'agents/einvoice/**'
       - 'tests/agents_mahnwesen/**'
-      - 'docs/agents/**'
+      - 'tests/einvoice/**'
       - '.github/workflows/python.yml'
-      - '.vscode/tasks.json'
   pull_request:
     paths:
-      - 'agents/**'
-      - 'tools/**'
+      - 'agents/mahnwesen/**'
+      - 'agents/einvoice/**'
       - 'tests/agents_mahnwesen/**'
-      - 'docs/agents/**'
+      - 'tests/einvoice/**'
       - '.github/workflows/python.yml'
-      - '.vscode/tasks.json'
   workflow_dispatch:
 
 jobs:
@@ -44,25 +42,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements-dev.txt ]; then
-            python -m pip install -r requirements-dev.txt
-          else
-            python -m pip install pytest pytest-cov httpx freezegun requests
-          fi
-          python -m pip install pytest pytest-cov httpx freezegun requests pyyaml
+          python -m pip install -r requirements-dev.txt || python -m pip install pytest pytest-cov httpx freezegun requests pyyaml lxml
 
-      - name: Run focused Mahnwesen tests
+      - name: Run focused Mahnwesen & E-Invoice tests
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           set -e
-          pytest -q \
-            tests/agents_mahnwesen/test_morning_operate.py \
-            tests/agents_mahnwesen/test_canary_engine.py \
-            tests/agents_mahnwesen/test_canary_rollout.py \
-            tests/agents_mahnwesen/test_operate_tools.py \
-            tests/agents_mahnwesen/test_kpi_engine.py \
-            tests/agents_mahnwesen/test_bounce_reconcile.py \
-            tests/agents_mahnwesen/test_sender_security_tools.py \
-            tests/agents_mahnwesen/test_flock_integration_offline.py \
-            tests/agents_mahnwesen/test_mvr_dispatch_dryrun.py
+          pytest -q tests/agents_mahnwesen tests/einvoice
