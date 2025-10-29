@@ -47,9 +47,9 @@ jobs:
           if [ -f requirements-dev.txt ]; then
             python -m pip install -r requirements-dev.txt
           else
-            python -m pip install pytest httpx freezegun
+            python -m pip install pytest pytest-cov httpx freezegun requests
           fi
-          python -m pip install pytest httpx freezegun
+          python -m pip install pytest pytest-cov httpx freezegun requests
 
       - name: Run focused Mahnwesen tests
         env:
