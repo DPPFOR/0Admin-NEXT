@@ -10,7 +10,7 @@ from .facturx import (
     build_facturx_xml,
     embed_xml_to_pdf,
     validate_facturx,
-    version,
+    version as facturx_version,
 )
 from .numbering import NumberingService
 from .samples import (
@@ -22,7 +22,18 @@ from .samples import (
     build_sample_profile,
     iter_sample_scenarios,
 )
+from .xrechnung import (
+    XRECHNUNG_CUSTOMIZATION_ID,
+    XRECHNUNG_PROFILE_ID,
+    XRechnungValidationResult,
+    build_xrechnung_document,
+    build_xrechnung_xml,
+    validate_xrechnung,
+    version as xrechnung_version,
+)
 from .stammdaten import TenantProfile, TenantProfileProvider
+
+version = facturx_version
 
 __all__ = [
     "write_package",
@@ -43,7 +54,15 @@ __all__ = [
     "build_facturx_xml",
     "embed_xml_to_pdf",
     "validate_facturx",
+    "facturx_version",
     "version",
+    "XRECHNUNG_CUSTOMIZATION_ID",
+    "XRECHNUNG_PROFILE_ID",
+    "XRechnungValidationResult",
+    "build_xrechnung_document",
+    "build_xrechnung_xml",
+    "validate_xrechnung",
+    "xrechnung_version",
     "SCENARIOS",
     "SampleScenario",
     "SELLER_PARTY",

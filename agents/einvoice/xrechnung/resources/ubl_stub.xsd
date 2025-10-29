@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TEMP_VALIDATOR: Placeholder XSD for XRechnung UBL. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="Invoice">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="CustomizationID" type="xs:string" minOccurs="1" maxOccurs="1"/>
+        <xs:element name="ProfileID" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="ID" type="xs:string" minOccurs="1" maxOccurs="1"/>
+        <xs:element name="IssueDate" type="xs:string" minOccurs="1" maxOccurs="1"/>
+        <xs:element name="DueDate" type="xs:string" minOccurs="0" maxOccurs="1"/>
+        <xs:element name="DocumentCurrencyCode" type="xs:string" minOccurs="1" maxOccurs="1"/>
+        <xs:element name="TaxTotal" minOccurs="1" maxOccurs="unbounded"/>
+        <xs:element name="LegalMonetaryTotal" minOccurs="1" maxOccurs="1"/>
+        <xs:element name="InvoiceLine" minOccurs="1" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+
