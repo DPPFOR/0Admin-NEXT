@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from .summary import mask_pii
+
 
 def _ensure_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
@@ -21,7 +23,7 @@ def _write_notice(
     now: datetime,
     *,
     actor: str = "system",
-    reason: Optional[str] = None,
+    comment: Optional[str] = None,
 ) -> Path:
     audit_dir = invoice_dir / "audit"
     audit_dir.mkdir(parents=True, exist_ok=True)
@@ -34,8 +36,8 @@ def _write_notice(
         "timestamp_utc": now_utc.isoformat().replace("+00:00", "Z"),
         "actor": actor,
     }
-    if reason:
-        payload["reason"] = reason
+    if comment:
+        payload["comment"] = mask_pii(comment)
 
     path = audit_dir / filename
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
@@ -48,8 +50,9 @@ def approve(
     now: datetime,
     *,
     actor: str = "system",
+    comment: Optional[str] = None,
 ) -> Path:
-    return _write_notice(invoice_dir, invoice_no, "approved", now, actor=actor)
+    return _write_notice(invoice_dir, invoice_no, "approved", now, actor=actor, comment=comment)
 
 
 def reject(
@@ -60,5 +63,5 @@ def reject(
     reason: str,
     actor: str = "system",
 ) -> Path:
-    return _write_notice(invoice_dir, invoice_no, "rejected", now, actor=actor, reason=reason)
+    return _write_notice(invoice_dir, invoice_no, "rejected", now, actor=actor, comment=reason)
 

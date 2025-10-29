@@ -2,6 +2,57 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "E-Invoice: Generate (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/einvoice/generate.py --tenant ${input:tenantId} --count ${input:einvoiceCount} --format ${input:einvoiceFormat} --now ${input:einvoiceNow} --verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "E-Invoice: Approve (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/einvoice/approve.py --tenant ${input:tenantId} --invoice-no ${input:einvoiceInvoiceNo} --format ${input:einvoiceFormat} --actor ${input:einvoiceActor} --comment ${input:einvoiceComment}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "E-Invoice: Export (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/einvoice/export.py --tenant ${input:tenantId} --invoice-no ${input:einvoiceInvoiceNo} --format ${input:einvoiceFormat} --dest ${input:einvoiceExportDest} --include-audit"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Mahnwesen: Dry-Run (Flock)",
       "type": "shell",
       "command": "python",
@@ -643,6 +694,47 @@
       "type": "promptString",
       "description": "Tenant ID (UUID)",
       "default": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "einvoiceFormat",
+      "type": "pickString",
+      "description": "E-Invoice Format",
+      "options": ["facturx", "xrechnung"],
+      "default": "facturx"
+    },
+    {
+      "id": "einvoiceCount",
+      "type": "promptString",
+      "description": "Anzahl Rechnungen",
+      "default": "10"
+    },
+    {
+      "id": "einvoiceNow",
+      "type": "promptString",
+      "description": "ISO-8601 Timestamp (UTC)",
+      "default": "2025-01-01T00:00:00+00:00"
+    },
+    {
+      "id": "einvoiceInvoiceNo",
+      "type": "promptString",
+      "description": "Invoice Nummer (ohne Suffix)"
+    },
+    {
+      "id": "einvoiceActor",
+      "type": "promptString",
+      "description": "Approval Actor",
+      "default": "operate"
+    },
+    {
+      "id": "einvoiceComment",
+      "type": "promptString",
+      "description": "Approval Comment"
+    },
+    {
+      "id": "einvoiceExportDest",
+      "type": "promptString",
+      "description": "Export Zielverzeichnis",
+      "default": "./exports"
     },
     {
       "id": "noticeId",

@@ -25,6 +25,7 @@ from agents.einvoice import (
     write_package,
     xrechnung_version,
 )
+from agents.einvoice.summary import RunSummary, collect_results, write_summary_markdown
 
 
 def _iso_datetime(value: str) -> datetime:
@@ -61,11 +62,12 @@ def generate_batch(
     dry_run: bool = False,
     verbose: bool = False,
     format_name: str = "facturx",
-) -> List[dict]:
+) -> dict:
     scenarios = _ensure_count(count, iter_sample_scenarios())
     profile = build_sample_profile(tenant_id)
     results: List[dict] = []
     previous_hash: str | None = None
+    first_document_timestamp: datetime | None = None
 
     now_provider = now_provider_factory()
     numbering = NumberingService(clock=now_provider)
@@ -89,6 +91,9 @@ def generate_batch(
         invoice.invoice_no = invoice_no
 
         document_timestamp = now_provider()
+
+        if first_document_timestamp is None:
+            first_document_timestamp = document_timestamp
 
         if format_name == "facturx":
             pdf_bytes, xml_bytes = build_facturx_document(
@@ -128,17 +133,22 @@ def generate_batch(
 
         idempotency_key = invoice.idempotency_key(invoice_no, format_identifier)
 
+        result_entry = {
+            "invoice_no": invoice_no,
+            "invoice_id": invoice_id,
+            "format": format_name,
+            "idempotency_key": idempotency_key,
+            "validation": validation_result.to_dict(),
+        }
+
         if dry_run:
-            results.append(
+            result_entry.update(
                 {
-                    "invoice_no": invoice_no,
-                    "invoice_id": invoice_id,
                     "manifest_hash": previous_hash,
-                    "format": format_name,
-                    "idempotency_key": idempotency_key,
                     "dry_run": True,
                 }
             )
+            results.append(result_entry)
             continue
 
         package_timestamp = now_provider()
@@ -153,20 +163,34 @@ def generate_batch(
         )
         approve_timestamp = now_provider()
         approve(package_dir, archive_invoice_no, now=approve_timestamp)
-        results.append(
+        result_entry.update(
             {
-                "invoice_no": invoice_no,
-                "invoice_id": invoice_id,
                 "manifest_hash": manifest_hash,
                 "path": str(package_dir),
-                "format": format_name,
-                "idempotency_key": idempotency_key,
             }
         )
+        results.append(result_entry)
         previous_hash = manifest_hash
         if verbose:
             print(f"Generated {invoice_no} -> {manifest_hash}")
-    return results
+
+    summary_path = None
+    if not dry_run and results:
+        summary = RunSummary(
+            tenant_id=tenant_id,
+            format=format_name,
+            generator_version=generator_version,
+            created_at=first_document_timestamp or datetime.now(timezone.utc),
+            results=collect_results(results),
+        )
+        summary_path = write_summary_markdown(summary, base_dir)
+        if verbose:
+            print(f"Summary written to {summary_path}")
+
+    return {
+        "invoices": results,
+        "summary_path": str(summary_path) if summary_path else None,
+    }
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
@@ -203,7 +227,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     def factory() -> Callable[[], datetime]:
         return _make_now_provider(base_now)
 
-    results = generate_batch(
+    output = generate_batch(
         tenant_id=args.tenant,
         count=args.count,
         base_dir=args.output_dir,
@@ -213,7 +237,7 @@ def main(argv: Iterable[str] | None = None) -> None:
         format_name=args.format,
     )
     if args.verbose:
-        print(json.dumps(results, indent=2))
+        print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":  # pragma: no cover
