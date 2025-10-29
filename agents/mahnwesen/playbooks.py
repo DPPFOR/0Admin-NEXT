@@ -428,6 +428,51 @@ class DunningPlaybook:
                         "trace_id": context.correlation_id,
                     }
 
+                    if context.outbox_client.check_duplicate_event(
+                        notice.tenant_id, notice.invoice_id, stage
+                    ):
+                        self.logger.info(
+                            "duplicate notice skipped",
+                            extra={
+                                "tenant_id": notice.tenant_id,
+                                "invoice_id": notice.invoice_id,
+                                "notice_id": notice.notice_id,
+                                "stage": stage.value,
+                            },
+                        )
+                        continue
+
+                    if context.dry_run:
+                        dry_payload = {
+                            **approval_payload,
+                            "status": "dispatched",
+                        }
+                        dry_run_prepared.append(dry_payload)
+
+                        brevo_response = self._send_via_brevo(rendered_notice, context)
+                        if brevo_response.success:
+                            events_dispatched += 1
+                            message_id = brevo_response.message_id or (
+                                f"dry-run-{decision.idempotency_key[:8]}"
+                            )
+                            dispatch_records.append({**approval_payload, "message_id": message_id})
+                            self.logger.info(
+                                "dry-run dispatched notice=%s stage=%s idempotency_key=%s message_id=%s",
+                                notice.notice_id,
+                                stage.value,
+                                decision.idempotency_key,
+                                message_id,
+                            )
+                        else:
+                            self.logger.error(
+                                "dry-run brevo failed notice=%s stage=%s idempotency_key=%s error=%s",
+                                notice.notice_id,
+                                stage.value,
+                                decision.idempotency_key,
+                                brevo_response.error,
+                            )
+                        continue
+
                     if requires_approval:
                         can_send, approval_reason, record = context.approval_store.can_send(
                             notice.tenant_id,
@@ -466,34 +511,6 @@ class DunningPlaybook:
                                 "reason": approval_reason or record.reason,
                             }
                         )
-
-                    if context.dry_run:
-                        dry_payload = {
-                            **approval_payload,
-                            "status": "prepared",
-                        }
-                        dry_run_prepared.append(dry_payload)
-                        self.logger.info(
-                            "dry-run prepared notice=%s stage=%s idempotency_key=%s",
-                            notice.notice_id,
-                            stage.value,
-                            decision.idempotency_key,
-                        )
-                        continue
-
-                    if context.outbox_client.check_duplicate_event(
-                        notice.tenant_id, notice.invoice_id, stage
-                    ):
-                        self.logger.info(
-                            "duplicate notice skipped",
-                            extra={
-                                "tenant_id": notice.tenant_id,
-                                "invoice_id": notice.invoice_id,
-                                "notice_id": notice.notice_id,
-                                "stage": stage.value,
-                            },
-                        )
-                        continue
 
                     brevo_response = self._send_via_brevo(rendered_notice, context)
                     if not brevo_response.success:

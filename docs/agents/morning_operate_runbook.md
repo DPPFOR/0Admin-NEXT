@@ -66,4 +66,5 @@ Täglicher Einlauf (empfohlen 07:30 CET) zur Bewertung des Mahnwesen-Canary-Roll
 - DNS/Absender bleiben log-only (vgl. `sender_dns_checklist.md`)
 - Retention: KPI & Rollout-Logs ≥ 90 d, Audit ≥ 365 d, Logs 30 d
 - Redaction-Probe (`tools/operate/redaction_probe.py`) regelmäßig laufen lassen
+- Dry-Run verhält sich bewusst liberal: Approval-Sperren werden simuliert, Versand wird gezählt & geloggt, aber es erfolgen keine Outbox-Writes
 

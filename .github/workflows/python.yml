@@ -1,233 +1,64 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Python CI (Guarded)
+name: Python CI (Focused Mahnwesen)
+
 on:
   push:
-    branches: ['**']
+    paths:
+      - 'agents/**'
+      - 'tools/**'
+      - 'tests/agents_mahnwesen/**'
+      - 'docs/agents/**'
+      - '.github/workflows/python.yml'
+      - '.vscode/tasks.json'
   pull_request:
-    branches: ['**']
+    paths:
+      - 'agents/**'
+      - 'tools/**'
+      - 'tests/agents_mahnwesen/**'
+      - 'docs/agents/**'
+      - '.github/workflows/python.yml'
+      - '.vscode/tasks.json'
+  workflow_dispatch:
+
 jobs:
-  test:
+  tests:
     runs-on: ubuntu-latest
     env:
-      PYTHONWARNINGS: 'ignore::PendingDeprecationWarning'
+      TZ: UTC
+      PYTHONHASHSEED: '0'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      RUN_DB_TESTS: '0'
+      TENANT_DEFAULT: '00000000-0000-0000-0000-000000000001'
+      MVR_KILL_SWITCH: '1'
+      MVR_RATE_LIMIT: '2'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect Python project & tests
-        id: detect
-        shell: bash
-        run: |
-          set -euo pipefail
-          has_proj=false
-          has_tests=false
-
-          # Projektindikatoren
-          if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
-            has_proj=true
-          fi
-
-          # Testindikatoren (Dateien/Ordner)
-          if [ -f "pytest.ini" ] || [ -d "tests" ]; then
-            has_tests=true
-          else
-            # Optional: Konfigs durchsuchen (nur wenn vorhanden)
-            if [ -f "pyproject.toml" ]; then
-              if grep -qE '^\s*\[tool\.pytest' pyproject.toml; then
-                has_tests=true
-              fi
-            fi
-            if [ "$has_tests" = false ] && [ -f "setup.cfg" ]; then
-              if grep -qi 'pytest' setup.cfg; then
-                has_tests=true
-              fi
-            fi
-          fi
-
-          if [ "$has_proj" = true ] && [ "$has_tests" = true ]; then
-            echo "run_tests=true" >> "$GITHUB_OUTPUT"
-            echo "Detected Python project with tests."
-          else
-            echo "run_tests=false" >> "$GITHUB_OUTPUT"
-            echo "No runnable Python tests detected. Exiting gracefully."
-          fi
-
-      - name: Setup Python
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies (with constraints)
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
-        shell: bash
+      - name: Install dependencies
         run: |
-          pip install -U pip
-          pip install -c constraints/py312.txt -e .[dev]
-          pip uninstall -y \
-            opentelemetry-exporter-jaeger \
-            opentelemetry-exporter-jaeger-proto-grpc \
-            opentelemetry-exporter-jaeger-thrift || true
-          # Projekt NICHT installieren (kein 'pip install .'); wir testen via PYTHONPATH
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then python -m pip install -r requirements-dev.txt || true; fi
+          python -m pip install pytest freezegun
 
-      - name: Verify resolved versions
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
-        shell: bash
-        run: |
-          python - <<'PY'
-          import importlib, sys
-          def v(pkg):
-              try:
-                  m=importlib.import_module(pkg); print(pkg, getattr(m,'__version__','unknown'))
-              except Exception as e:
-                  print(pkg, 'NOT IMPORTABLE:', e)
-          print('Python', sys.version.split()[0])
-          for pkg in ['wrapt','opentelemetry','opentelemetry.sdk','opentelemetry.semconv']:
-              v(pkg)
-          PY
-          pip freeze | grep -E 'wrapt|opentelemetry' || true
-
-      - name: No Jaeger exporters
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
-        shell: bash
-        run: |
-          pip freeze | grep -E 'opentelemetry-exporter-jaeger(|-proto-grpc)' && { echo "Jaeger exporter detected; failing."; exit 1; } || echo "OK: no Jaeger exporters"
-
-      - name: Prepare test artifacts
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/inbox_local/samples
-
-          # sample_result.json – generisches Artefakt für Mapping/Importer
-          cat > artifacts/inbox_local/samples/sample_result.json << 'JSON'
-          {
-            "tenant_id": "00000000-0000-0000-0000-000000000001",
-            "trace_id": "trace-sample-001",
-            "doc_type": "pdf",
-            "fingerprints": {
-              "content_hash": "invoice-sample-0001",
-              "source_name": "sample-invoice.pdf"
-            },
-            "pipeline": ["pdf.text_extract", "pdf.tables_extract", "invoice.map"],
-            "extracted": {
-              "tables": [
-                {
-                  "headers": ["Description", "Amount"],
-                  "rows": [
-                    ["Consulting Services", "0.00"],
-                    ["Subtotal", "0.00"]
-                  ]
-                }
-              ],
-              "kv": []
-            },
-            "quality": {"valid": true, "issues": []},
-            "pii": {"steps": []},
-            "flags": {"enable_ocr": false},
-            "amount": null,
-            "invoice_no": "INV-999",
-            "due_date": null
-          }
-          JSON
-
-          # payment_good.json – soll Payment-Mapping passieren
-          cat > artifacts/inbox_local/samples/payment_good.json << 'JSON'
-          {
-            "tenant_id": "00000000-0000-0000-0000-000000000001",
-            "trace_id": "trace-payment-good-001",
-            "doc_type": "payment",
-            "fingerprints": {
-              "content_hash": "payment-good-0001",
-              "source_name": "payment-good.pdf"
-            },
-            "pipeline": ["pdf.text_extract", "payment.extract"],
-            "extracted": {
-              "payment": {
-                "amount": "250.00",
-                "currency": "EUR",
-                "payment_date": "2025-02-15",
-                "counterparty": "ACME Bank",
-                "reference": "SEPA-REF-2025-02-15"
-              },
-              "kv": [
-                {"key": "Payment Amount", "value": "250.00 EUR"},
-                {"key": "Counterparty", "value": "ACME Bank"}
-              ]
-            },
-            "quality": {"valid": true, "issues": []},
-            "pii": {"steps": []},
-            "flags": {
-              "enable_table_boost": true,
-              "mvr_preview": true
-            },
-            "amount": "250.00",
-            "currency": "EUR",
-            "payment_date": "2025-02-15",
-            "counterparty": "ACME Bank"
-          }
-          JSON
-
-          # payment_bad.json – absichtlich unvollständig/negativer Fall
-          cat > artifacts/inbox_local/samples/payment_bad.json << 'JSON'
-          {
-            "tenant_id": "00000000-0000-0000-0000-000000000001",
-            "trace_id": "trace-payment-bad-001",
-            "doc_type": "payment",
-            "fingerprints": {
-              "content_hash": "payment-bad-0001",
-              "source_name": "payment-bad.pdf"
-            },
-            "pipeline": ["pdf.text_extract", "payment.extract"],
-            "extracted": {
-              "payment": {
-                "amount": null,
-                "currency": "EUR",
-                "payment_date": "",
-                "counterparty": null
-              }
-            },
-            "quality": {"valid": false, "issues": ["payment.amount.missing"]},
-            "pii": {"steps": []},
-            "flags": {"enable_ocr": false},
-            "amount": null,
-            "currency": "EUR"
-          }
-          JSON
-
-          # other_min.json – Minimalfall, der nicht Invoice/Payment erfüllt
-          cat > artifacts/inbox_local/samples/other_min.json << 'JSON'
-          {
-            "tenant_id": "00000000-0000-0000-0000-000000000001",
-            "trace_id": "trace-other-001",
-            "doc_type": "other",
-            "fingerprints": {
-              "content_hash": "other-min-0001",
-              "source_name": "other-min.pdf"
-            },
-            "pipeline": ["pdf.text_extract", "other.extract"],
-            "extracted": {
-              "kv": [
-                {"key": "Note", "value": "minimal payload"}
-              ],
-              "tables": []
-            },
-            "quality": {"valid": true, "issues": []},
-            "pii": {"steps": []},
-            "flags": {"mvr_preview": false}
-          }
-          JSON
-
-      - name: Run tests
-        if: ${{ steps.detect.outputs.run_tests == 'true' }}
-        shell: bash
+      - name: Run focused Mahnwesen tests
         env:
-          PYTHONPATH: .
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           set -e
-          pytest -q --maxfail=1
-
-      - name: No tests – placeholder success
-        if: ${{ steps.detect.outputs.run_tests != 'true' }}
-        run: echo "No Python tests detected → CI success (guarded)."
+          pytest -q \
+            tests/agents_mahnwesen/test_morning_operate.py \
+            tests/agents_mahnwesen/test_canary_engine.py \
+            tests/agents_mahnwesen/test_canary_rollout.py \
+            tests/agents_mahnwesen/test_operate_tools.py \
+            tests/agents_mahnwesen/test_kpi_engine.py \
+            tests/agents_mahnwesen/test_bounce_reconcile.py \
+            tests/agents_mahnwesen/test_sender_security_tools.py \
+            tests/agents_mahnwesen/test_flock_integration_offline.py \
+            tests/agents_mahnwesen/test_mvr_dispatch_dryrun.py
