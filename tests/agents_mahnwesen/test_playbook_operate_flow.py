@@ -42,8 +42,11 @@ def test_run_once_blocks_stage2_without_approval(approval_store: ApprovalStore) 
     result = playbook.run_once(context)
 
     blocked = result.metadata.get("blocked_without_approval", [])
+    prepared = result.metadata.get("dry_run_prepared", [])
+
     assert any(entry["stage"] == 2 for entry in blocked)
-    assert result.events_dispatched == 0
+    assert result.events_dispatched == len(prepared)
+    assert all(entry["stage"] == 1 for entry in prepared)
 
 
 def test_run_once_dispatches_after_approval(monkeypatch, approval_store: ApprovalStore) -> None:

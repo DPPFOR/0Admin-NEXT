@@ -428,7 +428,7 @@ class DunningPlaybook:
                         "trace_id": context.correlation_id,
                     }
 
-                    if context.outbox_client.check_duplicate_event(
+                    if not context.dry_run and context.outbox_client.check_duplicate_event(
                         notice.tenant_id, notice.invoice_id, stage
                     ):
                         self.logger.info(
@@ -442,10 +442,59 @@ class DunningPlaybook:
                         )
                         continue
 
+                    if requires_approval:
+                        can_send, approval_reason, record = context.approval_store.can_send(
+                            notice.tenant_id,
+                            notice.invoice_id,
+                            notice.notice_id,
+                            stage,
+                            decision.idempotency_key,
+                        )
+
+                        if not can_send:
+                            pending_record = context.approval_store.register_pending(
+                                tenant_id=notice.tenant_id,
+                                notice_id=notice.notice_id,
+                                invoice_id=notice.invoice_id,
+                                stage=stage,
+                                idempotency_key=decision.idempotency_key,
+                                requester=context.requester,
+                                reason=approval_reason or decision.reason,
+                                correlation_id=context.correlation_id,
+                            )
+                            payload = {
+                                **approval_payload,
+                                "status": pending_record.status,
+                                "reason": approval_reason or decision.reason,
+                            }
+                            blocked_without_approval.append(payload)
+                            approval_records.append(payload)
+                            log_message = (
+                                "dry-run blocked without approval notice=%s stage=%s idempotency_key=%s trace_id=%s"
+                                if context.dry_run
+                                else "blocked without approval notice=%s stage=%s idempotency_key=%s trace_id=%s"
+                            )
+                            self.logger.info(
+                                log_message,
+                                notice.notice_id,
+                                stage.value,
+                                decision.idempotency_key,
+                                context.correlation_id,
+                            )
+                            continue
+
+                        approval_records.append(
+                            {
+                                **approval_payload,
+                                "status": record.status,
+                                "reason": approval_reason or record.reason,
+                            }
+                        )
+
                     if context.dry_run:
                         dry_payload = {
                             **approval_payload,
-                            "status": "dispatched",
+                            "status": "prepared",
                         }
                         dry_run_prepared.append(dry_payload)
 
@@ -472,45 +521,6 @@ class DunningPlaybook:
                                 brevo_response.error,
                             )
                         continue
-
-                    if requires_approval:
-                        can_send, approval_reason, record = context.approval_store.can_send(
-                            notice.tenant_id,
-                            notice.invoice_id,
-                            notice.notice_id,
-                            stage,
-                            decision.idempotency_key,
-                        )
-
-                        if not can_send:
-                            context.approval_store.register_pending(
-                                tenant_id=notice.tenant_id,
-                                notice_id=notice.notice_id,
-                                invoice_id=notice.invoice_id,
-                                stage=stage,
-                                idempotency_key=decision.idempotency_key,
-                                requester=context.requester,
-                                reason=approval_reason or decision.reason,
-                            )
-                            payload = {**approval_payload, "status": "pending", "reason": approval_reason or decision.reason}
-                            blocked_without_approval.append(payload)
-                            approval_records.append(payload)
-                            self.logger.info(
-                                "blocked without approval notice=%s stage=%s idempotency_key=%s trace_id=%s",
-                                notice.notice_id,
-                                stage.value,
-                                decision.idempotency_key,
-                                context.correlation_id,
-                            )
-                            continue
-
-                        approval_records.append(
-                            {
-                                **approval_payload,
-                                "status": record.status,
-                                "reason": approval_reason or record.reason,
-                            }
-                        )
 
                     brevo_response = self._send_via_brevo(rendered_notice, context)
                     if not brevo_response.success:

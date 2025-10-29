@@ -86,8 +86,10 @@ class TestMVREispatchDryRun:
         # Verify results
         assert _result.success
         assert _result.notices_created == 2  # Both invoices processed
-        # In dry-run, events are still dispatched but with dry_run=True
-        assert _result.events_dispatched == 2
+        prepared = _result.metadata.get("dry_run_prepared", [])
+        assert len(prepared) == 1  # Stage 2 requires approval and is skipped
+        # In dry-run, events are dispatched only for allowed stages
+        assert _result.events_dispatched == len(prepared)
         assert _result.processing_time_seconds > 0
 
         # Verify no actual API calls were made
@@ -119,10 +121,12 @@ class TestMVREispatchDryRun:
         playbook = DunningPlaybook(test_config)
 
         # Run dry-run
-        playbook.run_once(context)
+        result = playbook.run_once(context)
 
-        # Verify Brevo was called in dry-run mode
-        assert mock_brevo.call_count == 2  # Called for each invoice
+        prepared = result.metadata.get("dry_run_prepared", [])
+
+        # Verify Brevo was called in dry-run mode for each dispatched notice
+        assert mock_brevo.call_count == len(prepared)
         for call in mock_brevo.call_args_list:
             args, kwargs = call
             assert kwargs["dry_run"] is True

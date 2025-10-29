@@ -310,7 +310,11 @@ class TestFlockIntegration:
                     # Check result
                     assert result.success is True
                     assert result.notices_created == 3
-                    assert result.events_dispatched == 3
+                    prepared = result.metadata.get("dry_run_prepared", [])
+                    blocked = result.metadata.get("blocked_without_approval", [])
+                    assert result.events_dispatched == len(prepared)
+                    assert len(prepared) == 0
+                    assert len(blocked) == 3
                     assert result.processing_time_seconds > 0
                     assert len(result.errors) == 0
 
@@ -345,8 +349,12 @@ class TestFlockIntegration:
             # Should succeed in dry run mode
             assert result.success is True
             assert result.notices_created == 3
-            # In dry run, events are counted as dispatched but not actually sent
-            assert result.events_dispatched == 3
+            prepared = result.metadata.get("dry_run_prepared", [])
+            blocked = result.metadata.get("blocked_without_approval", [])
+            # In dry run, only stages without approval requirements dispatch
+            assert result.events_dispatched == len(prepared)
+            assert len(prepared) == 0
+            assert len(blocked) == 3
 
     def test_template_engine_integration(self, context):
         """Test template engine integration."""
@@ -411,7 +419,11 @@ class TestFlockIntegration:
                     assert result.success is True
                     assert result.processing_time_seconds > 0
                     assert result.notices_created > 0
-                    assert result.events_dispatched > 0
+                    prepared = result.metadata.get("dry_run_prepared", [])
+                    blocked = result.metadata.get("blocked_without_approval", [])
+                    assert result.events_dispatched == len(prepared)
+                    assert len(prepared) == 0
+                    assert len(blocked) == 3
 
     def test_error_handling(self, playbook, context):
         """Test error handling in workflow."""
@@ -460,4 +472,6 @@ class TestFlockIntegration:
                     # Should respect limit
                     assert result.success is True
                     assert result.notices_created == context.limit
-                    assert result.events_dispatched == context.limit
+                    prepared = result.metadata.get("dry_run_prepared", [])
+                    assert result.events_dispatched == len(prepared)
+                    assert len(prepared) == 0

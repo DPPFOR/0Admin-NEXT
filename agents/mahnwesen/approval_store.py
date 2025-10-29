@@ -85,6 +85,7 @@ class ApprovalStore:
         idempotency_key: str,
         requester: str,
         reason: str | None = None,
+        correlation_id: str | None = None,
     ) -> ApprovalRecord:
         records = self._load_tenant(tenant_id)
         key = self._key(idempotency_key)
@@ -99,6 +100,7 @@ class ApprovalStore:
                 idempotency_key=idempotency_key,
                 requester=requester,
                 reason=reason,
+                correlation_id=correlation_id,
             )
             records[key] = record
             self._persist(tenant_id)
@@ -106,6 +108,7 @@ class ApprovalStore:
             # keep existing record but refresh reason/status if still pending
             if record.status == "pending":
                 record.reason = reason or record.reason
+                record.correlation_id = correlation_id or record.correlation_id
                 record.updated_at = datetime.now(UTC).isoformat()
                 self._persist(tenant_id)
 
