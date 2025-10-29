@@ -294,11 +294,332 @@
     {
       "label": "MVR: Daily KPIs (All Tenants)",
       "type": "shell",
-      "command": "python",
+      "command": "bash",
       "args": [
-        "tools/flock/playbook_mahnwesen.py",
-        "--report-daily",
-        "--verbose"
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/kpi_engine.py --all-tenants --notify"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Emit Alerts (Dry-Run)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/alert_emitter.py --tenant ${input:tenantId} --metric ${input:alertMetric} --value ${input:alertValue} --trace-id ${input:alertTraceId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Canary Check",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/canary_decision.py --tenant ${input:tenantId} --success-rate ${input:canarySuccess} --error-rate ${input:canaryError} --dlq-depth ${input:canaryDlq} --hard-bounce-rate ${input:canaryBounce} --trace-id ${input:canaryTrace}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Backout (Kill-Switch)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/kill_switch.py --tenant ${input:tenantId} --reason ${input:killSwitchReason} --trace-id ${input:killSwitchTrace}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: Bounce Reconcile (All Tenants)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/bounce_reconcile.py --all-tenants --notify"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "MVR: KPI + Reconcile (07:30 CET) – Dry-Run",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/kpi_engine.py --all-tenants --dry-run --notify && python tools/operate/bounce_reconcile.py --all-tenants --dry-run --notify"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Sender/DNS Check (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/sender_dns_check.py --tenant ${input:tenantId} --domain ${input:tenantDomain}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Sender Policy Probe (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/sender_policy_probe.py --tenant ${input:tenantId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Redaction Probe",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/redaction_probe.py"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Canary Decide (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/canary_engine.py --tenant ${input:tenantId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Canary Rollout (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/canary_rollout.py --tenant ${input:tenantId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Canary Full Cycle (Decide→Rollout)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/canary_engine.py --tenant ${input:tenantId} && python tools/operate/canary_rollout.py --tenant ${input:tenantId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Morning Run (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/morning_operate.py --tenant ${input:tenantId}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Morning Run (All Tenants)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/morning_operate.py --all-tenants"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Operate: Morning Run – Dry-Run",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/morning_operate.py --all-tenants --dry-run"
       ],
       "group": "test",
       "presentation": {
@@ -332,6 +653,72 @@
       "id": "approvalComment",
       "type": "promptString",
       "description": "Approval/Rejection Comment (required)"
+    },
+    {
+      "id": "alertMetric",
+      "type": "promptString",
+      "description": "Alert metric (e.g. error_rate, dlq_depth)",
+      "default": "error_rate"
+    },
+    {
+      "id": "alertValue",
+      "type": "promptString",
+      "description": "Metric value",
+      "default": "0.05"
+    },
+    {
+      "id": "alertTraceId",
+      "type": "promptString",
+      "description": "Trace ID for alert",
+      "default": "alert-trace"
+    },
+    {
+      "id": "canarySuccess",
+      "type": "promptString",
+      "description": "Success rate (0-1)",
+      "default": "0.98"
+    },
+    {
+      "id": "canaryError",
+      "type": "promptString",
+      "description": "Error rate (0-1)",
+      "default": "0.005"
+    },
+    {
+      "id": "canaryDlq",
+      "type": "promptString",
+      "description": "DLQ depth",
+      "default": "0"
+    },
+    {
+      "id": "canaryBounce",
+      "type": "promptString",
+      "description": "Hard bounce rate (0-1)",
+      "default": "0.02"
+    },
+    {
+      "id": "canaryTrace",
+      "type": "promptString",
+      "description": "Trace ID for canary decision",
+      "default": "canary-trace"
+    },
+    {
+      "id": "killSwitchReason",
+      "type": "promptString",
+      "description": "Backout reason",
+      "default": "Manual backout"
+    },
+    {
+      "id": "killSwitchTrace",
+      "type": "promptString",
+      "description": "Trace ID for kill switch",
+      "default": "kill-trace"
+    },
+    {
+      "id": "tenantDomain",
+      "type": "promptString",
+      "description": "Tenant mail domain",
+      "default": "example.com"
     }
   ]
 }

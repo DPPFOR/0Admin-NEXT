@@ -73,6 +73,12 @@ class MVREngine:
         Returns:
             Appropriate dunning stage
         """
+        if getattr(invoice, "dunning_stage", None) is not None:
+            try:
+                return DunningStage(invoice.dunning_stage)
+            except ValueError:
+                pass
+
         now = datetime.now(UTC)
         days_overdue = (now - invoice.due_date).days
 

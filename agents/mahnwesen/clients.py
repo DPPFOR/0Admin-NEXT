@@ -5,9 +5,11 @@ rate limiting, and multi-tenant support.
 """
 
 import hashlib
+import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from ..shared.flock_client import FlockClient
@@ -242,6 +244,11 @@ class OutboxClient:
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
+        self._sent_events: set[str] = set()
+        self._sent_events_path = (
+            Path("artifacts/reports/mahnwesen") / self.config.tenant_id / "outbox" / "sent.json"
+        )
+        self._load_sent_events()
 
     def _generate_idempotency_key(
         self, tenant_id: str, invoice_id: str, stage: DunningStage
@@ -503,6 +510,7 @@ class OutboxClient:
                 "idempotency_key": payload["idempotency_key"][:8] + "...",
             },
         )
+        self._record_sent_event(payload["idempotency_key"])
 
     def check_duplicate_event(self, tenant_id: str, invoice_id: str, stage: DunningStage) -> bool:
         """Check if event already exists (idempotency check).
@@ -529,5 +537,29 @@ class OutboxClient:
             },
         )
 
-        # Simulate no duplicates for testing
-        return False
+        return idempotency_key in self._sent_events
+
+    def _record_sent_event(self, idempotency_key: str) -> None:
+        self._sent_events.add(idempotency_key)
+        self._persist_sent_events()
+
+    def _load_sent_events(self) -> None:
+        try:
+            if self._sent_events_path.exists():
+                with self._sent_events_path.open("r", encoding="utf-8") as fp:
+                    data = json.load(fp)
+                self._sent_events = set(data.get("keys", []))
+        except Exception as exc:
+            self.logger.warning(
+                "Failed to load sent events cache", extra={"error": str(exc)}
+            )
+
+    def _persist_sent_events(self) -> None:
+        try:
+            self._sent_events_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._sent_events_path.open("w", encoding="utf-8") as fp:
+                json.dump({"keys": sorted(self._sent_events)}, fp, indent=2)
+        except Exception as exc:
+            self.logger.warning(
+                "Failed to persist sent events cache", extra={"error": str(exc)}
+            )

@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from agents.mahnwesen import DunningPlaybook
 from agents.mahnwesen.playbooks import DunningContext
+from agents.mahnwesen.providers import LocalOverdueProvider
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -60,7 +61,11 @@ def validate_tenant_id(tenant_id: str) -> str:
 
 
 def create_context(
-    tenant_id: str, dry_run: bool = False, limit: int = 100, correlation_id: str | None = None
+    tenant_id: str,
+    dry_run: bool = False,
+    limit: int = 100,
+    correlation_id: str | None = None,
+    requester: str | None = None,
 ) -> DunningContext:
     """Create dunning context.
 
@@ -76,8 +81,16 @@ def create_context(
     if correlation_id is None:
         correlation_id = str(uuid.uuid4())
 
+    if requester is None:
+        requester = os.getenv("MVR_REQUESTER") or os.getenv("USER", "operate-cli")
+
     return DunningContext(
-        tenant_id=tenant_id, correlation_id=correlation_id, dry_run=dry_run, limit=limit
+        tenant_id=tenant_id,
+        correlation_id=correlation_id,
+        dry_run=dry_run,
+        limit=limit,
+        requester=requester,
+        overdue_provider=LocalOverdueProvider(),
     )
 
 
@@ -146,6 +159,11 @@ Examples:
     parser.add_argument("--reject", metavar="NOTICE_ID", help="Reject notice (requires --comment)")
 
     parser.add_argument("--comment", help="Required comment for approve/reject actions")
+
+    parser.add_argument(
+        "--actor",
+        help="Actor performing approve/reject (defaults to current $USER)",
+    )
 
     parser.add_argument(
         "--rate-limit", type=int, help="Rate limit: max events per run (overrides config)"
@@ -225,6 +243,7 @@ Examples:
             dry_run=args.dry_run if not args.live else False,
             limit=args.limit,
             correlation_id=args.correlation_id,
+            requester=f"{os.getenv('USER', 'operate-cli')}:{'live' if args.live else 'dry-run' if args.dry_run else 'run'}",
         )
 
         # Apply rate limit override
@@ -488,28 +507,22 @@ def handle_template_validation(tenant_id: str, args, logger) -> None:
 
 
 def handle_mvr_preview(tenant_id: str, args, logger) -> None:
-    """Handle MVR preview mode - show notices without sending.
+    """Handle MVR preview mode - show notices without sending."""
 
-    Args:
-        tenant_id: Tenant ID
-        args: Command line arguments
-        logger: Logger instance
-    """
-    from agents.mahnwesen.config import DunningConfig
-    from agents.mahnwesen.playbooks import DunningContext, DunningPlaybook
+    from agents.mahnwesen import DunningPlaybook
 
     logger.info(f"MVR Preview mode for tenant {tenant_id}")
 
     try:
-        config = DunningConfig.from_tenant(tenant_id)
-        context = DunningContext(
+        context = create_context(
             tenant_id=tenant_id,
-            correlation_id=args.correlation_id or str(uuid.uuid4()),
-            dry_run=True,  # Always dry-run in preview
+            dry_run=True,
             limit=args.limit,
+            correlation_id=args.correlation_id,
+            requester=f"{os.getenv('USER', 'operate-cli')}:preview",
         )
 
-        playbook = DunningPlaybook(config)
+        playbook = DunningPlaybook(context.config)
         result = playbook.run_once(context)
 
         print("\n" + "=" * 60)
@@ -522,6 +535,34 @@ def handle_mvr_preview(tenant_id: str, args, logger) -> None:
         print(f"Stage 3: {result.stage_3_count}")
         print(f"Notices Created: {result.notices_created}")
         print("=" * 60)
+
+        metadata = result.metadata or {}
+        blocked = metadata.get("blocked_without_approval", [])
+        approval_records = metadata.get("approval_records", [])
+        prepared = metadata.get("dry_run_prepared", [])
+
+        if blocked:
+            print("\nBlocked Notices (Approval required):")
+            for entry in blocked:
+                print(
+                    f"  - {entry['notice_id']} | stage {entry['stage']} | key {entry['idempotency_key'][:8]}… | reason: {entry.get('reason', 'pending')}"
+                )
+
+        pending = [rec for rec in approval_records if rec.get("status") == "pending"]
+        if pending:
+            print("\nPending Approvals:")
+            for entry in pending:
+                print(
+                    f"  - {entry['notice_id']} (stage {entry['stage']}) awaiting approval"
+                )
+
+        if prepared:
+            print("\nDry-Run Prepared Notices:")
+            for entry in prepared:
+                print(
+                    f"  - {entry['notice_id']} | stage {entry['stage']} | key {entry['idempotency_key'][:8]}…"
+                )
+
         print("\nTo approve notices for sending:")
         print(f"  python {sys.argv[0]} --tenant {tenant_id} --approve NOTICE-ID --comment 'Reason'")
         print("\nTo reject notices:")
@@ -543,6 +584,8 @@ def handle_approve_reject(tenant_id: str, args, logger) -> None:
         args: Command line arguments
         logger: Logger instance
     """
+    from agents.mahnwesen.approval_store import ApprovalStore
+
     if not args.comment:
         logger.error("--comment is required for approve/reject actions")
         print("ERROR: --comment is required for approve/reject actions")
@@ -551,21 +594,80 @@ def handle_approve_reject(tenant_id: str, args, logger) -> None:
     action = "approve" if args.approve else "reject"
     notice_id = args.approve or args.reject
 
-    logger.info(f"MVR {action}: {notice_id} for tenant {tenant_id}")
+    actor = args.actor or os.getenv("MVR_ACTOR") or os.getenv("USER", "unknown")
+    correlation_id = args.correlation_id or str(uuid.uuid4())
+
+    store = ApprovalStore()
+    record = store.get_by_notice(tenant_id, notice_id)
+
+    if record is None:
+        logger.error(
+            "Approval record not found",
+            extra={"tenant_id": tenant_id, "notice_id": notice_id},
+        )
+        print(f"ERROR: No approval entry found for notice {notice_id}.")
+        sys.exit(1)
+
+    if actor == record.requester:
+        logger.error(
+            "4-Augen-Prinzip verletzt",
+            extra={
+                "tenant_id": tenant_id,
+                "notice_id": notice_id,
+                "stage": record.stage.value,
+                "requester": record.requester,
+                "actor": actor,
+            },
+        )
+        print("ERROR: Approver darf nicht identisch mit dem Requester sein (4-Augen-Prinzip).")
+        sys.exit(1)
+
+    logger.info(
+        f"MVR {action}: {notice_id} for tenant {tenant_id}",
+        extra={
+            "actor": actor,
+            "notice_id": notice_id,
+            "stage": record.stage.value,
+            "idempotency_key": record.idempotency_key,
+        },
+    )
 
     try:
-        # Create audit entry
+        if action == "approve":
+            updated = store.approve(
+                tenant_id=tenant_id,
+                notice_id=notice_id,
+                stage=record.stage,
+                approver=actor,
+                comment=args.comment,
+                actor=actor,
+                correlation_id=correlation_id,
+            )
+        else:
+            updated = store.reject(
+                tenant_id=tenant_id,
+                notice_id=notice_id,
+                stage=record.stage,
+                approver=actor,
+                comment=args.comment,
+                actor=actor,
+                correlation_id=correlation_id,
+            )
+
         audit_entry = {
             "tenant_id": tenant_id,
             "notice_id": notice_id,
+            "stage": updated.stage.value,
             "action": action,
             "comment": args.comment,
-            "user": os.getenv("USER", "unknown"),
+            "actor": actor,
+            "requester": record.requester,
+            "status": updated.status,
+            "idempotency_key": updated.idempotency_key,
             "timestamp": datetime.now(UTC).isoformat(),
-            "correlation_id": args.correlation_id or str(uuid.uuid4()),
+            "correlation_id": correlation_id,
         }
 
-        # Save audit entry
         audit_dir = Path("artifacts/reports/mahnwesen") / tenant_id / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
         audit_file = (
@@ -581,9 +683,12 @@ def handle_approve_reject(tenant_id: str, args, logger) -> None:
         print(f"MVR {action.upper()} - AUDIT TRAIL")
         print("=" * 60)
         print(f"Notice ID: {notice_id}")
+        print(f"Stage: S{updated.stage.value}")
         print(f"Action: {action}")
         print(f"Comment: {args.comment}")
-        print(f"User: {audit_entry['user']}")
+        print(f"Actor: {actor}")
+        print(f"Requester: {record.requester}")
+        print(f"Idempotency Key: {updated.idempotency_key}")
         print(f"Timestamp: {audit_entry['timestamp']}")
         print(f"Audit File: {audit_file}")
         print("=" * 60)

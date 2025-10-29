@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 from unittest.mock import Mock
 
 import yaml
@@ -16,11 +16,14 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from backend.integrations.brevo_client import send_transactional
 
+from .approval_store import ApprovalStore
 from .clients import OutboxClient, ReadApiClient
 from .config import DunningConfig
 from .dto import DunningEvent, DunningNotice, DunningStage, OverdueInvoice
 from .mvr import MVREngine
+from .mvr_approval import MVRApprovalEngine
 from .policies import DunningPolicies
+from .providers import LocalOverdueProvider
 
 
 @dataclass
@@ -36,6 +39,10 @@ class DunningContext:
     read_client: ReadApiClient | None = None
     outbox_client: OutboxClient | None = None
     template_engine: Optional["TemplateEngine"] = None
+    approval_store: ApprovalStore | None = None
+    approval_engine: MVRApprovalEngine | None = None
+    overdue_provider: LocalOverdueProvider | None = None
+    requester: str = "operate-cli"
 
     def __post_init__(self):
         """Initialize dependencies after creation."""
@@ -56,6 +63,10 @@ class DunningContext:
 
         # Initialize MVR engine
         self.mvr_engine = MVREngine(self.config)
+        if self.approval_store is None:
+            self.approval_store = ApprovalStore()
+        if self.approval_engine is None:
+            self.approval_engine = MVRApprovalEngine()
 
 
 class TemplateEngine:
@@ -322,12 +333,15 @@ class DunningResult:
     stage_1_count: int = 0
     stage_2_count: int = 0
     stage_3_count: int = 0
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self):
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
             self.warnings = []
+        if self.metadata is None:
+            self.metadata = {}
 
 
 class DunningPlaybook:
@@ -352,9 +366,12 @@ class DunningPlaybook:
             Dunning result
         """
         start_time = datetime.now(UTC)
+        blocked_without_approval: list[dict[str, Any]] = []
+        approval_records: list[dict[str, Any]] = []
+        dry_run_prepared: list[dict[str, Any]] = []
+        dispatch_records: list[dict[str, Any]] = []
 
         try:
-            # Step 1: Fetch overdue invoices
             overdue_invoices = self._fetch_overdue_invoices(context)
 
             if not overdue_invoices:
@@ -364,59 +381,177 @@ class DunningPlaybook:
                     events_dispatched=0,
                     processing_time_seconds=(datetime.now(UTC) - start_time).total_seconds(),
                     warnings=["No overdue invoices found"],
+                    metadata={
+                        "blocked_without_approval": blocked_without_approval,
+                        "approval_records": approval_records,
+                        "dry_run_prepared": dry_run_prepared,
+                        "dispatch_records": dispatch_records,
+                    },
                 )
 
-            # Step 2: Process with MVR engine
             mvr_results = context.mvr_engine.process_invoices(overdue_invoices, context.dry_run)
 
-            # Step 3: Create notices and dispatch events
             notices_created = 0
             events_dispatched = 0
 
-            for stage, invoice_decisions in mvr_results.items():
+            for engine_stage, invoice_decisions in mvr_results.items():
                 if not invoice_decisions:
                     continue
+
+                stage = DunningStage(engine_stage.value)
 
                 for invoice, decision in invoice_decisions:
                     if not decision.should_send:
                         self.logger.debug(
-                            f"Skipping invoice {invoice.invoice_id}: {decision.reason}"
+                            "Skipping invoice",
+                            extra={
+                                "tenant_id": invoice.tenant_id,
+                                "invoice_id": invoice.invoice_id,
+                                "stage": stage.value,
+                                "reason": decision.reason,
+                            },
                         )
                         continue
 
-                    # Create notice
                     notice = self._create_notice(invoice, stage, context)
-
-                    # Render template
                     rendered_notice = context.template_engine.render_notice(notice, stage)
-
-                    # Send via Brevo
-                    brevo_response = self._send_via_brevo(rendered_notice, context)
-
-                    # Dispatch event if Brevo successful
-                    if brevo_response.success:
-                        if not context.outbox_client.check_duplicate_event(
-                            rendered_notice.tenant_id, rendered_notice.invoice_id, stage
-                        ):
-                            event = self._create_dunning_event_impl(rendered_notice, stage, context)
-
-                            # Choose publisher strategy based on dry_run mode
-                            if context.dry_run:
-                                # In dry-run mode, just count as dispatched without calling API
-                                events_dispatched += 1
-                                self.logger.info(
-                                    f"Dry-run: Would dispatch dunning event for invoice {invoice.invoice_id}"
-                                )
-                            else:
-                                # Live run: use real client
-                                if context.outbox_client.publish_dunning_issued(
-                                    event, dry_run=False
-                                ):
-                                    events_dispatched += 1
-
+                    notice.metadata.setdefault("idempotency_key", decision.idempotency_key)
                     notices_created += 1
 
-            # Calculate processing time
+                    requires_approval = context.approval_engine.requires_approval(stage)
+                    approval_payload = {
+                        "tenant_id": notice.tenant_id,
+                        "invoice_id": notice.invoice_id,
+                        "notice_id": notice.notice_id,
+                        "stage": stage.value,
+                        "idempotency_key": decision.idempotency_key,
+                        "trace_id": context.correlation_id,
+                    }
+
+                    if requires_approval:
+                        can_send, approval_reason, record = context.approval_store.can_send(
+                            notice.tenant_id,
+                            notice.invoice_id,
+                            notice.notice_id,
+                            stage,
+                            decision.idempotency_key,
+                        )
+
+                        if not can_send:
+                            context.approval_store.register_pending(
+                                tenant_id=notice.tenant_id,
+                                notice_id=notice.notice_id,
+                                invoice_id=notice.invoice_id,
+                                stage=stage,
+                                idempotency_key=decision.idempotency_key,
+                                requester=context.requester,
+                                reason=approval_reason or decision.reason,
+                            )
+                            payload = {**approval_payload, "status": "pending", "reason": approval_reason or decision.reason}
+                            blocked_without_approval.append(payload)
+                            approval_records.append(payload)
+                            self.logger.info(
+                                "blocked without approval notice=%s stage=%s idempotency_key=%s trace_id=%s",
+                                notice.notice_id,
+                                stage.value,
+                                decision.idempotency_key,
+                                context.correlation_id,
+                            )
+                            continue
+
+                        approval_records.append(
+                            {
+                                **approval_payload,
+                                "status": record.status,
+                                "reason": approval_reason or record.reason,
+                            }
+                        )
+
+                    if context.dry_run:
+                        dry_payload = {
+                            **approval_payload,
+                            "status": "prepared",
+                        }
+                        dry_run_prepared.append(dry_payload)
+                        self.logger.info(
+                            "dry-run prepared notice=%s stage=%s idempotency_key=%s",
+                            notice.notice_id,
+                            stage.value,
+                            decision.idempotency_key,
+                        )
+                        continue
+
+                    if context.outbox_client.check_duplicate_event(
+                        notice.tenant_id, notice.invoice_id, stage
+                    ):
+                        self.logger.info(
+                            "duplicate notice skipped",
+                            extra={
+                                "tenant_id": notice.tenant_id,
+                                "invoice_id": notice.invoice_id,
+                                "notice_id": notice.notice_id,
+                                "stage": stage.value,
+                            },
+                        )
+                        continue
+
+                    brevo_response = self._send_via_brevo(rendered_notice, context)
+                    if not brevo_response.success:
+                        self.logger.error(
+                            "brevo dispatch failed",
+                            extra={
+                                **approval_payload,
+                                "error": brevo_response.error,
+                            },
+                        )
+                        continue
+
+                    message_id = brevo_response.message_id or (
+                        f"local-{decision.idempotency_key[:8]}"
+                    )
+
+                    dispatch_payload = {
+                        **approval_payload,
+                        "message_id": message_id,
+                    }
+                    dispatch_records.append(dispatch_payload)
+                    self.logger.info(
+                        "brevo.dispatch.success notice=%s stage=%s message_id=%s tenant=%s trace_id=%s idempotency_key=%s",
+                        notice.notice_id,
+                        stage.value,
+                        message_id,
+                        notice.tenant_id,
+                        context.correlation_id,
+                        decision.idempotency_key,
+                    )
+
+                    event = self._create_dunning_event_impl(rendered_notice, stage, context)
+
+                    if context.outbox_client.publish_dunning_issued(
+                        event, correlation_id=context.correlation_id, dry_run=False
+                    ):
+                        events_dispatched += 1
+                        if requires_approval:
+                            approval_confirm_payload = {
+                                **approval_payload,
+                                "status": "sent",
+                            }
+                            approval_records.append(approval_confirm_payload)
+                            context.approval_store.mark_sent(
+                                notice.tenant_id, notice.notice_id, stage
+                            )
+                            self.logger.info(
+                                "approved → exactly 1 event notice=%s stage=%s idempotency_key=%s",
+                                notice.notice_id,
+                                stage.value,
+                                decision.idempotency_key,
+                            )
+                    else:
+                        self.logger.warning(
+                            "outbox.publish.failed",
+                            extra=approval_payload,
+                        )
+
             processing_time = (datetime.now(UTC) - start_time).total_seconds()
 
             return DunningResult(
@@ -428,6 +563,12 @@ class DunningPlaybook:
                 stage_1_count=len(mvr_results.get(DunningStage.STAGE_1, [])),
                 stage_2_count=len(mvr_results.get(DunningStage.STAGE_2, [])),
                 stage_3_count=len(mvr_results.get(DunningStage.STAGE_3, [])),
+                metadata={
+                    "blocked_without_approval": blocked_without_approval,
+                    "approval_records": approval_records,
+                    "dry_run_prepared": dry_run_prepared,
+                    "dispatch_records": dispatch_records,
+                },
             )
 
         except Exception as e:
@@ -542,16 +683,19 @@ class DunningPlaybook:
         Returns:
             List of overdue invoices
         """
+        if context.overdue_provider:
+            invoices = context.overdue_provider.load_overdue_invoices(
+                context.tenant_id, limit=context.limit
+            )
+            if invoices:
+                return invoices
+
         try:
             response = context.read_client.get_overdue_invoices()
-            invoices = response.invoices
-
-            # Invoices are already OverdueInvoice objects
-            return invoices
-
+            return response.invoices
         except Exception as e:
             self.logger.error(f"Failed to fetch overdue invoices: {e}")
-            raise  # Re-raise to be handled by run_once
+            raise
 
     def _create_notice(
         self, invoice: OverdueInvoice, stage: DunningStage, context: DunningContext
@@ -572,7 +716,7 @@ class DunningPlaybook:
         # Calculate dunning fee
         dunning_fee_cents = context.policies.calculate_dunning_fee(invoice, stage)
 
-        return DunningNotice(
+        notice = DunningNotice(
             notice_id=f"NOTICE-{invoice.invoice_id}",
             tenant_id=invoice.tenant_id,
             invoice_id=invoice.invoice_id,
@@ -588,6 +732,12 @@ class DunningPlaybook:
             customer_name=invoice.customer_name,
             invoice_number=invoice.invoice_number,
         )
+
+        notice.notice_ref = notice.notice_id
+        invoice_metadata = getattr(invoice, "metadata", {}) or {}
+        notice.metadata.setdefault("source", invoice_metadata.get("source"))
+
+        return notice
 
     def _create_dunning_event_impl(
         self, notice: DunningNotice, stage: DunningStage, context: DunningContext
