@@ -277,9 +277,14 @@ def build_report(
         expectations = [verify_expectation(exp, provider, verbose) for exp in expectations]
     
     # Determine overall status
-    verified_count = sum(1 for exp in expectations if exp.status == "VERIFIED")
-    total_count = len(expectations)
-    overall_status = "VERIFIED" if verified_count == total_count else "PARTIAL" if verified_count > 0 else "UNVERIFIED"
+    if verify:
+        verified_count = sum(1 for exp in expectations if exp.status == "VERIFIED")
+        total_count = len(expectations)
+        overall_status = "VERIFIED" if verified_count == total_count else "PARTIAL" if verified_count > 0 else "UNVERIFIED"
+    else:
+        overall_status = "EXPECTED"
+        verified_count = 0
+        total_count = len(expectations)
     
     return {
         "tenant_id": tenant_id,
