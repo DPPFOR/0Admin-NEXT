@@ -1,0 +1,10 @@
+{
+  "event": "click",
+  "date": "2025-01-15T10:37:00Z",
+  "message-id": "brevo-msg-12352",
+  "email": "user@example.com",
+  "link": "https://example.com/action",
+  "ip": "192.168.1.1",
+  "user-agent": "Mozilla/5.0"
+}
+

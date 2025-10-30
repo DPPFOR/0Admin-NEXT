@@ -1,0 +1,8 @@
+{
+  "event": "soft_bounce",
+  "date": "2025-01-15T10:31:00Z",
+  "message-id": "brevo-msg-12346",
+  "email": "bounce@example.com",
+  "reason": "Mailbox full"
+}
+

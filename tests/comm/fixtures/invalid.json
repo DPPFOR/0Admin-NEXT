@@ -1,0 +1,8 @@
+{
+  "event": "invalid",
+  "date": "2025-01-15T10:35:00Z",
+  "message-id": "brevo-msg-12350",
+  "email": "not-an-email",
+  "reason": "Invalid email format"
+}
+

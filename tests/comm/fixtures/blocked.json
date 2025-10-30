@@ -1,0 +1,8 @@
+{
+  "event": "blocked",
+  "date": "2025-01-15T10:33:00Z",
+  "message-id": "brevo-msg-12348",
+  "email": "blocked@example.com",
+  "reason": "Spam complaint"
+}
+

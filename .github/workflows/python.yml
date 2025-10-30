@@ -7,15 +7,19 @@ on:
     paths:
       - 'agents/mahnwesen/**'
       - 'agents/einvoice/**'
+      - 'agents/comm/**'
       - 'tests/agents_mahnwesen/**'
       - 'tests/einvoice/**'
+      - 'tests/comm/**'
       - '.github/workflows/python.yml'
   pull_request:
     paths:
       - 'agents/mahnwesen/**'
       - 'agents/einvoice/**'
+      - 'agents/comm/**'
       - 'tests/agents_mahnwesen/**'
       - 'tests/einvoice/**'
+      - 'tests/comm/**'
       - '.github/workflows/python.yml'
   workflow_dispatch:
 
@@ -52,4 +56,4 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           set -e
-          pytest -q tests/agents_mahnwesen tests/einvoice
+          pytest -q tests/agents_mahnwesen tests/einvoice tests/comm

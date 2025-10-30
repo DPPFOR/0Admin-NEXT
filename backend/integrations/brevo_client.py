@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+from agents.comm.outbound_tags import generate_message_id
+
 
 @dataclass
 class BrevoEmail:
@@ -69,7 +71,13 @@ class BrevoClient:
         )
 
     def send_transactional(
-        self, to: str, subject: str, html: str, tenant_id: str, dry_run: bool = False
+        self,
+        to: str,
+        subject: str,
+        html: str,
+        tenant_id: str,
+        dry_run: bool = False,
+        invoice_no: str | None = None,
     ) -> BrevoResponse:
         """Send transactional email via Brevo API.
 
@@ -79,6 +87,7 @@ class BrevoClient:
             html: HTML content
             tenant_id: Tenant identifier for tracking
             dry_run: If True, simulate sending without actual API call
+            invoice_no: Optional invoice number for deterministic message ID
 
         Returns:
             BrevoResponse with success status and details
@@ -109,13 +118,22 @@ class BrevoClient:
             return self._handle_dry_run(to, subject, tenant_id)
 
         try:
+            # Generate deterministic message ID
+            message_id = generate_message_id(
+                tenant_id=tenant_id, invoice_no=invoice_no, ts=datetime.now(UTC)
+            )
+
             # Prepare email data
             email_data = {
                 "sender": {"name": self.sender_name, "email": self.sender_email},
                 "to": [{"email": to}],
                 "subject": subject,
                 "htmlContent": html,
-                "headers": {"X-Tenant-ID": tenant_id, "X-MVR-Notification": "true"},
+                "headers": {
+                    "X-Tenant-ID": tenant_id,
+                    "X-Message-ID": message_id,
+                    "X-MVR-Notification": "true",
+                },
             }
 
             # Send via Brevo API
@@ -197,9 +215,10 @@ class BrevoClient:
             },
         )
 
-        return BrevoResponse(
-            success=True, message_id=f"dry-run-{tenant_id}-{hash(to)}", dry_run=True
+        message_id = generate_message_id(
+            tenant_id=tenant_id, invoice_no=None, ts=datetime.now(UTC)
         )
+        return BrevoResponse(success=True, message_id=message_id, dry_run=True)
 
     def close(self):
         """Close HTTP client connection."""
@@ -346,7 +365,12 @@ class BrevoClient:
 
 # Convenience function for direct usage
 def send_transactional(
-    to: str, subject: str, html: str, tenant_id: str, dry_run: bool = False
+    to: str,
+    subject: str,
+    html: str,
+    tenant_id: str,
+    dry_run: bool = False,
+    invoice_no: str | None = None,
 ) -> BrevoResponse:
     """Convenience function to send transactional email.
 
@@ -356,9 +380,10 @@ def send_transactional(
         html: HTML content
         tenant_id: Tenant identifier
         dry_run: If True, simulate sending without actual API call
+        invoice_no: Optional invoice number for deterministic message ID
 
     Returns:
         BrevoResponse with success status and details
     """
     with BrevoClient() as client:
-        return client.send_transactional(to, subject, html, tenant_id, dry_run)
+        return client.send_transactional(to, subject, html, tenant_id, dry_run, invoice_no)

@@ -1,0 +1,8 @@
+{
+  "event": "delivered",
+  "date": "2025-01-15T10:30:00Z",
+  "message-id": "brevo-msg-12345",
+  "email": "user@example.com",
+  "tag": "invoice-notification"
+}
+

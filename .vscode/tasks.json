@@ -2,6 +2,52 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Comm: Run Webhook (local)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; uvicorn tools.operate.brevo_webhook:app --port 8787 --reload"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Comm: Replay Events",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/brevo_events_replay.py --tenant ${input:tenantId} --date ${input:date} --type ${input:eventType}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
       "label": "E-Invoice: Generate (Tenant)",
       "type": "shell",
       "command": "bash",
@@ -857,6 +903,81 @@
       "type": "promptString",
       "description": "Tenant mail domain",
       "default": "example.com"
+    },
+    {
+      "id": "date",
+      "type": "promptString",
+      "description": "Date (YYYYMMDD)",
+      "default": "20250115"
+    },
+    {
+      "id": "eventType",
+      "type": "promptString",
+      "description": "Event type filter",
+      "default": ""
     }
-  ]
-}
+  ],
+  "tasks": [
+    {
+      "label": "Comm: Run Webhook (local)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; uvicorn tools.operate.brevo_webhook:app --port 8787 --reload"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "Comm: Replay Events",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/operate/brevo_events_replay.py --tenant ${input:tenantId} --date ${input:date} --type ${input:eventType}"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+        "env": {
+          "TZ": "UTC",
+          "PYTHONHASHSEED": "0"
+        }
+      }
+    },
+    {
+      "label": "E-Invoice: Generate (Tenant)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -a; source .env; set +a; python tools/einvoice/generate.py --tenant ${input:tenantId} --count ${input:einvoiceCount} --format ${input:einvoiceFormat} --now ${input:einvoiceNow} --verbose"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
