@@ -1,7 +1,8 @@
-"""Offline-Validator (TEMP_VALIDATOR) für XRechnung-UBL."""
+"""Offline-Validator (TEMP_VALIDATOR/OFFICIAL) für XRechnung-UBL."""
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
@@ -9,6 +10,13 @@ from typing import Dict, List
 from xml.etree import ElementTree as ET
 
 from .generator import GENERATOR_VERSION, XRECHNUNG_CUSTOMIZATION_ID
+
+try:
+    from lxml import etree
+    from lxml.isoschematron import Schematron
+except ImportError:
+    etree = None
+    Schematron = None
 
 
 @dataclass(frozen=True)
@@ -24,6 +32,7 @@ class XRechnungValidationResult:
 RESOURCE_DIR = Path(__file__).resolve().parent / "resources"
 STUB_XSD = RESOURCE_DIR / "ubl_stub.xsd"
 STUB_SCHEMATRON = RESOURCE_DIR / "ubl_schematron_stub.sch"
+OFFICIAL_DIR = RESOURCE_DIR / "official"
 
 
 def _parse_decimal(text: str) -> Decimal:
@@ -34,7 +43,90 @@ def _strip_ns(tag: str) -> str:
     return tag.split("}", 1)[1] if "}" in tag else tag
 
 
-def validate_xrechnung(xml_bytes: bytes) -> XRechnungValidationResult:
+def _get_validation_mode() -> str:
+    """Bestimmt den Validierungsmodus basierend auf ENV und Ressourcen-Verfügbarkeit."""
+    mode = os.getenv("EINVOICE_VALIDATION_MODE", "temp").lower()
+    
+    # Wenn OFFICIAL angefordert, prüfe ob Ressourcen vorhanden sind
+    if mode == "official":
+        # Prüfe auf vorhandene XSD/Schematron-Dateien im official-Verzeichnis
+        official_xsd_files = list(OFFICIAL_DIR.glob("*.xsd")) if OFFICIAL_DIR.exists() else []
+        official_sch_files = list(OFFICIAL_DIR.glob("*.sch")) if OFFICIAL_DIR.exists() else []
+        
+        if not official_xsd_files or not official_sch_files:
+            return "temp"  # Fallback zu TEMP wenn Ressourcen fehlen
+    
+    return mode
+
+
+def _validate_with_official(xml_bytes: bytes) -> XRechnungValidationResult:
+    """Validiert mit offiziellen XSD/Schematron-Ressourcen via lxml."""
+    messages: List[str] = []
+    
+    if etree is None:
+        messages.append("OFFICIAL_VALIDATOR: lxml not available, falling back to TEMP")
+        return _validate_with_temp(xml_bytes)
+    
+    # Lade offizielle Ressourcen
+    official_xsd_files = list(OFFICIAL_DIR.glob("*.xsd"))
+    official_sch_files = list(OFFICIAL_DIR.glob("*.sch"))
+    
+    if not official_xsd_files:
+        messages.append("OFFICIAL_VALIDATOR: No XSD files found in official/ directory")
+        return _validate_with_temp(xml_bytes)
+    
+    schema_ok = False
+    schematron_ok = False
+    
+    try:
+        # Parse XML
+        try:
+            xml_doc = etree.fromstring(xml_bytes)
+        except etree.XMLSyntaxError as err:
+            messages.append(f"OFFICIAL_VALIDATOR: XML parse error – {err}")
+            return XRechnungValidationResult(False, False, messages)
+        
+        # Schema-Validierung (erste XSD-Datei verwenden)
+        try:
+            schema_doc = etree.parse(str(official_xsd_files[0]))
+            schema = etree.XMLSchema(schema_doc)
+            schema_ok = schema.validate(xml_doc)
+            if schema_ok:
+                messages.append(f"OFFICIAL_VALIDATOR: Schema validation OK ({official_xsd_files[0].name})")
+            else:
+                error_log = schema.error_log
+                messages.append(f"OFFICIAL_VALIDATOR: Schema validation failed: {error_log.last_error}")
+        except Exception as err:  # noqa: BLE001
+            messages.append(f"OFFICIAL_VALIDATOR: Schema validation error – {err}")
+            schema_ok = False
+        
+        # Schematron-Validierung (erste Schematron-Datei verwenden)
+        if official_sch_files:
+            try:
+                schematron_doc = etree.parse(str(official_sch_files[0]))
+                schematron = Schematron(schematron_doc)
+                schematron_ok = schematron.validate(xml_doc)
+                if schematron_ok:
+                    messages.append(f"OFFICIAL_VALIDATOR: Schematron validation OK ({official_sch_files[0].name})")
+                else:
+                    error_log = schematron.error_log
+                    messages.append(f"OFFICIAL_VALIDATOR: Schematron validation failed: {error_log.last_error}")
+            except Exception as err:  # noqa: BLE001
+                messages.append(f"OFFICIAL_VALIDATOR: Schematron validation error – {err}")
+                schematron_ok = False
+        else:
+            messages.append("OFFICIAL_VALIDATOR: No Schematron files found, skipping Schematron validation")
+            schematron_ok = True  # Nicht verfügbar, aber kein Fehler
+        
+        return XRechnungValidationResult(schema_ok, schematron_ok, messages)
+    
+    except Exception as err:  # noqa: BLE001
+        messages.append(f"OFFICIAL_VALIDATOR: Unexpected error – {err}")
+        return XRechnungValidationResult(False, False, messages)
+
+
+def _validate_with_temp(xml_bytes: bytes) -> XRechnungValidationResult:
+    """Validiert mit TEMP-Stub-Logik (bestehende Implementierung)."""
     messages: List[str] = []
 
     # Ensure resources exist (offline stub requirement)
@@ -100,4 +192,14 @@ def validate_xrechnung(xml_bytes: bytes) -> XRechnungValidationResult:
 
     messages.append(f"TEMP_VALIDATOR: XRechnung stub validated ({GENERATOR_VERSION})")
     return XRechnungValidationResult(True, True, messages)
+
+
+def validate_xrechnung(xml_bytes: bytes) -> XRechnungValidationResult:
+    """Validiert XRechnung-XML basierend auf konfiguriertem Modus (OFFICIAL/TEMP)."""
+    mode = _get_validation_mode()
+    
+    if mode == "official":
+        return _validate_with_official(xml_bytes)
+    else:
+        return _validate_with_temp(xml_bytes)
 

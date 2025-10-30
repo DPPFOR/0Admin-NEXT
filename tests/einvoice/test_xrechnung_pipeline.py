@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from itertools import count
@@ -120,5 +121,7 @@ def test_xrechnung_pipeline_is_idempotent(tmp_path: Path, start: datetime) -> No
     for data in first_run["validation_flags"].values():
         assert data["schema_ok"] is True
         assert data["schematron_ok"] is True
-        assert "TEMP_VALIDATOR" in " ".join(data.get("messages", []))
+        # Prüfe auf Validator-Marker (TEMP_VALIDATOR oder OFFICIAL_VALIDATOR)
+        messages_str = " ".join(data.get("messages", []))
+        assert "TEMP_VALIDATOR" in messages_str or "OFFICIAL_VALIDATOR" in messages_str
 

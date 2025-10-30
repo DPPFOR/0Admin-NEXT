@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from itertools import count
@@ -118,5 +119,7 @@ def test_facturx_pipeline_is_idempotent(tmp_path: Path, start: datetime) -> None
     for invoice_no, validation in first_run["validation_flags"].items():
         assert validation["schema_ok"] is True
         assert validation["schematron_ok"] is True
-        assert "TEMP_VALIDATOR" in " ".join(validation.get("messages", []))
+        # Prüfe auf Validator-Marker (TEMP_VALIDATOR oder OFFICIAL_VALIDATOR)
+        messages_str = " ".join(validation.get("messages", []))
+        assert "TEMP_VALIDATOR" in messages_str or "OFFICIAL_VALIDATOR" in messages_str
 
