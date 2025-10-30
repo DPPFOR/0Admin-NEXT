@@ -51,7 +51,9 @@ class TestBrevoAdapter:
         assert response.success
         assert response.dry_run
         assert response.message_id is not None
-        assert "dry-run" in response.message_id
+        # Message ID is now deterministic UUID (not "dry-run" prefix)
+        assert isinstance(response.message_id, str)
+        assert len(response.message_id) > 0
 
         # Verify no HTTP call was made
         mock_httpx.return_value.post.assert_not_called()
@@ -98,7 +100,11 @@ class TestBrevoAdapter:
             # Verify success
             assert response.success
             assert not response.dry_run
-            assert response.message_id == "test-message-id"
+            # message_id is now deterministic UUID (not Brevo's ID)
+            assert response.message_id is not None
+            assert isinstance(response.message_id, str)
+            # Brevo's ID is stored separately
+            assert response.provider_message_id == "test-message-id"
             assert response.error is None
 
             # Verify HTTP call was made
@@ -182,7 +188,7 @@ class TestBrevoAdapter:
 
             # Verify client was used correctly
             mock_client.send_transactional.assert_called_once_with(
-                "test@example.com", "Test Subject", "<p>Test Content</p>", "test-tenant", True
+                "test@example.com", "Test Subject", "<p>Test Content</p>", "test-tenant", True, None
             )
 
     def test_context_manager(self):
