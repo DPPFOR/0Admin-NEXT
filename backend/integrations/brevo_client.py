@@ -34,6 +34,7 @@ class BrevoResponse:
     message_id: str | None = None
     error: str | None = None
     dry_run: bool = False
+    provider_message_id: str | None = None  # Brevo's messageId (for correlation)
 
 
 class BrevoClient:
@@ -118,8 +119,8 @@ class BrevoClient:
             return self._handle_dry_run(to, subject, tenant_id)
 
         try:
-            # Generate deterministic message ID
-            message_id = generate_message_id(
+            # Generate deterministic message ID (for correlation with webhooks)
+            deterministic_message_id = generate_message_id(
                 tenant_id=tenant_id, invoice_no=invoice_no, ts=datetime.now(UTC)
             )
 
@@ -131,7 +132,7 @@ class BrevoClient:
                 "htmlContent": html,
                 "headers": {
                     "X-Tenant-ID": tenant_id,
-                    "X-Message-ID": message_id,
+                    "X-Message-ID": deterministic_message_id,
                     "X-MVR-Notification": "true",
                 },
             }
@@ -141,19 +142,25 @@ class BrevoClient:
 
             if response.status_code == 201:
                 result = response.json()
-                message_id = result.get("messageId")
+                provider_message_id = result.get("messageId")
 
                 self.logger.info(
                     "Email sent successfully via Brevo",
                     extra={
                         "tenant_id": tenant_id,
                         "to": to,
-                        "message_id": message_id,
+                        "message_id": deterministic_message_id,
+                        "provider_message_id": provider_message_id,
                         "subject": subject[:50] + "..." if len(subject) > 50 else subject,
                     },
                 )
 
-                return BrevoResponse(success=True, message_id=message_id, dry_run=False)
+                return BrevoResponse(
+                    success=True,
+                    message_id=deterministic_message_id,  # Keep deterministic ID for correlation
+                    provider_message_id=provider_message_id,  # Store Brevo's ID separately
+                    dry_run=False,
+                )
             else:
                 error_msg = f"Brevo API error: {response.status_code} - {response.text}"
 
@@ -215,10 +222,10 @@ class BrevoClient:
             },
         )
 
-        message_id = generate_message_id(
+        deterministic_message_id = generate_message_id(
             tenant_id=tenant_id, invoice_no=None, ts=datetime.now(UTC)
         )
-        return BrevoResponse(success=True, message_id=message_id, dry_run=True)
+        return BrevoResponse(success=True, message_id=deterministic_message_id, dry_run=True)
 
     def close(self):
         """Close HTTP client connection."""
